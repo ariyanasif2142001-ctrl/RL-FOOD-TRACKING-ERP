@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ERPProvider, useERP } from './context/ERPContext';
 import { Header } from './components/Header';
 import { QuickActions } from './components/QuickActions';
@@ -11,6 +11,7 @@ import { UsersView } from './components/UsersView';
 import { SettingsView } from './components/SettingsView';
 import { NotificationPanel } from './components/NotificationPanel';
 import { Footer } from './components/Footer';
+import { LoginPortal } from './components/LoginPortal';
 
 import { NewPOModal } from './components/Modals/NewPOModal';
 import { MasterSKUModal } from './components/Modals/MasterSKUModal';
@@ -25,6 +26,11 @@ import { CheckCircle2 } from 'lucide-react';
 
 const ERPMainContent: React.FC = () => {
   const { currentView, toastMessage } = useERP();
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+
+  if (!isAuthenticated) {
+    return <LoginPortal onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
 
   const renderView = () => {
     switch (currentView) {
@@ -50,7 +56,7 @@ const ERPMainContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 flex flex-col font-sans antialiased selection:bg-blue-600 selection:text-white transition-colors duration-200">
       
-      {/* Top Header */}
+      {/* Option 1 Clean Minimal Top Header */}
       <Header />
 
       {/* Quick Action Toolbar */}

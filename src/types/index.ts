@@ -1,39 +1,43 @@
 export type UserRole = 'admin' | 'purchaser' | 'receiver' | 'manager';
 
+export type FoodCategory = 'Vegetables' | 'Bakery' | 'Fish' | 'Meat';
+
+export type PurchaseStatus = 'Pending' | 'On Hold' | 'Purchased' | 'Returned';
+export type ReceiveStatus = 'Pending' | 'Partial Received' | 'Received';
+export type ThemeMode = 'light' | 'dark';
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
   avatar: string;
-  active: boolean;
-  online: boolean;
-  lastLogin: string;
-  department: string;
+  department?: string;
+  location?: string;
+  online?: boolean;
+  active?: boolean;
+  lastLogin?: string;
 }
-
-export type PurchaseStatus = 'Pending' | 'Partial Purchased' | 'Purchased' | 'On Hold' | 'Returned';
-export type ReceiveStatus = 'Pending' | 'Partial Received' | 'Received';
 
 export interface POItem {
   id: string;
   sku: string;
   name: string;
-  category: string;
+  category: FoodCategory | string;
   orderedQty: number;
   unit: string;
   estimatedUnitPrice: number;
   purchasedQty?: number;
   actualUnitPrice?: number;
-  heldBy?: string; // Purchaser Name
-  heldAt?: string;
-  purchaseStatus: PurchaseStatus;
-  receiveStatus: ReceiveStatus;
   receivedQty?: number;
-  purchasedAt?: string;
-  purchaserName?: string;
   receiptNumber?: string;
   notes?: string;
+  purchaseStatus: PurchaseStatus;
+  receiveStatus: ReceiveStatus;
+  heldBy?: string;
+  heldAt?: string;
+  purchasedAt?: string;
+  purchaserName?: string;
 }
 
 export interface PurchaseOrder {
@@ -43,7 +47,7 @@ export interface PurchaseOrder {
   location: string;
   orderDate: string;
   deliveryDate: string;
-  status: PurchaseStatus;
+  status: PurchaseStatus | 'Partial Purchased';
   receiveStatus: ReceiveStatus;
   items: POItem[];
   totalQuantity: number;
@@ -54,10 +58,22 @@ export interface PurchaseOrder {
   notes?: string;
 }
 
+export interface MasterSKU {
+  id: string;
+  supplierSKU: string;
+  internalSKU: string;
+  name: string;
+  category: FoodCategory | string;
+  unit: string;
+  supplier: string;
+  lastUpdated: string;
+  conversionFactor?: number;
+}
+
 export interface AuditLog {
   id: string;
   timestamp: string;
-  action: 'LOGIN' | 'PURCHASE_HOLD' | 'PURCHASE_RELEASE' | 'PURCHASE_SAVE' | 'PURCHASE_RETURN' | 'WAREHOUSE_RECEIVE' | 'SYSTEM_SYNC' | 'PO_CREATE' | 'EXPORT_DATA' | 'SKU_MAP_UPDATE';
+  action: 'LOGIN' | 'PO_CREATE' | 'PURCHASE_HOLD' | 'PURCHASE_RELEASE' | 'PURCHASE_SAVE' | 'PURCHASE_RETURN' | 'WAREHOUSE_RECEIVE' | 'SYSTEM_SYNC';
   details: string;
   user: string;
   role: UserRole;
@@ -69,20 +85,8 @@ export interface NotificationItem {
   message: string;
   timestamp: string;
   read: boolean;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: 'info' | 'success' | 'warning';
   source?: 'telegram' | 'sheets' | 'system';
-}
-
-export interface MasterSKU {
-  id: string;
-  internalSKU: string;
-  supplierSKU: string;
-  name: string;
-  category: string;
-  supplier: string;
-  unit: string;
-  conversionFactor: number;
-  lastUpdated: string;
 }
 
 export interface SyncStatusInfo {
@@ -92,5 +96,3 @@ export interface SyncStatusInfo {
   sheetsUrl: string;
   totalRecordsSynced: number;
 }
-
-export type ThemeMode = 'light' | 'dark';
