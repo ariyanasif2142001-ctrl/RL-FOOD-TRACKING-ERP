@@ -25,7 +25,7 @@ import {
   PlusCircle
 } from 'lucide-react';
 
-export const Header: React.FC = () => {
+export const Header: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
   const {
     currentUser,
     currentView,
@@ -256,7 +256,7 @@ export const Header: React.FC = () => {
             {/* Profile Dropdown Menu */}
             {isProfileOpen && (
               <div className="absolute right-0 mt-2 z-50">
-                <ProfileMenu onClose={() => setIsProfileOpen(false)} />
+                <ProfileMenu onClose={() => setIsProfileOpen(false)} onLogout={onLogout} />
               </div>
             )}
           </div>

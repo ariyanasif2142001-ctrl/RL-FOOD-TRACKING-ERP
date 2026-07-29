@@ -11,14 +11,15 @@ import {
 } from 'lucide-react';
 import type { UserRole } from '../types';
 
-export const ProfileMenu: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const ProfileMenu: React.FC<{ onClose: () => void; onLogout?: () => void }> = ({ onClose, onLogout }) => {
   const {
     currentUser,
     setCurrentUserRole,
     theme,
     toggleTheme,
     handleInstallApp,
-    setCurrentView
+    setCurrentView,
+    showToast
   } = useERP();
 
   const [language, setLanguage] = useState('English (US)');
@@ -28,6 +29,15 @@ export const ProfileMenu: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     purchaser: { title: 'Purchaser', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
     receiver: { title: 'Receiver', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
     manager: { title: 'Ops Manager', color: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
+  };
+
+  const handleLogoutClick = () => {
+    onClose();
+    if (onLogout) {
+      onLogout();
+    } else {
+      showToast('Session logged out successfully.');
+    }
   };
 
   return (
@@ -142,10 +152,7 @@ export const ProfileMenu: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       {/* Footer / Sign Out */}
       <div className="p-2 bg-slate-50 dark:bg-slate-950">
         <button
-          onClick={() => {
-            onClose();
-            alert('Session logged out');
-          }}
+          onClick={handleLogoutClick}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-500 hover:bg-rose-500/10 transition-colors"
         >
           <LogOut size={14} />
