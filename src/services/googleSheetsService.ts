@@ -12,13 +12,16 @@ export async function fetchRealGoogleSheetsData(sheetUrlOrId: string): Promise<P
       const match = sheetUrlOrId.match(/\/d\/([a-zA-Z0-9-_]+)/);
       if (match && match[1]) {
         const spreadsheetId = match[1];
-        fetchUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+        const gidMatch = sheetUrlOrId.match(/gid=([0-9]+)/);
+        const gid = gidMatch ? gidMatch[1] : '0';
+        fetchUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
       }
     }
 
     const response = await fetch(fetchUrl);
     if (!response.ok) {
-      throw new Error(`HTTP Error ${response.status}`);
+      console.warn(`Google Sheets HTTP ${response.status}`);
+      return null;
     }
 
     const text = await response.text();
@@ -26,8 +29,13 @@ export async function fetchRealGoogleSheetsData(sheetUrlOrId: string): Promise<P
     // Check if JSON response (from Google AppsScript exec)
     if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
       const data = JSON.parse(text);
-      if (Array.isArray(data)) return data;
-      if (data.orders && Array.isArray(data.orders)) return data.orders;
+      if (Array.isArray(data) && data.length > 0) return data;
+      if (data.orders && Array.isArray(data.orders) && data.orders.length > 0) return data.orders;
+      if (data.items && Array.isArray(data.items) && data.items.length > 0) return data.items;
+
+      // If it's a status ping JSON like {"success": true, "message": "Google Apps Script Backend Operational"}
+      // return null so existing purchase orders are preserved cleanly
+      return null;
     }
 
     // Parse CSV rows if Google Sheet CSV Export format
@@ -38,9 +46,9 @@ export async function fetchRealGoogleSheetsData(sheetUrlOrId: string): Promise<P
     // Skip header line
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(',').map((c) => c.replace(/^"|"$/g, '').trim());
-      if (cols.length >= 4) {
+      if (cols.length >= 3) {
         const poId = cols[0] || `PO-2026-${100 + i}`;
-        const supplier = cols[1] || 'General Supplier';
+        const supplier = cols[1] || 'Metro Fresh Produce Ltd.';
         const orderDate = cols[2] || new Date().toISOString().substring(0, 10);
         const deliveryDate = cols[3] || orderDate;
         const itemName = cols[4] || 'Food Ingredient Item';
