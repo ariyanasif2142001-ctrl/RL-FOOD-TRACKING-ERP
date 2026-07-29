@@ -26,11 +26,23 @@ import { CheckCircle2 } from 'lucide-react';
 
 const ERPMainContent: React.FC = () => {
   const { currentView, toastMessage } = useERP();
-  // Set isAuthenticated to false by default so the Food Company Login Portal displays on load
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('rl_food_logged_in') === 'true';
+  });
+
+  const handleLoginSuccess = () => {
+    localStorage.setItem('rl_food_logged_in', 'true');
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('rl_food_logged_in');
+    setIsAuthenticated(false);
+  };
 
   if (!isAuthenticated) {
-    return <LoginPortal onLoginSuccess={() => setIsAuthenticated(true)} />;
+    return <LoginPortal onLoginSuccess={handleLoginSuccess} />;
   }
 
   const renderView = () => {
@@ -58,7 +70,7 @@ const ERPMainContent: React.FC = () => {
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 flex flex-col font-sans antialiased selection:bg-blue-600 selection:text-white transition-colors duration-200">
       
       {/* Option 1 Clean Minimal Top Header */}
-      <Header onLogout={() => setIsAuthenticated(false)} />
+      <Header onLogout={handleLogout} />
 
       {/* Quick Action Toolbar */}
       <QuickActions />
