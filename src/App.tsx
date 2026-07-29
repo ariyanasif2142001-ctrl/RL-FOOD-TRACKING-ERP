@@ -20,6 +20,7 @@ import { AuditLogsModal } from './components/Modals/AuditLogsModal';
 import { SetupGuidesModal } from './components/Modals/SetupGuidesModal';
 import { RecordPurchaseModal } from './components/Modals/RecordPurchaseModal';
 import { ReceiveItemModal } from './components/Modals/ReceiveItemModal';
+import { ImportModal } from './components/Modals/ImportModal';
 import { CheckCircle2 } from 'lucide-react';
 
 const ERPMainContent: React.FC = () => {
@@ -83,6 +84,7 @@ const ERPMainContent: React.FC = () => {
       <SetupGuidesModal />
       <RecordPurchaseModal />
       <ReceiveItemModal />
+      <ImportModal />
 
     </div>
   );

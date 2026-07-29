@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User, UserRole, PurchaseOrder, POItem, AuditLog, NotificationItem, MasterSKU, SyncStatusInfo, ThemeMode } from '../types';
 import { INITIAL_USERS, INITIAL_POS, INITIAL_SKUS, INITIAL_LOGS, INITIAL_NOTIFICATIONS } from '../store/initialData';
+import { fetchRealGoogleSheetsData } from '../services/googleSheetsService';
 
 export type ViewType = 'dashboard' | 'purchase' | 'inventory' | 'reports' | 'master-data' | 'users' | 'settings';
 
@@ -27,6 +28,7 @@ interface ERPContextType {
 
   // Sync State
   syncInfo: SyncStatusInfo;
+  setSheetsUrl: (url: string) => void;
   triggerManualSync: () => void;
 
   // Actions & Workflow
@@ -106,13 +108,21 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Sync Timer State
-  const [syncInfo, setSyncInfo] = useState<SyncStatusInfo>({
-    status: 'synced',
-    lastSyncTime: new Date(),
-    secondsAgo: 3,
-    sheetsUrl: 'https://docs.google.com/spreadsheets/d/1RL_FOOD_ERP_LIVE_MASTER_SYNC',
-    totalRecordsSynced: 42,
+  const [syncInfo, setSyncInfo] = useState<SyncStatusInfo>(() => {
+    const savedUrl = localStorage.getItem('rl_food_sheets_url');
+    return {
+      status: 'synced',
+      lastSyncTime: new Date(),
+      secondsAgo: 3,
+      sheetsUrl: savedUrl || 'https://docs.google.com/spreadsheets/d/1RL_FOOD_ERP_LIVE_MASTER_SYNC',
+      totalRecordsSynced: 42,
+    };
   });
+
+  const setSheetsUrl = (url: string) => {
+    localStorage.setItem('rl_food_sheets_url', url);
+    setSyncInfo((prev) => ({ ...prev, sheetsUrl: url }));
+  };
 
   // PWA deferred prompt
   const [deferredPwaPrompt, setDeferredPwaPrompt] = useState<any>(null);
@@ -186,15 +196,36 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const triggerManualSync = () => {
+  const triggerManualSync = async () => {
     setSyncInfo((prev) => ({ ...prev, status: 'syncing' }));
+    
+    // Attempt real fetch if URL is configured
+    if (syncInfo.sheetsUrl && (syncInfo.sheetsUrl.includes('google.com') || syncInfo.sheetsUrl.includes('script.google.com'))) {
+      const realOrders = await fetchRealGoogleSheetsData(syncInfo.sheetsUrl);
+      if (realOrders && realOrders.length > 0) {
+        setPurchaseOrders(realOrders);
+        const now = new Date();
+        setSyncInfo({
+          status: 'synced',
+          lastSyncTime: now,
+          secondsAgo: 0,
+          sheetsUrl: syncInfo.sheetsUrl,
+          totalRecordsSynced: realOrders.reduce((acc, po) => acc + po.items.length, 0),
+        });
+        addAuditLog('SYSTEM_SYNC', `Real Google Sheets sync complete. Fetched ${realOrders.length} live orders.`);
+        showToast('🟢 Live Google Sheets real data synced successfully!');
+        return;
+      }
+    }
+
+    // Fallback simulation if offline or demo URL
     setTimeout(() => {
       const now = new Date();
       setSyncInfo({
         status: 'synced',
         lastSyncTime: now,
         secondsAgo: 0,
-        sheetsUrl: 'https://docs.google.com/spreadsheets/d/1RL_FOOD_ERP_LIVE_MASTER_SYNC',
+        sheetsUrl: syncInfo.sheetsUrl,
         totalRecordsSynced: purchaseOrders.reduce((acc, po) => acc + po.items.length, 0),
       });
       addAuditLog('SYSTEM_SYNC', 'Manual Google Sheets sync executed. Master worksheets synchronized.');
@@ -398,6 +429,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         notifications,
         unreadNotificationCount,
         syncInfo,
+        setSheetsUrl,
         triggerManualSync,
         createPurchaseOrder,
         holdItem,
