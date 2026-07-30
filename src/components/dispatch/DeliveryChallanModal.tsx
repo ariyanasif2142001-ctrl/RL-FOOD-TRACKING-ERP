@@ -131,6 +131,8 @@ export const DeliveryChallanModal: React.FC<DeliveryChallanModalProps> = ({ po, 
 
   // Update item details manually
   const updateItemDetail = (id: string, field: keyof ChallanItem, value: any) => {
+    let updatedItemForMapping: ChallanItem | null = null;
+
     setChallanItems(prev => prev.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
@@ -142,18 +144,23 @@ export const DeliveryChallanModal: React.FC<DeliveryChallanModalProps> = ({ po, 
           }
         }
         if ((field === 'sku' || field === 'itemName' || field === 'unit' || field === 'unitPrice') && (item.poItemId || item.poItemName)) {
-          savePoItemSkuMapping(po.poNumber, item.poItemId, item.poItemName, {
-            sku: field === 'sku' ? value : updated.sku,
-            itemName: field === 'itemName' ? value : updated.itemName,
-            unit: field === 'unit' ? value : updated.unit,
-            brand: updated.brand,
-            sellingPrice: field === 'unitPrice' ? value : updated.unitPrice
-          });
+          updatedItemForMapping = updated;
         }
         return updated;
       }
       return item;
     }));
+
+    if (updatedItemForMapping) {
+      const item: ChallanItem = updatedItemForMapping;
+      savePoItemSkuMapping(po.poNumber, item.poItemId, item.poItemName, {
+        sku: item.sku,
+        itemName: item.itemName,
+        unit: item.unit,
+        brand: item.brand,
+        sellingPrice: item.unitPrice
+      });
+    }
   };
 
   // Assign a Master SKU from the MASTAR DATA sheet to a line item
@@ -161,6 +168,8 @@ export const DeliveryChallanModal: React.FC<DeliveryChallanModalProps> = ({ po, 
     const parsedPrice = skuEntry.sellingPrice !== undefined && skuEntry.sellingPrice !== null && skuEntry.sellingPrice !== ''
       ? parseFloat(String(skuEntry.sellingPrice))
       : (skuEntry.costPrice !== undefined && skuEntry.costPrice !== null && skuEntry.costPrice !== '' ? parseFloat(String(skuEntry.costPrice)) : 0);
+
+    let mappedItemToSave: { poItemId?: string; poItemName?: string; sku: string; itemName: string; unit: string; brand?: string; sellingPrice?: number } | null = null;
 
     setChallanItems(prev => prev.map(item => {
       if (item.id === targetChallanItemId) {
@@ -173,18 +182,31 @@ export const DeliveryChallanModal: React.FC<DeliveryChallanModalProps> = ({ po, 
           unitPrice: !isNaN(parsedPrice) && parsedPrice > 0 ? parsedPrice : item.unitPrice,
           included: true // Selected SKU enables delivery note inclusion!
         };
-        // Persist SKU selection & selling price for this PO item permanently
-        savePoItemSkuMapping(po.poNumber, item.poItemId, item.poItemName, {
+        mappedItemToSave = {
+          poItemId: item.poItemId,
+          poItemName: item.poItemName,
           sku: updated.sku,
           itemName: updated.itemName,
           unit: updated.unit,
           brand: updated.brand,
           sellingPrice: updated.unitPrice
-        });
+        };
         return updated;
       }
       return item;
     }));
+
+    if (mappedItemToSave) {
+      const info = mappedItemToSave;
+      savePoItemSkuMapping(po.poNumber, info.poItemId, info.poItemName, {
+        sku: info.sku,
+        itemName: info.itemName,
+        unit: info.unit,
+        brand: info.brand,
+        sellingPrice: info.sellingPrice
+      });
+    }
+
     setIsPickerOpen(false);
     setActiveItemForSkuPick(null);
   };
@@ -357,7 +379,7 @@ export const DeliveryChallanModal: React.FC<DeliveryChallanModalProps> = ({ po, 
         >
         
         {/* Top Header */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800 shrink-0">
+        <div className="bg-gradient-to-r from-[#072417] via-[#0E3A24] to-[#072417] text-white px-6 py-4 flex items-center justify-between border-b border-emerald-900/60 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center font-black text-white text-lg shadow-inner">
               RL

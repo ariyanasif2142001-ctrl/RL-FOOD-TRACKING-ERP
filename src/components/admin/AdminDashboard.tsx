@@ -1092,9 +1092,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 space-y-4 font-sans text-slate-900 w-full min-h-screen">
       
       {/* Header - 2 Line Clean Layout (Left to Right, No Horizontal Scroll) */}
-      <div className="bg-slate-900 text-white p-3.5 sm:p-4 rounded-xl space-y-3 shadow-md">
+      <div className="bg-gradient-to-r from-[#072417] via-[#0E3A24] to-[#072417] border border-emerald-900/60 text-white p-3.5 sm:p-4 rounded-xl space-y-3 shadow-md">
         {/* Line 1: Header Title & Main Tab Navigation */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-800/80 pb-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-emerald-800/60 pb-2.5">
           <div className="flex flex-wrap items-center gap-3">
             <div>
               <h1 className="text-sm sm:text-base font-bold leading-tight">Admin Dashboard</h1>
@@ -1375,7 +1375,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
 
           {/* EXECUTIVE QUICK ACTIONS & SYSTEM HEALTH BAR */}
-          <div className="bg-slate-900 text-white p-3 rounded-xl flex flex-wrap items-center justify-between gap-2 shadow-xs">
+          <div className="bg-gradient-to-r from-[#072417] via-[#0E3A24] to-[#072417] border border-emerald-900/60 text-white p-3 rounded-xl flex flex-wrap items-center justify-between gap-2 shadow-xs">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold uppercase text-slate-300 tracking-wider flex items-center gap-1.5">
                 <Zap className="w-4 h-4 text-amber-400" />

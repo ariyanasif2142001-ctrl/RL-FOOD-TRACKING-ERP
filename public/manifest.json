@@ -4,8 +4,8 @@
   "description": "Food distribution & purchase tracking app",
   "icons": [
     {
-      "src": "https://img.icons8.com/color/512/shopping-bag--v1.png",
-      "type": "image/png",
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
       "sizes": "512x512",
       "purpose": "any maskable"
     }

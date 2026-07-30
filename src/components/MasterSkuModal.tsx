@@ -180,7 +180,7 @@ export const MasterSkuModal: React.FC<MasterSkuModalProps> = ({ isOpen, onClose,
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl border border-slate-200 overflow-hidden my-8">
         {/* Modal Header */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
+        <div className="bg-gradient-to-r from-[#072417] via-[#0E3A24] to-[#072417] text-white px-6 py-4 flex items-center justify-between border-b border-emerald-900/60">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-xl border border-indigo-500/30">
               <FileSpreadsheet className="w-5 h-5" />

@@ -106,9 +106,9 @@ export const DispatchKanbanPipeline: React.FC<DispatchKanbanPipelineProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+    <div className="bg-gradient-to-r from-[#072417] via-[#0E3A24] to-[#072417] text-white rounded-3xl p-4 sm:p-5 border border-emerald-900/60 shadow-md space-y-4">
       {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-emerald-800/60">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-gradient-to-tr from-[#2E7D32] to-[#43A047] text-white rounded-2xl shadow-xs">
             <Truck className="w-5 h-5" />

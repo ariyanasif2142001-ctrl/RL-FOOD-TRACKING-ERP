@@ -891,9 +891,9 @@ export const AiBackupHub: React.FC<AiBackupHubProps> = ({
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6">
       {/* HEADER BANNER */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-[#072417] via-[#0E3A24] to-[#072417] text-white p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-emerald-900/60">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-xl shadow-md text-white">
+          <div className="p-2.5 bg-gradient-to-tr from-emerald-500 to-teal-500 rounded-xl shadow-md text-white">
             <Sparkles className="w-6 h-6 animate-pulse" />
           </div>
           <div>
@@ -901,18 +901,18 @@ export const AiBackupHub: React.FC<AiBackupHubProps> = ({
               <h2 className="text-base sm:text-lg font-extrabold tracking-tight">
                 AI Operations & Backup Intelligence Hub
               </h2>
-              <span className="px-2 py-0.5 bg-indigo-500/30 text-indigo-200 text-[10px] font-bold rounded-full border border-indigo-400/30">
+              <span className="px-2 py-0.5 bg-emerald-500/30 text-emerald-200 text-[10px] font-bold rounded-full border border-emerald-400/30">
                 Gemini 3.6 Flash
               </span>
             </div>
-            <p className="text-xs text-slate-300 mt-0.5">
+            <p className="text-xs text-emerald-200/80 mt-0.5">
               One-click AI Summary Report, Natural Language PO Query, and Automated Database Backup
             </p>
           </div>
         </div>
 
         {/* TAB SWITCHER */}
-        <div className="flex flex-wrap items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/60 self-start md:self-auto">
+        <div className="flex flex-wrap items-center gap-1 bg-emerald-950/80 p-1 rounded-xl border border-emerald-800/60 self-start md:self-auto">
           <button
             type="button"
             onClick={() => setActiveTab('query')}

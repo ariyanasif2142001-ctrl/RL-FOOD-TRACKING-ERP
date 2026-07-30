@@ -117,12 +117,12 @@ export const Header: React.FC<HeaderProps> = ({
   const BadgeIcon = badge.icon;
 
   return (
-    <header className="bg-slate-950 text-white border-b border-slate-800 sticky top-0 z-40 shadow-xs">
+    <header className="bg-gradient-to-r from-[#072417] via-[#0E3A24] to-[#072417] text-white border-b border-emerald-900/80 sticky top-0 z-40 shadow-md">
       <div className="max-w-7xl mx-auto px-2 sm:px-6 h-12 flex items-center justify-between gap-1.5">
         
         {/* Company Logo & Brand Name */}
         <div className="flex items-center gap-1 sm:gap-2 min-w-0 shrink">
-          <CompanyLogo size="sm" showText={true} />
+          <CompanyLogo size="sm" showText={true} lightText={true} />
         </div>
 
         {/* Controls */}

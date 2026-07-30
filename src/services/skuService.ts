@@ -528,7 +528,9 @@ export function savePoItemSkuMapping(
     }
 
     // Trigger update event
-    window.dispatchEvent(new CustomEvent('po_sku_mapping_updated', { detail: { poNumber, poItemId, poItemName, skuData } }));
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('po_sku_mapping_updated', { detail: { poNumber, poItemId, poItemName, skuData } }));
+    }, 0);
   } catch (err) {
     console.error('Failed to save PO Item SKU mapping:', err);
   }

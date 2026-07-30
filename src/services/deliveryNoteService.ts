@@ -17,7 +17,9 @@ export const saveDeliveryNotes = (notes: DeliveryNoteRecord[]): void => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
     // Dispatch custom event so listeners update in real time across tabs/components
-    window.dispatchEvent(new CustomEvent('delivery_notes_updated', { detail: notes }));
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('delivery_notes_updated', { detail: notes }));
+    }, 0);
   } catch (err) {
     console.error('Error saving delivery notes:', err);
   }

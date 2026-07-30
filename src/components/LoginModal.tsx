@@ -237,13 +237,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-emerald-100/80 overflow-hidden relative flex flex-col my-auto"
           >
             {/* Top Organic Header Banner */}
-            <div className="relative bg-gradient-to-br from-[#1B5E20] via-[#2E7D32] to-[#43A047] text-white pt-6 pb-12 px-6 overflow-hidden">
+            <div className="relative bg-gradient-to-br from-[#1B5E20] via-[#2E7D32] to-[#43A047] text-white pt-6 pb-10 px-6 overflow-hidden">
               {/* Background Fresh Leaf Pattern & Organic Curves */}
-              <div className="absolute inset-0 opacity-15 pointer-events-none mix-blend-overlay">
+              <div className="absolute inset-0 opacity-20 pointer-events-none mix-blend-overlay">
                 <svg className="w-full h-full" viewBox="0 0 400 200" preserveAspectRatio="none">
                   <path d="M0,0 C150,90 250,-40 400,60 L400,0 L0,0 Z" fill="#81C784" />
-                  <circle cx="350" cy="40" r="80" fill="#A5D6A7" opacity="0.4" />
-                  <circle cx="50" cy="120" r="60" fill="#2E7D32" opacity="0.3" />
+                  <circle cx="350" cy="40" r="90" fill="#A5D6A7" opacity="0.4" />
+                  <circle cx="50" cy="120" r="70" fill="#1B5E20" opacity="0.4" />
                 </svg>
               </div>
 
@@ -269,20 +269,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               )}
 
               {/* Top Company Badge & Logo */}
-              <div className="relative z-10 flex flex-col items-center text-center space-y-3">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/15 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-extrabold uppercase tracking-widest text-emerald-100 shadow-2xs">
-                  <Leaf className="w-3 h-3 text-emerald-300 animate-pulse" />
-                  <span>Fresh • Quality • Premium Food</span>
-                </div>
-
-                {/* Animated Circular Food Composition Badge (Unobstructed) */}
+              <div className="relative z-10 flex flex-col items-center text-center space-y-2.5">
+                {/* Central Circular Fresh Produce Showcase with Logo */}
                 <div className="relative mt-1">
                   {/* Rotating Animated Background Glow Ring */}
                   <motion.div 
-                    className="absolute -inset-2.5 rounded-full bg-gradient-to-tr from-amber-400 via-emerald-300 to-lime-400 opacity-70 blur-md"
-                    animate={{ rotate: 360, scale: [1, 1.05, 1] }}
+                    className="absolute -inset-2 rounded-full bg-gradient-to-tr from-amber-300 via-lime-300 to-emerald-400 opacity-80 blur-xs"
+                    animate={{ rotate: 360, scale: [1, 1.04, 1] }}
                     transition={{ 
-                      rotate: { repeat: Infinity, duration: 10, ease: "linear" },
+                      rotate: { repeat: Infinity, duration: 12, ease: "linear" },
                       scale: { repeat: Infinity, duration: 3, ease: "easeInOut" }
                     }}
                   />
@@ -290,86 +285,78 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   {/* Main Floating Container */}
                   <motion.div 
                     className="relative z-10"
-                    animate={{ y: [0, -6, 0] }}
+                    animate={{ y: [0, -4, 0] }}
                     transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
                   >
                     {/* Outer Border Circle */}
-                    <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full p-1 bg-gradient-to-tr from-amber-300 via-emerald-200 to-lime-300 shadow-2xl relative">
+                    <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full p-1 bg-white/90 shadow-2xl relative">
                       <div className="w-full h-full rounded-full overflow-hidden bg-emerald-950 relative group">
-                        {/* Single Unified Fresh Food & Produce Image */}
+                        {/* Fresh Produce Showcase Photo matching input_file_1.png */}
                         <img 
                           src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=500&q=80" 
                           alt="RL Fresh Produce - Vegetables, Meat, Fish & Grocery" 
                           className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110"
                         />
-                        
-                        {/* Soft Vignette Overlay */}
-                        <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-full pointer-events-none" />
+                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition" />
                       </div>
                     </div>
 
-                    {/* Animated Floating Food Badges Around Circle */}
+                    {/* Floating Food Badges */}
                     <motion.div 
-                      className="absolute -top-1.5 -left-2 bg-white text-emerald-800 p-1.5 sm:p-2 rounded-full shadow-lg text-xs sm:text-sm border border-emerald-200"
-                      animate={{ y: [0, -4, 0], rotate: [-5, 5, -5] }}
-                      transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut" }}
-                      title="Fresh Vegetables"
+                      className="absolute -top-1 -left-2 bg-white text-emerald-800 p-1.5 rounded-full shadow-md text-xs border border-emerald-200"
+                      animate={{ y: [0, -3, 0] }}
+                      transition={{ repeat: Infinity, duration: 2.5 }}
                     >
                       🥬
                     </motion.div>
-
                     <motion.div 
-                      className="absolute -top-1.5 -right-2 bg-white text-rose-800 p-1.5 sm:p-2 rounded-full shadow-lg text-xs sm:text-sm border border-rose-200"
-                      animate={{ y: [0, -5, 0], rotate: [5, -5, 5] }}
-                      transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut", delay: 0.2 }}
-                      title="Premium Meat"
+                      className="absolute -top-1 -right-2 bg-white text-rose-800 p-1.5 rounded-full shadow-md text-xs border border-rose-200"
+                      animate={{ y: [0, -4, 0] }}
+                      transition={{ repeat: Infinity, duration: 3, delay: 0.2 }}
                     >
                       🥩
                     </motion.div>
-
                     <motion.div 
-                      className="absolute -bottom-1.5 -left-2 bg-white text-cyan-800 p-1.5 sm:p-2 rounded-full shadow-lg text-xs sm:text-sm border border-cyan-200"
-                      animate={{ y: [0, -4, 0], rotate: [-4, 4, -4] }}
-                      transition={{ repeat: Infinity, duration: 2.6, ease: "easeInOut", delay: 0.4 }}
-                      title="Fresh Fish"
+                      className="absolute -bottom-1 -left-2 bg-white text-cyan-800 p-1.5 rounded-full shadow-md text-xs border border-cyan-200"
+                      animate={{ y: [0, -3, 0] }}
+                      transition={{ repeat: Infinity, duration: 2.8, delay: 0.4 }}
                     >
                       🐟
                     </motion.div>
-
                     <motion.div 
-                      className="absolute -bottom-1.5 -right-2 bg-white text-amber-800 p-1.5 sm:p-2 rounded-full shadow-lg text-xs sm:text-sm border border-amber-200"
-                      animate={{ y: [0, -5, 0], rotate: [4, -4, 4] }}
-                      transition={{ repeat: Infinity, duration: 3.0, ease: "easeInOut", delay: 0.6 }}
-                      title="Fruits & Bakery"
+                      className="absolute -bottom-1 -right-2 bg-white text-amber-800 p-1.5 rounded-full shadow-md text-xs border border-amber-200"
+                      animate={{ y: [0, -4, 0] }}
+                      transition={{ repeat: Infinity, duration: 3.2, delay: 0.6 }}
                     >
                       🍎
                     </motion.div>
                   </motion.div>
                 </div>
 
-                {/* Company Name Badge Placed NEATLY BELOW the Animated Food Photo */}
+                {/* Company Logo Badge */}
                 <motion.div 
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, duration: 0.3 }}
-                  className="px-4 py-1.5 bg-emerald-950/80 backdrop-blur-md rounded-2xl border border-emerald-400/40 shadow-xl inline-flex items-center justify-center gap-2"
+                  className="px-3.5 py-1 bg-white/95 rounded-full border border-emerald-300 shadow-md inline-flex items-center justify-center"
                 >
-                  <CompanyLogo size="sm" showText={true} />
+                  <CompanyLogo size="xs" showText={true} />
                 </motion.div>
 
-                {/* Welcome Title */}
+                {/* Welcome Title matching input_file_1.png */}
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-xs">
-                    Welcome Back
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center justify-center gap-1.5 drop-shadow-xs">
+                    <span>🍃</span>
+                    <span>Welcome Back</span>
+                    <span>🍃</span>
                   </h2>
-                  <p className="text-xs text-emerald-100/90 font-medium mt-0.5">
-                    Sign in to RL Food Company
+                  <p className="text-xs text-emerald-100 font-semibold mt-0.5">
+                    Sign in to <span className="font-extrabold text-white">RL Food Company</span>
                   </p>
                 </div>
               </div>
 
               {/* Bottom Curved Wave Divider */}
-              <div className="absolute bottom-0 left-0 right-0 h-6 overflow-hidden pointer-events-none">
+              <div className="absolute bottom-0 left-0 right-0 h-5 overflow-hidden pointer-events-none">
                 <svg viewBox="0 0 500 150" preserveAspectRatio="none" className="h-full w-full">
                   <path d="M0,0 C150,90 350,-40 500,60 L500,150 L0,150 Z" className="fill-white"></path>
                 </svg>
@@ -481,19 +468,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         onChange={(e) => setRememberMe(e.target.checked)}
                         className="w-4 h-4 rounded-md border-slate-300 text-[#2E7D32] focus:ring-[#2E7D32] cursor-pointer"
                       />
-                      <span>Remember me</span>
+                      <span>Remember Me</span>
                     </label>
 
-                    <span className="text-slate-400 hover:text-[#2E7D32] text-[11px] font-medium cursor-default">
-                      RL Food Portal
+                    <span className="text-slate-500 hover:text-[#2E7D32] text-[11px] font-medium cursor-pointer">
+                      Forgot Password?
                     </span>
                   </div>
 
-                  {/* Login Button with Premium Green Gradient */}
+                  {/* Login Button with Rich Green Gradient matching input_file_1.png */}
                   <button
                     type="submit"
                     disabled={isAuthenticating}
-                    className="w-full py-3.5 px-6 bg-gradient-to-r from-[#2E7D32] via-[#388E3C] to-[#43A047] hover:from-[#1B5E20] hover:to-[#2E7D32] active:scale-[0.99] text-white font-extrabold text-sm rounded-2xl transition-all duration-200 shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-75"
+                    className="w-full py-3.5 px-6 bg-gradient-to-r from-[#2E7D32] via-[#388E3C] to-[#43A047] hover:from-[#1B5E20] hover:to-[#2E7D32] active:scale-[0.99] text-white font-black text-sm rounded-2xl transition-all duration-200 shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-75 tracking-wider uppercase"
                   >
                     {isAuthenticating ? (
                       <>
@@ -502,11 +489,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       </>
                     ) : (
                       <>
-                        <span>Sign In</span>
+                        <span>LOGIN</span>
                         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                       </>
                     )}
                   </button>
+
+                  {/* Center Leaf Accent Divider */}
+                  <div className="flex justify-center pt-1">
+                    <span className="text-emerald-600 text-sm animate-bounce">🍃</span>
+                  </div>
                 </form>
               )}
 
@@ -606,32 +598,43 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
               )}
 
-              {/* Food Category Showcase Chips */}
-              <div className="pt-2">
-                <p className="text-[10px] font-black uppercase text-emerald-800 tracking-wider mb-1.5 text-center">
-                  Fresh Produce Categories
-                </p>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-                  {foodCategories.map((cat) => (
-                    <div
-                      key={cat.id}
-                      onMouseEnter={() => setHoverCategory(cat.id)}
-                      onMouseLeave={() => setHoverCategory(null)}
-                      className={`p-1.5 rounded-xl border border-emerald-100/80 bg-slate-50 text-center transition-all cursor-default ${cat.color} ${
-                        hoverCategory === cat.id ? 'scale-105 shadow-xs border-emerald-300' : ''
-                      }`}
-                    >
-                      <span className="text-sm block">{cat.icon}</span>
-                      <span className="text-[9.5px] font-extrabold text-slate-700 block truncate leading-tight mt-0.5">
-                        {cat.label}
-                      </span>
-                    </div>
-                  ))}
+              {/* 4 Value Proposition Badges matching input_file_1.png */}
+              <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-100">
+                <div className="p-2 bg-emerald-50/60 border border-emerald-100 rounded-xl text-center flex flex-col items-center">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-[#2E7D32] flex items-center justify-center text-xs font-black mb-1">
+                    🍃
+                  </div>
+                  <span className="text-[10px] font-black text-slate-900 block leading-none">FRESH</span>
+                  <span className="text-[8px] font-medium text-slate-500 block leading-tight mt-0.5">Always Fresh</span>
+                </div>
+
+                <div className="p-2 bg-emerald-50/60 border border-emerald-100 rounded-xl text-center flex flex-col items-center">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-[#2E7D32] flex items-center justify-center text-xs font-black mb-1">
+                    🛡️
+                  </div>
+                  <span className="text-[10px] font-black text-slate-900 block leading-none">QUALITY</span>
+                  <span className="text-[8px] font-medium text-slate-500 block leading-tight mt-0.5">Premium Quality</span>
+                </div>
+
+                <div className="p-2 bg-emerald-50/60 border border-emerald-100 rounded-xl text-center flex flex-col items-center">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-[#2E7D32] flex items-center justify-center text-xs font-black mb-1">
+                    🤝
+                  </div>
+                  <span className="text-[10px] font-black text-slate-900 block leading-none">TRUST</span>
+                  <span className="text-[8px] font-medium text-slate-500 block leading-tight mt-0.5">100% Trusted</span>
+                </div>
+
+                <div className="p-2 bg-emerald-50/60 border border-emerald-100 rounded-xl text-center flex flex-col items-center">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-[#2E7D32] flex items-center justify-center text-xs font-black mb-1">
+                    🚚
+                  </div>
+                  <span className="text-[10px] font-black text-slate-900 block leading-none">DELIVERY</span>
+                  <span className="text-[8px] font-medium text-slate-500 block leading-tight mt-0.5">On-Time Delivery</span>
                 </div>
               </div>
 
               {/* Install Mobile App Banner / Button */}
-              <div className="pt-2">
+              <div className="pt-1">
                 <button
                   type="button"
                   onClick={() => setIsInstallModalOpen(true)}
@@ -653,12 +656,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </button>
               </div>
 
-              {/* Footer */}
-              <div className="pt-3 border-t border-slate-100 text-center">
+              {/* Footer matching input_file_1.png */}
+              <div className="pt-2 border-t border-slate-100 text-center">
                 <p className="text-[11px] font-black text-slate-800 tracking-wide">
-                  © RL FOOD COMPANY
+                  © 2025 RL FOOD COMPANY
                 </p>
-                <p className="text-[10px] font-semibold text-emerald-700 flex items-center justify-center gap-1.5 mt-0.5">
+                <p className="text-[10px] font-bold text-[#2E7D32] flex items-center justify-center gap-1.5 mt-0.5">
                   <span>Fresh</span>
                   <span className="text-emerald-400">•</span>
                   <span>Quality</span>

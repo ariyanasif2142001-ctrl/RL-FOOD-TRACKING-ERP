@@ -131,7 +131,7 @@ export const OfficialPdfInvoiceModal: React.FC<OfficialPdfInvoiceModalProps> = (
         >
         
         {/* Modal Top Navigation Bar */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
+        <div className="bg-gradient-to-r from-[#072417] via-[#0E3A24] to-[#072417] text-white px-6 py-4 flex items-center justify-between border-b border-emerald-900/60">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center font-black text-white text-lg">
               RL
