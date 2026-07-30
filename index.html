@@ -1,37 +1,47 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="https://img.icons8.com/color/512/shopping-bag--v1.png" />
+    <script>
+      // Suppress benign Vite HMR websocket reconnection errors in container dev environment
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = event.reason;
+        var msg = typeof reason === 'string' ? reason : (reason && reason.message) ? reason.message : '';
+        if (msg && (msg.includes('WebSocket') || msg.includes('websocket') || msg.includes('vite'))) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      });
+      window.addEventListener('error', function(event) {
+        var msg = event.message || '';
+        if (msg && (msg.includes('WebSocket') || msg.includes('websocket') || msg.includes('vite'))) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#0F172A" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="RL Food ERP" />
-    <title>RL Food ERP - Enterprise Purchase & Inventory Tracking System</title>
-    
-    <!-- Google Fonts Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-    
-    <!-- Tailwind CSS Play CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-          },
-        },
-      };
-    </script>
-    <script type="module" crossorigin src="/assets/index-BB69zdb3.js"></script>
+    <meta name="apple-mobile-web-app-title" content="RL Food" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="https://img.icons8.com/color/512/shopping-bag--v1.png" />
+    <title>RL Food Purchase Tracking System</title>
   </head>
-  <body class="bg-[#090D16] text-slate-100 font-sans selection:bg-blue-600 selection:text-white">
+  <body>
     <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(err => {
+            console.log('SW registration failed: ', err);
+          });
+        });
+      }
+    </script>
   </body>
 </html>
+
+

@@ -1,0 +1,6 @@
+{
+  "name": "RL Food Purchase Tracking System",
+  "description": "Mobile-first food distribution purchase tracking system with multi-role access (Admin, Purchaser, Warehouse, Dispatch) and Google Sheets database synchronization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

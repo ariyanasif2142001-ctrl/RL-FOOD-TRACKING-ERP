@@ -1,311 +1,554 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useERP } from '../context/ERPContext';
-import type { ViewType } from '../context/ERPContext';
-import { ProfileMenu } from './ProfileMenu';
-import {
-  Utensils,
-  RefreshCw,
-  Bell,
-  ChevronDown,
-  LayoutDashboard,
-  ShoppingCart,
-  Package,
-  BarChart3,
-  Database,
-  Users as UsersIcon,
-  Settings as SettingsIcon,
-  HelpCircle,
-  Menu,
-  X,
-  Wrench,
-  Layers,
-  FileSpreadsheet,
-  Activity,
-  Send,
-  PlusCircle
-} from 'lucide-react';
+import { User, SheetsConfig } from '../types';
+import { RefreshCw, UserCheck, Shield, ShoppingBag, Warehouse, Truck, LogOut, Crown, Camera, Upload, X, Check, Smartphone, Download, Share, PlusSquare, ExternalLink, Search, Command, ChevronDown, User as UserIcon, Mail, Sparkles, Key, Users, Database, Send, CheckCircle2, BookOpen, FileSpreadsheet, Settings } from 'lucide-react';
+import { CompanyLogo } from './CompanyLogo';
 
-export const Header: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
-  const {
-    currentUser,
-    currentView,
-    setCurrentView,
-    syncInfo,
-    triggerManualSync,
-    unreadNotificationCount,
-    setIsNotifPanelOpen,
-    setActiveModal
-  } = useERP();
+interface HeaderProps {
+  currentUser: User;
+  onOpenLogin: () => void;
+  onSync: () => void;
+  isSyncing: boolean;
+  sheetsConfig: SheetsConfig;
+  onUpdateUserAvatar?: (userId: string, avatarUrl: string) => void;
+  onOpenCommandPalette?: () => void;
+  onSelectAdminTab?: (tab: 'dashboard' | 'import' | 'users' | 'sheets' | 'telegram' | 'tests' | 'docs' | 'logs') => void;
+  onOpenMasterSkuModal?: () => void;
+  usersCount?: number;
+}
 
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isToolsOpen, setIsToolsOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+export const Header: React.FC<HeaderProps> = ({
+  currentUser,
+  onOpenLogin,
+  onSync,
+  isSyncing,
+  sheetsConfig,
+  onUpdateUserAvatar,
+  onOpenCommandPalette,
+  onSelectAdminTab,
+  onOpenMasterSkuModal,
+  usersCount = 0
+}) => {
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [avatarUrlInput, setAvatarUrlInput] = useState(currentUser.avatar || '');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
-  const profileRef = useRef<HTMLDivElement>(null);
-  const toolsRef = useRef<HTMLDivElement>(null);
-
+  // Close profile dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
-        setIsProfileOpen(false);
-      }
-      if (toolsRef.current && !toolsRef.current.contains(event.target as Node)) {
-        setIsToolsOpen(false);
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const navItems: { id: ViewType; label: string; icon: React.ReactNode }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
-    { id: 'purchase', label: 'Purchase', icon: <ShoppingCart size={16} /> },
-    { id: 'inventory', label: 'Inventory', icon: <Package size={16} /> },
-    { id: 'reports', label: 'Reports', icon: <BarChart3 size={16} /> },
-    { id: 'master-data', label: 'Master Data', icon: <Database size={16} /> },
-    { id: 'users', label: 'Users', icon: <UsersIcon size={16} /> },
-    { id: 'settings', label: 'Settings', icon: <SettingsIcon size={16} /> },
-  ];
 
-  const formatRelativeTime = (seconds: number) => {
-    if (seconds <= 3) return '3 seconds ago';
-    if (seconds < 60) return `${seconds} seconds ago`;
-    const mins = Math.floor(seconds / 60);
-    if (mins === 1) return '1 minute ago';
-    return `${mins} minutes ago`;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('File size should be less than 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setAvatarUrlInput(result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
+  const handleSaveAvatar = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (onUpdateUserAvatar) {
+      onUpdateUserAvatar(currentUser.id, avatarUrlInput);
+    }
+    setIsAvatarModalOpen(false);
+  };
+
+  const getRoleBadge = (user: User) => {
+    const isSuper = user.isSuperAdmin || user.name === 'RL TAKMIL' || user.name === 'RL MUSTAQ' || user.id === 'u-takmil' || user.id === 'u-mustaq' || (user.role as any) === 'superadmin';
+    if (isSuper) {
+      return {
+        label: 'Super Admin',
+        bg: 'bg-gradient-to-r from-amber-600 to-purple-800 text-amber-100 border-amber-500/80 shadow-xs',
+        icon: Crown
+      };
+    }
+    switch (user.role) {
+      case 'admin':
+        return {
+          label: 'Admin',
+          bg: 'bg-purple-900 text-purple-100 border-purple-700',
+          icon: Shield
+        };
+      case 'purchaser':
+        return {
+          label: 'Purchaser',
+          bg: 'bg-blue-900 text-blue-100 border-blue-700',
+          icon: ShoppingBag
+        };
+      case 'warehouse':
+        return {
+          label: 'Warehouse',
+          bg: 'bg-amber-900 text-amber-100 border-amber-700',
+          icon: Warehouse
+        };
+      case 'dispatch':
+        return {
+          label: 'Dispatch',
+          bg: 'bg-emerald-900 text-emerald-100 border-emerald-700',
+          icon: Truck
+        };
+      default:
+        return {
+          label: user.role,
+          bg: 'bg-slate-800 text-slate-200 border-slate-700',
+          icon: UserCheck
+        };
+    }
+  };
+
+  const badge = getRoleBadge(currentUser);
+  const BadgeIcon = badge.icon;
+
   return (
-    <header className="bg-[#0F172A] border-b border-slate-800 text-white sticky top-0 z-50 shadow-md">
-      {/* Option 1: Clean Minimal Primary Header Bar */}
-      <div className="max-w-[1600px] mx-auto px-4 lg:px-6 h-16 flex items-center justify-between gap-4">
+    <header className="bg-slate-950 text-white border-b border-slate-800 sticky top-0 z-40 shadow-xs">
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 h-12 flex items-center justify-between gap-1.5">
         
-        {/* LEFT: Company Emblem Logo & Title */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-emerald-500 p-0.5 flex items-center justify-center shadow-lg shadow-indigo-950/40">
-            <div className="w-full h-full bg-[#0F172A] rounded-[10px] flex items-center justify-center">
-              <Utensils className="w-4 h-4 text-indigo-400" />
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-base sm:text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-300">
-                RL FOOD ERP
-              </span>
-              <span className="text-[9px] font-semibold tracking-wider px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase hidden sm:inline-block">
-                Enterprise
-              </span>
-            </div>
-          </div>
+        {/* Company Logo & Brand Name */}
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0 shrink">
+          <CompanyLogo size="sm" showText={true} />
         </div>
 
-        {/* CENTER: Main Clean Navigation Tabs */}
-        <nav className="hidden xl:flex items-center gap-1 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
-          {navItems.map((item) => {
-            const isActive = currentView === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setCurrentView(item.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
-                }`}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* RIGHT: Live Sync Badge, More Tools Dropdown, Notifications, Profile Avatar */}
-        <div className="flex items-center gap-3">
+        {/* Controls */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           
-          {/* + New PO Quick Button */}
+          {/* Live Sync Button */}
           <button
-            onClick={() => setActiveModal('new-po')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-xs shadow-md shadow-blue-600/30 transition-all"
+            onClick={onSync}
+            disabled={isSyncing}
+            id="btn-sheets-sync"
+            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] sm:text-xs font-bold transition hover:bg-emerald-900 active:scale-95 disabled:opacity-50"
+            title="Synchronize with Google Sheets Database"
           >
-            <PlusCircle size={15} />
-            <span className="hidden sm:inline">+ New PO</span>
+            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSyncing ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
+            <span className="hidden md:inline">
+              {sheetsConfig.webAppUrl ? 'Google Sheets Synced' : 'Local Master Engine'}
+            </span>
+            <span className="inline md:hidden text-[10px]">Sync</span>
+            <RefreshCw className={`w-3 h-3 shrink-0 ${isSyncing ? 'animate-spin text-emerald-300' : 'text-emerald-400'}`} />
           </button>
 
-          {/* Google Sheets Sync Status Widget */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl text-xs">
-            <div className="flex items-center gap-1.5">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-              </span>
-              <div className="flex flex-col">
-                <span className="font-semibold text-emerald-400 text-[11px] leading-tight">Google Sheets Synced</span>
-                <span className="text-[10px] text-slate-400">
-                  {formatRelativeTime(syncInfo.secondsAgo)}
-                </span>
-              </div>
-            </div>
-
+          {/* Current User Profile & Role Dropdown Menu */}
+          <div className="relative border-l border-slate-800 pl-1 sm:pl-2" ref={profileMenuRef}>
             <button
-              onClick={triggerManualSync}
-              disabled={syncInfo.status === 'syncing'}
-              title="Force Refresh Google Sheets Sync"
-              className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors"
+              type="button"
+              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+              id="btn-role-switcher"
+              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg border text-[10px] sm:text-xs font-bold transition active:scale-95 cursor-pointer ${badge.bg}`}
+              title="Click for Profile Menu & Options"
             >
-              <RefreshCw size={13} className={syncInfo.status === 'syncing' ? 'animate-spin text-blue-400' : ''} />
-            </button>
-          </div>
-
-          {/* More Tools ▼ Dropdown */}
-          <div className="relative hidden sm:block" ref={toolsRef}>
-            <button
-              onClick={() => setIsToolsOpen(!isToolsOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-semibold transition-all"
-            >
-              <Wrench size={14} className="text-amber-400" />
-              <span>More Tools</span>
-              <ChevronDown size={14} className={`text-slate-400 transition-transform ${isToolsOpen ? 'rotate-180' : ''}`} />
+              {currentUser.avatar ? (
+                <img 
+                  src={currentUser.avatar} 
+                  alt={currentUser.name} 
+                  className="w-5 h-5 rounded-full object-cover border border-white/30 shrink-0" 
+                />
+              ) : (
+                <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                  <UserIcon className="w-3 h-3 text-white" />
+                </div>
+              )}
+              <span className="text-[10px] sm:text-xs font-bold truncate max-w-[70px] sm:max-w-none">{currentUser.name}</span>
+              <span className="hidden sm:inline text-[9px] uppercase tracking-wider opacity-75 font-semibold">({badge.label})</span>
+              <ChevronDown className={`w-3 h-3 transition-transform duration-200 opacity-80 ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {isToolsOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden text-slate-200 p-1 space-y-1 text-xs">
-                <button
-                  onClick={() => {
-                    setActiveModal('master-sku');
-                    setIsToolsOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium hover:bg-slate-800 hover:text-white"
-                >
-                  <Layers size={16} className="text-indigo-400" />
-                  <span>Master SKU Mapping</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveModal('telegram');
-                    setIsToolsOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium hover:bg-slate-800 hover:text-white"
-                >
-                  <Send size={16} className="text-sky-400" />
-                  <span>Telegram Dispatch</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveModal('audit-logs');
-                    setIsToolsOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium hover:bg-slate-800 hover:text-white"
-                >
-                  <FileSpreadsheet size={16} className="text-emerald-400" />
-                  <span>Audit Activity Trail</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveModal('system-test');
-                    setIsToolsOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium hover:bg-slate-800 hover:text-white"
-                >
-                  <Activity size={16} className="text-amber-400" />
-                  <span>System Integration Test</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveModal('setup-guides');
-                    setIsToolsOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium hover:bg-slate-800 hover:text-white border-t border-slate-800/80 pt-2"
-                >
-                  <HelpCircle size={16} className="text-purple-400" />
-                  <span>Operational Setup Guide</span>
-                </button>
+            {/* Dropdown Menu */}
+            {isProfileMenuOpen && (
+              <div className="absolute right-0 mt-2 w-72 bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-100 divide-y divide-slate-800">
+                {/* User Card Header */}
+                <div className="p-3.5 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 flex items-center gap-3">
+                  <div className="relative group cursor-pointer" onClick={() => { setIsProfileMenuOpen(false); setAvatarUrlInput(currentUser.avatar || ''); setIsAvatarModalOpen(true); }}>
+                    {currentUser.avatar ? (
+                      <img 
+                        src={currentUser.avatar} 
+                        alt={currentUser.name} 
+                        className="w-11 h-11 rounded-full object-cover border-2 border-emerald-500 shadow-md" 
+                      />
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-slate-800 border-2 border-slate-700 flex items-center justify-center text-slate-300">
+                        <UserIcon className="w-6 h-6" />
+                      </div>
+                    )}
+                    <div className="absolute -bottom-1 -right-1 p-1 bg-emerald-600 rounded-full text-white shadow-xs">
+                      <Camera className="w-2.5 h-2.5" />
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="font-extrabold text-sm text-white truncate">{currentUser.name}</h4>
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" title="Online" />
+                    </div>
+                    <p className="text-[11px] text-slate-400 truncate">{currentUser.email || `${currentUser.username || 'user'}@rlfood.com`}</p>
+                    <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold border bg-slate-800 border-slate-700 text-slate-200">
+                      <BadgeIcon className="w-3 h-3 text-emerald-400" />
+                      <span>{badge.label}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Profile Actions List */}
+                <div className="p-1.5 space-y-0.5 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      setAvatarUrlInput(currentUser.avatar || '');
+                      setIsAvatarModalOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800/80 text-slate-200 hover:text-white transition flex items-center gap-2.5"
+                  >
+                    <div className="p-1.5 rounded-lg bg-blue-950/80 text-blue-400 border border-blue-800/60 shrink-0">
+                      <Camera className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-bold text-xs">Change Profile Photo</span>
+                      <span className="block text-[10px] text-slate-400 font-normal">Upload or update your avatar image</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      if (onOpenCommandPalette) onOpenCommandPalette();
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800/80 text-slate-200 hover:text-white transition flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 shrink-0">
+                        <Search className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span className="block font-bold text-xs">Quick Command Search</span>
+                        <span className="block text-[10px] text-slate-400 font-normal">Search PO, SKU & Challan</span>
+                      </div>
+                    </div>
+                    <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[9.5px] font-mono text-emerald-400 font-extrabold">Ctrl+K</kbd>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      onSync();
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800/80 text-slate-200 hover:text-white transition flex items-center gap-2.5"
+                  >
+                    <div className="p-1.5 rounded-lg bg-amber-950/80 text-amber-400 border border-amber-800/60 shrink-0">
+                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                    </div>
+                    <div>
+                      <span className="block font-bold text-xs">Sync Master Database</span>
+                      <span className="block text-[10px] text-slate-400 font-normal">Refresh Google Sheets Data</span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Admin Management Tools Section */}
+                <div className="p-1.5 space-y-0.5 text-xs font-semibold bg-slate-900/90 border-t border-slate-800">
+                  <div className="px-3 py-1 flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-amber-400">
+                    <span className="flex items-center gap-1">
+                      <Crown className="w-3 h-3 text-amber-400" />
+                      Admin Tools & Settings
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      if (onSelectAdminTab) onSelectAdminTab('users');
+                    }}
+                    className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition flex items-center gap-2.5"
+                  >
+                    <div className="p-1 rounded-lg bg-blue-950 text-blue-400 border border-blue-800/80 shrink-0">
+                      <Users className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs">User Accounts & Roles</span>
+                        {usersCount > 0 && <span className="px-1.5 py-0.2 bg-blue-900/60 text-blue-300 rounded text-[9.5px] font-extrabold">{usersCount}</span>}
+                      </div>
+                      <span className="block text-[10px] text-slate-400 font-normal">Manage permissions & staff roles</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      if (onOpenMasterSkuModal) onOpenMasterSkuModal();
+                    }}
+                    className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition flex items-center gap-2.5"
+                  >
+                    <div className="p-1 rounded-lg bg-indigo-950 text-indigo-400 border border-indigo-800/80 shrink-0">
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-bold text-xs">Master SKU Mapping</span>
+                      <span className="block text-[10px] text-slate-400 font-normal">Excel / Dropbox SKU rules</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      if (onSelectAdminTab) onSelectAdminTab('sheets');
+                    }}
+                    className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition flex items-center gap-2.5"
+                  >
+                    <div className="p-1 rounded-lg bg-teal-950 text-teal-400 border border-teal-800/80 shrink-0">
+                      <Database className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-bold text-xs">Google Sheets Config</span>
+                      <span className="block text-[10px] text-slate-400 font-normal">Sync URLs & Apps Script setup</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      if (onSelectAdminTab) onSelectAdminTab('telegram');
+                    }}
+                    className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition flex items-center gap-2.5"
+                  >
+                    <div className="p-1 rounded-lg bg-sky-950 text-sky-400 border border-sky-800/80 shrink-0">
+                      <Send className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-bold text-xs">Telegram Bot & Alerts</span>
+                      <span className="block text-[10px] text-slate-400 font-normal">Chat ID, Bot Token & Auto Digests</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      if (onSelectAdminTab) onSelectAdminTab('tests');
+                    }}
+                    className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition flex items-center gap-2.5"
+                  >
+                    <div className="p-1 rounded-lg bg-emerald-950 text-emerald-400 border border-emerald-800/80 shrink-0">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-bold text-xs">System Diagnostics & Tests</span>
+                      <span className="block text-[10px] text-slate-400 font-normal">Run unit tests & health checks</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      if (onSelectAdminTab) onSelectAdminTab('docs');
+                    }}
+                    className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition flex items-center gap-2.5"
+                  >
+                    <div className="p-1 rounded-lg bg-purple-950 text-purple-400 border border-purple-800/80 shrink-0">
+                      <BookOpen className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-bold text-xs">Setup & Operation Guides</span>
+                      <span className="block text-[10px] text-slate-400 font-normal">User manuals & instructions</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      if (onSelectAdminTab) onSelectAdminTab('logs');
+                    }}
+                    className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition flex items-center gap-2.5"
+                  >
+                    <div className="p-1 rounded-lg bg-amber-950 text-amber-400 border border-amber-800/80 shrink-0">
+                      <Shield className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-bold text-xs">Audit Logs & Security</span>
+                      <span className="block text-[10px] text-slate-400 font-normal">Track all staff actions & changes</span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Account Switcher & Logout Footer */}
+                <div className="p-1.5 space-y-0.5 bg-slate-950/60">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      onOpenLogin();
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition flex items-center gap-2.5"
+                  >
+                    <div className="p-1.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 shrink-0">
+                      <UserCheck className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-bold text-xs">Switch Staff Account</span>
+                      <span className="block text-[10px] text-slate-400 font-normal">Login as Admin, Purchaser, Warehouse, or Dispatch</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      onOpenLogin();
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-950/60 text-rose-300 hover:text-rose-100 transition flex items-center gap-2.5"
+                  >
+                    <div className="p-1.5 rounded-lg bg-rose-950 text-rose-400 border border-rose-800 shrink-0">
+                      <LogOut className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-bold text-xs">Log Out / Sign Out</span>
+                      <span className="block text-[10px] text-rose-400/80 font-normal">End session and return to Sign In screen</span>
+                    </div>
+                  </button>
+                </div>
               </div>
             )}
           </div>
-
-          {/* Notification Bell */}
-          <button
-            onClick={() => setIsNotifPanelOpen(true)}
-            className="relative p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition-colors border border-transparent hover:border-slate-700"
-            title="Notification Center"
-          >
-            <Bell size={18} />
-            {unreadNotificationCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white font-bold text-[10px] rounded-full flex items-center justify-center animate-pulse">
-                {unreadNotificationCount}
-              </span>
-            )}
-          </button>
-
-          {/* User Profile & Dropdown */}
-          <div className="relative" ref={profileRef}>
-            <button
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-2 p-1 pl-1.5 hover:bg-slate-800/80 rounded-xl transition-all border border-slate-800/60 hover:border-slate-700"
-            >
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.name}
-                className="w-7 h-7 rounded-lg object-cover ring-2 ring-blue-500/40"
-              />
-              <span className="hidden sm:inline text-xs font-semibold text-white leading-tight">{currentUser.name}</span>
-              <ChevronDown size={14} className="text-slate-400" />
-            </button>
-
-            {/* Profile Dropdown Menu */}
-            {isProfileOpen && (
-              <div className="absolute right-0 mt-2 z-50">
-                <ProfileMenu onClose={() => setIsProfileOpen(false)} onLogout={onLogout} />
-              </div>
-            )}
-          </div>
-
-          {/* Mobile Hamburger Toggle Button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="xl:hidden p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl"
-          >
-            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
 
         </div>
+
       </div>
 
-      {/* Mobile Drawer Navigation */}
-      {isMobileMenuOpen && (
-        <div className="xl:hidden bg-slate-900 border-t border-slate-800 p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setCurrentView(item.id);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${
-                  currentView === item.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-800 text-slate-300'
-                }`}
+      {/* PROFILE PHOTO UPDATE MODAL */}
+      {isAvatarModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 text-slate-900"
+          onClick={() => setIsAvatarModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-100 text-blue-700 rounded-xl">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Profile Photo</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">{currentUser.name} ({badge.label})</p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setIsAvatarModalOpen(false)}
+                className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition cursor-pointer"
               >
-                {item.icon}
-                <span>{item.label}</span>
+                <X className="w-4 h-4" />
               </button>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between p-2.5 bg-slate-950 rounded-lg text-xs border border-slate-800">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-              <span className="text-slate-300">Google Sheets Synced</span>
             </div>
-            <button
-              onClick={triggerManualSync}
-              className="text-blue-400 font-medium text-xs flex items-center gap-1"
-            >
-              <RefreshCw size={12} /> Sync Now
-            </button>
+
+            <form onSubmit={handleSaveAvatar} className="space-y-4">
+              {/* Avatar Preview */}
+              <div className="flex flex-col items-center justify-center gap-2 py-2 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                {avatarUrlInput ? (
+                  <img 
+                    src={avatarUrlInput} 
+                    alt="Preview" 
+                    className="w-20 h-20 rounded-full object-cover border-2 border-blue-500 shadow-sm" 
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xl font-bold">
+                    {currentUser.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="text-[10px] text-slate-400 font-medium">Photo Preview</span>
+              </div>
+
+              {/* Upload File Option */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Upload Image from Device / Phone
+                </label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  ref={fileInputRef}
+                  onChange={handleFileChange} 
+                  className="hidden" 
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  <Upload className="w-4 h-4 text-blue-600" />
+                  <span>Choose Photo File</span>
+                </button>
+              </div>
+
+              {/* Image URL Input Option */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Or Paste Image URL
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/photo.jpg"
+                  value={avatarUrlInput.startsWith('data:') ? '' : avatarUrlInput}
+                  onChange={(e) => setAvatarUrlInput(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-2">
+                {avatarUrlInput && (
+                  <button
+                    type="button"
+                    onClick={() => setAvatarUrlInput('')}
+                    className="py-2 px-3 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
+                  >
+                    Remove Photo
+                  </button>
+                )}
+                <div className="flex-1 flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsAvatarModalOpen(false)}
+                    className="py-2 px-4 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Save Photo</span>
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}
