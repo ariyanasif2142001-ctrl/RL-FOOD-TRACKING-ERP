@@ -59,8 +59,8 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   holdTimeMs: 5 * 60 * 60 * 1000, // 5 hours
   telegramConfig: {
     enabled: true,
-    botToken: '8658609561:AAHDyT2y_X2BZ384hovRb63TlIrwENNiHno',
-    chatId: '5255418394',
+    botToken: '',
+    chatId: '',
     allInOneGroupMode: true,
     silentMode: false,
     includeWebAppLink: true,

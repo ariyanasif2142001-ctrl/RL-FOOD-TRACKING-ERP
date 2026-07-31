@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PurchaseOrder, AuditLog } from '../../types';
+import { PurchaseOrder, AuditLog, POItem } from '../../types';
 import { sendTelegramMessage } from '../../services/telegramService';
 import { getMasterSKUMappings } from '../../services/skuService';
 import { 
@@ -76,13 +76,13 @@ export const AiBackupHub: React.FC<AiBackupHubProps> = ({
 
   // Backup Schedule State
   const [backupSchedule, setBackupSchedule] = useState<'disabled' | 'daily' | 'weekly' | 'monthly'>(() => {
-    return (localStorage.getItem('rl_food_backup_schedule') as any) || 'daily';
+    return (localStorage.getItem('rl_food_backup_schedule') as 'disabled' | 'daily' | 'weekly' | 'monthly') || 'daily';
   });
   const [backupFormat, setBackupFormat] = useState<'json' | 'xlsx' | 'csv'>(() => {
-    return (localStorage.getItem('rl_food_backup_format') as any) || 'xlsx';
+    return (localStorage.getItem('rl_food_backup_format') as 'json' | 'xlsx' | 'csv') || 'xlsx';
   });
   const [backupDestination, setBackupDestination] = useState<'download' | 'vault' | 'cloud'>(() => {
-    return (localStorage.getItem('rl_food_backup_dest') as any) || 'download';
+    return (localStorage.getItem('rl_food_backup_dest') as 'download' | 'vault' | 'cloud') || 'download';
   });
   const [lastBackupTime, setLastBackupTime] = useState<string | null>(() => {
     return localStorage.getItem('rl_food_last_backup_time');
@@ -111,7 +111,7 @@ export const AiBackupHub: React.FC<AiBackupHubProps> = ({
     const partialPOs = pos.filter(p => p.purchaseStatus === 'Partial').length;
     const completedPOs = pos.filter(p => p.purchaseStatus === 'Completed').length;
 
-    let allItems: any[] = [];
+    let allItems: (POItem & { poNumber: string; dept: string })[] = [];
     pos.forEach(p => {
       if (p.items) {
         p.items.forEach(i => allItems.push({ ...i, poNumber: p.poNumber, dept: p.department }));
@@ -120,7 +120,7 @@ export const AiBackupHub: React.FC<AiBackupHubProps> = ({
 
     const totalItems = allItems.length;
     const purchasedItems = allItems.filter(i => i.purchaseStatus === 'Purchased').length;
-    const heldItems = allItems.filter(i => i.onHold || i.purchaseStatus === 'Hold');
+    const heldItems = allItems.filter(i => (i as POItem & { onHold?: boolean }).onHold || i.purchaseStatus === 'Hold' || i.purchaseStatus === 'Held');
 
     // Master SKU Database - Sliced/Filtered to stay well under Gemini API token limits
     const rawMasterSkus = getMasterSKUMappings();
@@ -796,7 +796,7 @@ export const AiBackupHub: React.FC<AiBackupHubProps> = ({
         'Created At': p.createdAt || ''
       }));
 
-      const itemRows: any[] = [];
+      const itemRows: Record<string, string | number>[] = [];
       pos.forEach(p => {
         (p.items || []).forEach((item, idx) => {
           itemRows.push({
@@ -1200,7 +1200,7 @@ export const AiBackupHub: React.FC<AiBackupHubProps> = ({
               </label>
               <select
                 value={backupSchedule}
-                onChange={(e) => setBackupSchedule(e.target.value as any)}
+                onChange={(e) => setBackupSchedule(e.target.value as 'disabled' | 'daily' | 'weekly' | 'monthly')}
                 className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
               >
                 <option value="daily">Daily Automatic Backup</option>
@@ -1223,7 +1223,7 @@ export const AiBackupHub: React.FC<AiBackupHubProps> = ({
               </label>
               <select
                 value={backupFormat}
-                onChange={(e) => setBackupFormat(e.target.value as any)}
+                onChange={(e) => setBackupFormat(e.target.value as 'json' | 'xlsx' | 'csv')}
                 className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
               >
                 <option value="xlsx">Excel Workbook (.xlsx)</option>
@@ -1243,7 +1243,7 @@ export const AiBackupHub: React.FC<AiBackupHubProps> = ({
               </label>
               <select
                 value={backupDestination}
-                onChange={(e) => setBackupDestination(e.target.value as any)}
+                onChange={(e) => setBackupDestination(e.target.value as 'download' | 'vault' | 'cloud')}
                 className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
               >
                 <option value="download">Auto Browser Download</option>

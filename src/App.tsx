@@ -127,7 +127,10 @@ export default function App() {
             ...item,
             purchaseStatus: purQty >= reqQty ? ('Purchased' as const) : ('Partial Purchased' as const),
             holdBy: '',
+            holdById: '',
+            holdByName: '',
             holdStartTime: '',
+            holdSince: '',
             holdExpireTime: ''
           };
         }
@@ -135,11 +138,18 @@ export default function App() {
         if (localItem) {
           const localNormStatus = getNormalizedItemStatus(localItem);
           if (localNormStatus === 'Held') {
+            const hBy = localItem.holdBy || localItem.holdByName || item.holdBy || item.holdByName || 'Purchaser';
+            const hById = localItem.holdById || item.holdById || '';
+            const hName = localItem.holdByName || localItem.holdBy || item.holdByName || item.holdBy || 'Purchaser';
+            const hTime = localItem.holdStartTime || localItem.holdSince || item.holdStartTime || item.holdSince || new Date().toISOString();
             return {
               ...item,
               purchaseStatus: 'Held' as const,
-              holdBy: localItem.holdBy || item.holdBy || 'Purchaser',
-              holdStartTime: localItem.holdStartTime || new Date().toISOString(),
+              holdBy: hBy,
+              holdById: hById,
+              holdByName: hName,
+              holdStartTime: hTime,
+              holdSince: hTime,
               holdExpireTime: ''
             };
           } else {
@@ -149,7 +159,10 @@ export default function App() {
               ...item,
               purchaseStatus: statusToSet,
               holdBy: '',
+              holdById: '',
+              holdByName: '',
               holdStartTime: '',
+              holdSince: '',
               holdExpireTime: ''
             };
           }
@@ -157,11 +170,18 @@ export default function App() {
 
         const fetchedNormStatus = getNormalizedItemStatus(item);
         if (fetchedNormStatus === 'Held') {
+          const hBy = item.holdBy || item.holdByName || 'Purchaser';
+          const hById = item.holdById || '';
+          const hName = item.holdByName || item.holdBy || 'Purchaser';
+          const hTime = item.holdStartTime || item.holdSince || new Date().toISOString();
           return {
             ...item,
             purchaseStatus: 'Held' as const,
-            holdBy: item.holdBy || 'Purchaser',
-            holdStartTime: item.holdStartTime || new Date().toISOString(),
+            holdBy: hBy,
+            holdById: hById,
+            holdByName: hName,
+            holdStartTime: hTime,
+            holdSince: hTime,
             holdExpireTime: ''
           };
         }
@@ -170,7 +190,10 @@ export default function App() {
           ...item,
           purchaseStatus: purQty > 0 ? ('Partial Purchased' as const) : ('Pending' as const),
           holdBy: '',
+          holdById: '',
+          holdByName: '',
           holdStartTime: '',
+          holdSince: '',
           holdExpireTime: ''
         };
       });
@@ -250,7 +273,7 @@ export default function App() {
       } else {
         setApiError('Notice: Unable to fetch live Google Sheets data. Displaying cached local data. Check Web App deployment URL.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setPOs(localPOs);
       setUsers(localUsers);
       setAuditLogs(localLogs);
@@ -268,6 +291,7 @@ export default function App() {
   // Auto-sync Master SKU Dropbox/Excel sheet on app load and periodically in the background
   useEffect(() => {
     const syncSkuSheet = async () => {
+      if (document.hidden) return;
       const savedUrl = getMasterSKUSheetUrl();
       if (savedUrl && savedUrl.trim()) {
         try {
@@ -281,8 +305,15 @@ export default function App() {
     // Initial sync on app boot
     syncSkuSheet();
 
-    // Periodic auto-sync every 30 seconds so new rows added in Dropbox auto-populate in real-time
-    const skuInterval = setInterval(syncSkuSheet, 30000);
+    // Periodic auto-sync every 2.5 minutes (150,000 ms) instead of 30 seconds to prevent Google Sheets quota exhaustion
+    const skuInterval = setInterval(syncSkuSheet, 150000);
+
+    // Sync immediately when browser tab becomes active/visible again
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        syncSkuSheet();
+      }
+    };
 
     // Listen for Master SKU updates to re-match active PO items automatically
     const handleSkuUpdated = () => {
@@ -294,10 +325,12 @@ export default function App() {
     };
 
     window.addEventListener('master_sku_updated', handleSkuUpdated);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       clearInterval(skuInterval);
       window.removeEventListener('master_sku_updated', handleSkuUpdated);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
@@ -335,8 +368,9 @@ export default function App() {
     const cleanToken = tg.botToken.trim();
     if (!cleanToken || cleanToken.includes('YOUR_') || cleanToken.length < 10 || !cleanToken.includes(':')) return;
 
-    // 1. Interactive 2-Way Command Polling
+    // 1. Interactive 2-Way Command Polling (every 20s instead of 4s, paused when tab hidden)
     const pollInterval = setInterval(async () => {
+      if (document.hidden) return;
       if (tg.interactiveBot?.enabled !== false) {
         try {
           await processTelegramUpdates(posRef.current, handleTelegramStateUpdate);
@@ -344,10 +378,11 @@ export default function App() {
           // ignore background errors
         }
       }
-    }, 4000);
+    }, 20000);
 
-    // 2. Auto-Scheduled Daily Telegram Digest Timer
+    // 2. Auto-Scheduled Daily Telegram Digest Timer (every 2 minutes instead of 30s, paused when tab hidden)
     const scheduleInterval = setInterval(async () => {
+      if (document.hidden) return;
       if (!tg.autoSchedule || !tg.autoSchedule.enabled) return;
 
       const now = new Date();
@@ -377,13 +412,23 @@ export default function App() {
           }
         }
       }
-    }, 30000); // Check every 30 seconds
+    }, 120000);
+
+    // Immediately poll updates when user switches back to the active tab
+    const handleVisibilityChange = () => {
+      if (!document.hidden && tg.interactiveBot?.enabled !== false) {
+        processTelegramUpdates(posRef.current, handleTelegramStateUpdate).catch(() => {});
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       clearInterval(pollInterval);
       clearInterval(scheduleInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [appConfig.telegramConfig, pos]);
+  }, [appConfig.telegramConfig, handleTelegramStateUpdate, pos]);
 
   // Helper to append audit log
   const addAuditLog = (action: string, details: string, actorUser?: User) => {
@@ -430,6 +475,16 @@ export default function App() {
   const handleHoldItem = async (itemId: string) => {
     if (!currentUser) return { success: false, message: 'User not logged in.' };
 
+    const existingItem = pos.flatMap(p => p.items || []).find(i => String(i.id).trim() === String(itemId).trim());
+    if (existingItem) {
+      const normSt = getNormalizedItemStatus(existingItem);
+      const ownerName = existingItem.holdByName || existingItem.holdBy;
+      const ownerId = existingItem.holdById;
+      if (normSt === 'Held' && ownerName && ownerName.trim().toLowerCase() !== currentUser.name.trim().toLowerCase() && ownerId !== currentUser.id) {
+        return { success: false, message: `This item is currently held by ${ownerName}.` };
+      }
+    }
+
     const holdStart = new Date().toISOString();
 
     const updatePOsWithHold = (poList: PurchaseOrder[]) => poList.map(po => ({
@@ -440,7 +495,10 @@ export default function App() {
             ...item,
             purchaseStatus: 'Held' as const,
             holdBy: currentUser.name,
+            holdById: currentUser.id,
+            holdByName: currentUser.name,
             holdStartTime: holdStart,
+            holdSince: holdStart,
             holdExpireTime: ''
           };
         }
@@ -453,6 +511,7 @@ export default function App() {
     setPOs(updatedPOs);
     saveLocalPOs(updatedPOs);
     addAuditLog('Hold Item', `Item ${itemId} placed on hold by ${currentUser.name}`);
+    window.dispatchEvent(new CustomEvent('po_data_updated', { detail: updatedPOs }));
 
     // Trigger Telegram notification
     const targetItem = updatedPOs.flatMap(p => p.items || []).find(i => String(i.id).trim() === String(itemId).trim());
@@ -470,6 +529,7 @@ export default function App() {
         const mergedPOs = mergePreservedHolds(res.data.pos, updatedPOs);
         setPOs(mergedPOs);
         saveLocalPOs(mergedPOs);
+        window.dispatchEvent(new CustomEvent('po_data_updated', { detail: mergedPOs }));
       }
     } catch {
       setIsSyncing(false);
@@ -482,15 +542,37 @@ export default function App() {
   const handleReleaseHold = async (itemId: string) => {
     if (!currentUser) return { success: false, message: 'User not logged in.' };
 
+    const targetItem = pos.flatMap(p => p.items || []).find(i => String(i.id).trim() === String(itemId).trim());
+    if (!targetItem) return { success: false, message: 'Item not found.' };
+
+    // Admin CANNOT release purchaser holds
+    if (currentUser.role === 'admin') {
+      return { success: false, message: 'Admin cannot release purchaser holds. Only the purchaser who placed the hold can unhold.' };
+    }
+
+    // Check ownership
+    const ownerName = targetItem.holdByName || targetItem.holdBy;
+    const ownerId = targetItem.holdById;
+    const isOwner = (ownerId && ownerId === currentUser.id) || (ownerName && ownerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase());
+    if (ownerName && !isOwner) {
+      return { success: false, message: `Only ${ownerName} who placed the hold can unhold this item.` };
+    }
+
     const updatePOsReleaseHold = (poList: PurchaseOrder[]) => poList.map(po => ({
       ...po,
       items: (po.items || []).map(item => {
         if (String(item.id).trim() === String(itemId).trim()) {
+          const reqQty = item.requestedQty || item.orderedQty || 0;
+          const purQty = item.purchasedQty || 0;
+          const statusToSet = purQty >= reqQty && reqQty > 0 ? ('Purchased' as const) : (purQty > 0 ? ('Partial Purchased' as const) : ('Pending' as const));
           return {
             ...item,
-            purchaseStatus: 'Pending' as const,
+            purchaseStatus: statusToSet,
             holdBy: '',
+            holdById: '',
+            holdByName: '',
             holdStartTime: '',
+            holdSince: '',
             holdExpireTime: ''
           };
         }
@@ -502,7 +584,8 @@ export default function App() {
     const updatedPOs = updatePOsReleaseHold(pos);
     setPOs(updatedPOs);
     saveLocalPOs(updatedPOs);
-    addAuditLog('Release Hold', `Item ${itemId} hold released`);
+    addAuditLog('Release Hold', `Item ${itemId} hold released by ${currentUser.name}`);
+    window.dispatchEvent(new CustomEvent('po_data_updated', { detail: updatedPOs }));
 
     // 2. Perform API sync if backend is active
     setIsSyncing(true);
@@ -513,6 +596,7 @@ export default function App() {
         const syncedPOs = updatePOsReleaseHold(res.data.pos);
         setPOs(syncedPOs);
         saveLocalPOs(syncedPOs);
+        window.dispatchEvent(new CustomEvent('po_data_updated', { detail: syncedPOs }));
       }
     } catch {
       setIsSyncing(false);
@@ -528,6 +612,19 @@ export default function App() {
     notes: string
   ) => {
     if (!currentUser) return { success: false, message: 'User not logged in.' };
+
+    const targetItem = pos.flatMap(p => p.items || []).find(i => String(i.id).trim() === String(itemId).trim());
+    if (targetItem) {
+      const normSt = getNormalizedItemStatus(targetItem);
+      if (normSt === 'Held') {
+        const ownerName = targetItem.holdByName || targetItem.holdBy;
+        const ownerId = targetItem.holdById;
+        const isOwner = (ownerId && ownerId === currentUser.id) || (ownerName && ownerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase());
+        if (ownerName && !isOwner) {
+          return { success: false, message: `Cannot purchase. This item is currently held by ${ownerName}.` };
+        }
+      }
+    }
 
     const updateItemPurchaseInPOs = (poList: PurchaseOrder[]) => poList.map(po => {
       let matched = false;
@@ -548,7 +645,10 @@ export default function App() {
             purchasedAt: new Date().toISOString(),
             notes: notes ? `${item.notes ? item.notes + ' | ' : ''}${notes}` : item.notes,
             holdBy: '',
+            holdById: '',
+            holdByName: '',
             holdStartTime: '',
+            holdSince: '',
             holdExpireTime: ''
           };
         }
@@ -583,14 +683,14 @@ export default function App() {
     addAuditLog('Record Purchase', `Purchased ${purchasedQty} units for item ${itemId}`);
 
     // Trigger Telegram notification
-    const targetItem = updatedPOs.flatMap(p => p.items || []).find(i => String(i.id).trim() === String(itemId).trim());
-    if (targetItem) {
+    const purchasedItem = updatedPOs.flatMap(p => p.items || []).find(i => String(i.id).trim() === String(itemId).trim());
+    if (purchasedItem) {
       notifyItemPurchased(
-        targetItem.poNumber,
-        targetItem.itemName,
+        purchasedItem.poNumber,
+        purchasedItem.itemName,
         purchasedQty,
-        targetItem.unit || 'Pcs',
-        targetItem.marketPrice || 0,
+        purchasedItem.unit || 'Pcs',
+        purchasedItem.marketPrice || 0,
         currentUser.name,
         notes
       );

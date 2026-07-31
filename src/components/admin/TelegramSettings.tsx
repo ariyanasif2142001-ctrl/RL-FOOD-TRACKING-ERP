@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PurchaseOrder } from '../../types';
 import { getAppConfig, saveAppConfig, TelegramConfig } from '../../config/appConfig';
 import { testTelegramBotConnection, detectTelegramChatId, notifyActivityLog, notifyDailySummaryReport } from '../../services/telegramService';
 import { getCurrentUser } from '../../services/storage';
@@ -182,7 +183,7 @@ export const TelegramSettings: React.FC<TelegramSettingsProps> = ({ onShowToast 
 
     const currentUser = getCurrentUser();
     // Load sample or current local POs if available
-    let storedPOs: any[] = [];
+    let storedPOs: PurchaseOrder[] = [];
     try {
       const raw = localStorage.getItem('rl_food_pos');
       if (raw) storedPOs = JSON.parse(raw);
@@ -732,7 +733,7 @@ export const TelegramSettings: React.FC<TelegramSettingsProps> = ({ onShowToast 
                     const currentSched = tgConfig.autoSchedule || { enabled: true, time1: '09:00', time2: '20:00', reportType: 'all' };
                     setTgConfig({
                       ...tgConfig,
-                      autoSchedule: { ...currentSched, reportType: e.target.value as any }
+                      autoSchedule: { ...currentSched, reportType: e.target.value as 'all' | 'summary' | 'pending' | 'hold' }
                     });
                   }}
                   className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800"

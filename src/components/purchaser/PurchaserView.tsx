@@ -97,25 +97,15 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
       const normStatus = getNormalizedItemStatus(item);
       const isHeld = normStatus === 'Held';
 
-      let holdStartTime = item.holdStartTime;
-      let holdExpireTime = item.holdExpireTime;
-
-      if (isHeld) {
-        if (!holdStartTime || isNaN(new Date(holdStartTime).getTime())) {
-          holdStartTime = new Date().toISOString();
-        }
-        if (!holdExpireTime || isNaN(new Date(holdExpireTime).getTime())) {
-          const startMs = new Date(holdStartTime).getTime();
-          holdExpireTime = new Date(startMs + 5 * 60 * 60 * 1000).toISOString();
-        }
-      }
-
       return {
         ...item,
         purchaseStatus: normStatus,
-        holdBy: isHeld ? (item.holdBy || 'Purchaser') : '',
-        holdStartTime: isHeld ? holdStartTime : '',
-        holdExpireTime: isHeld ? holdExpireTime : '',
+        holdBy: isHeld ? (item.holdBy || item.holdByName || 'Purchaser') : '',
+        holdById: isHeld ? (item.holdById || '') : '',
+        holdByName: isHeld ? (item.holdByName || item.holdBy || 'Purchaser') : '',
+        holdStartTime: isHeld ? (item.holdStartTime || item.holdSince || new Date().toISOString()) : '',
+        holdSince: isHeld ? (item.holdSince || item.holdStartTime || new Date().toISOString()) : '',
+        holdExpireTime: '',
         poNumber: item.poNumber || po.poNumber,
         location: item.location || po.location || 'Central Warehouse',
         department: item.department || po.department || 'General',
@@ -172,9 +162,11 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
 
   const myHoldItems = allItems.filter(item => {
     const isHeld = getNormalizedItemStatus(item) === 'Held';
-    const holdByStr = String(item.holdBy || '').trim().toLowerCase();
+    const holdByStr = String(item.holdBy || item.holdByName || '').trim().toLowerCase();
+    const holdByIdStr = String(item.holdById || '').trim();
     const currentNameStr = String(currentUser.name || '').trim().toLowerCase();
-    return isHeld && holdByStr === currentNameStr;
+    const currentIdStr = String(currentUser.id || '').trim();
+    return isHeld && (holdByStr === currentNameStr || (holdByIdStr && holdByIdStr === currentIdStr));
   });
 
   const myPurchasedItems = allItems.filter(item => {
@@ -292,8 +284,8 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
       } else {
         showNotification(res.message || 'Failed to return item', 'error');
       }
-    } catch (err: any) {
-      showNotification(err?.message || 'Failed to return item', 'error');
+    } catch (err: unknown) {
+      showNotification((err as Error)?.message || 'Failed to return item', 'error');
     } finally {
       setActionLoadingItemId(null);
     }
@@ -342,8 +334,8 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
       } else {
         setModalError(res.message);
       }
-    } catch (err: any) {
-      setModalError(err?.message || 'Error recording purchase. Please try again.');
+    } catch (err: unknown) {
+      setModalError((err as Error)?.message || 'Error recording purchase. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

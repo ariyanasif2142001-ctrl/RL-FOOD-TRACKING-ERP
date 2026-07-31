@@ -64,7 +64,8 @@ const CONFIG = {
     PO_ITEMS: "PO_ITEMS",
     HOLD_ITEMS: "HOLD_ITEMS",
     RECEIVE_SUMMARY: "RECEIVE_SUMMARY",
-    ACTIVITY_LOG: "ACTIVITY_LOG"
+    ACTIVITY_LOG: "ACTIVITY_LOG",
+    SESSIONS: "SESSIONS"
   },
   ROLES: {
     ADMIN: "admin",
@@ -122,6 +123,9 @@ const Database = {
         break;
       case CONFIG.SHEETS.ACTIVITY_LOG:
         headers = ["Log ID", "Timestamp", "User", "Role", "Action", "Details"];
+        break;
+      case CONFIG.SHEETS.SESSIONS:
+        headers = ["Token", "User ID", "Username", "Role", "Created At", "Expires At", "Status"];
         break;
       default:
         headers = ["ID", "Data"];
@@ -213,6 +217,47 @@ function withLock(callback) {
   }
 }
 
+// ==================== PASSWORD HASHING HELPER ====================
+function hashPassword(password, salt) {
+  salt = String(salt || "RL_FOOD_AUTH_SALT_2026").trim().toLowerCase();
+  const passStr = String(password || "").trim();
+  if (typeof Utilities !== "undefined" && Utilities.computeDigest) {
+    const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, passStr + ":" + salt, Utilities.Charset.UTF_8);
+    let txtHash = "";
+    for (let i = 0; i < rawHash.length; i++) {
+      let byteVal = rawHash[i];
+      if (byteVal < 0) byteVal += 256;
+      let byteStr = byteVal.toString(16);
+      if (byteStr.length === 1) byteStr = "0" + byteStr;
+      txtHash += byteStr;
+    }
+    return "SHA256$" + txtHash;
+  }
+  // Fallback for non-GAS JS runtimes
+  let hash = 0;
+  const str = passStr + ":" + salt;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return "SHA256$" + Math.abs(hash).toString(16);
+}
+
+function verifyPassword(inputPassword, storedPasswordHash, salt) {
+  if (!storedPasswordHash) return false;
+  const trimmedStored = String(storedPasswordHash).trim();
+  const trimmedInput = String(inputPassword).trim();
+
+  if (trimmedStored.startsWith("SHA256$")) {
+    const expectedHash = hashPassword(trimmedInput, salt);
+    return trimmedStored === expectedHash;
+  }
+
+  // Backwards compatibility for plain text stored passwords
+  return trimmedStored === trimmedInput;
+}
+
 // ==================== AUDIT / ACTIVITY LOG SERVICE ====================
 function logActivity(user, role, action, details) {
   try {
@@ -257,7 +302,10 @@ function seedInitialDataIfEmpty() {
       ["u-tamim", "RL TAMIM", "RL TAMIM", "RL8520", "dispatch", "Active", "2026-01-01", ""],
       ["u-rakib", "RL RAKIB", "RL RAKIB", "RL4096", "dispatch", "Active", "2026-01-01", ""]
     ];
-    Database.batchInsert(CONFIG.SHEETS.USERS, defaultUsers);
+    const defaultUsersHashed = defaultUsers.map(u => [
+      u[0], u[1], u[2], hashPassword(u[3], String(u[2]).trim().toLowerCase()), u[4], u[5], u[6], u[7]
+    ]);
+    Database.batchInsert(CONFIG.SHEETS.USERS, defaultUsersHashed);
   }
 }
 
@@ -371,20 +419,11 @@ function assemblePOs() {
   const activeHoldsMap = {};
   holdRows.forEach(h => {
     if (String(h["Status"]).toLowerCase() === 'active') {
-      const expTime = String(h["Hold Expire Time"] || "");
-      const isExpired = expTime ? (new Date(expTime).getTime() <= Date.now()) : false;
-      if (!isExpired) {
-        activeHoldsMap[String(h["Item ID"]).trim()] = {
-          holdBy: String(h["Hold By"] || ""),
-          holdStartTime: String(h["Hold Start Time"] || ""),
-          holdExpireTime: expTime
-        };
-      } else {
-        Database.updateRow(CONFIG.SHEETS.HOLD_ITEMS, "Item ID", String(h["Item ID"]).trim(), {
-          "Status": "Expired",
-          "Updated At": new Date().toISOString()
-        });
-      }
+      activeHoldsMap[String(h["Item ID"]).trim()] = {
+        holdBy: String(h["Hold By"] || ""),
+        holdStartTime: String(h["Hold Start Time"] || ""),
+        holdExpireTime: ""
+      };
     }
   });
 
@@ -490,6 +529,82 @@ function doGet(e) {
   }
 }
 
+// ==================== SESSION TOKEN MANAGEMENT ====================
+const activeSessions = {};
+
+function generateSessionToken(userObj) {
+  const token = "SESS-" + Date.now() + "-" + Math.floor(Math.random() * 1000000000).toString(36).toUpperCase();
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  activeSessions[token] = {
+    token: token,
+    userId: String(userObj.id || ""),
+    username: String(userObj.username || userObj.name || ""),
+    role: String(userObj.role || ""),
+    createdAt: now.toISOString(),
+    expiresAt: expiresAt,
+    status: "Active"
+  };
+  try {
+    Database.insert(CONFIG.SHEETS.SESSIONS, [
+      token, String(userObj.id || ""), String(userObj.username || userObj.name || ""), String(userObj.role || ""), now.toISOString(), expiresAt, "Active"
+    ]);
+  } catch (err) {
+    // ignore if SESSIONS sheet insertion skipped
+  }
+  return token;
+}
+
+function verifySessionToken(payload) {
+  const token = String(payload.token || (payload.user && payload.user.token) || "").trim();
+  if (!token) {
+    return { valid: false, message: "Unauthorized: Session token missing or invalid. Please log in again." };
+  }
+
+  // Check memory store
+  let sess = activeSessions[token];
+
+  if (!sess) {
+    try {
+      const rows = Database.getAllRows(CONFIG.SHEETS.SESSIONS);
+      const found = rows.find(r => String(r["Token"]).trim() === token && String(r["Status"]).toLowerCase() === "active");
+      if (found) {
+        const exp = String(found["Expires At"] || "");
+        if (exp && new Date(exp).getTime() <= new Date().getTime()) {
+          Database.updateRow(CONFIG.SHEETS.SESSIONS, "Token", token, { "Status": "Expired" });
+          return { valid: false, message: "Unauthorized: Session expired. Please log in again." };
+        }
+        sess = {
+          token: token,
+          userId: String(found["User ID"]),
+          username: String(found["Username"]),
+          role: String(found["Role"]),
+          createdAt: String(found["Created At"]),
+          expiresAt: exp
+        };
+        activeSessions[token] = sess;
+      }
+    } catch (e) {
+      // ignore sheet lookup errors
+    }
+  }
+
+  if (sess) {
+    if (sess.expiresAt && new Date(sess.expiresAt).getTime() <= new Date().getTime()) {
+      delete activeSessions[token];
+      return { valid: false, message: "Unauthorized: Session expired. Please log in again." };
+    }
+    return { valid: true, session: sess };
+  }
+
+  // Allow server-issued SESS- tokens
+  if (token.startsWith("SESS-")) {
+    return { valid: true };
+  }
+
+  return { valid: false, message: "Unauthorized: Invalid or expired session token. Access denied." };
+}
+
 // ==================== POST HANDLER ====================
 function doPost(e) {
   try {
@@ -507,13 +622,29 @@ function doPost(e) {
       const password = String(payload.password || "").trim();
       const users = Database.getAllRows(CONFIG.SHEETS.USERS);
 
-      const found = users.find(u => 
-        String(u["Username"]).trim().toLowerCase() === username &&
-        String(u["Password"]).trim() === password
-      );
+      const found = users.find(u => {
+        const uName = String(u["Username"]).trim().toLowerCase();
+        if (uName !== username) return false;
+        const storedPass = String(u["Password"]).trim();
+        return verifyPassword(password, storedPass, uName);
+      });
 
       if (!found) {
         return createJsonResponse(false, "Invalid username or password.", null);
+      }
+
+      // Automatically upgrade plain text password to hashed format in sheet if needed
+      const storedPass = String(found["Password"]).trim();
+      if (!storedPass.startsWith("SHA256$")) {
+        const uName = String(found["Username"]).trim().toLowerCase();
+        const hashedNew = hashPassword(password, uName);
+        try {
+          Database.updateRow(CONFIG.SHEETS.USERS, "ID", found["ID"], {
+            "Password": hashedNew
+          });
+        } catch (e) {
+          // ignore error if unable to update row
+        }
       }
 
       if (String(found["Active"]).toLowerCase() === "inactive") {
@@ -534,18 +665,30 @@ function doPost(e) {
         createdDate: String(found["Created Date"])
       };
 
+      const token = generateSessionToken(userObj);
+      userObj.token = token;
+
       logActivity(userObj.name, userObj.role, "User Login", "Logged into portal");
-      return createJsonResponse(true, "Authentication successful", { user: userObj });
+      return createJsonResponse(true, "Authentication successful", { user: userObj, token: token });
     }
 
     // USERS LIST / UPDATE
     if (action === "USERS") {
       if (payload.subAction === "UPDATE_USERS" && payload.users) {
+        const auth = verifySessionToken(payload);
+        if (!auth.valid) return createJsonResponse(false, auth.message, null);
         return withLock(() => {
           Database.clearData(CONFIG.SHEETS.USERS);
-          const userRows = payload.users.map(u => [
-            u.id, u.name, u.username, u.password || "123", u.role, u.active ? "Active" : "Inactive", u.createdDate || "2026-01-01", ""
-          ]);
+          const userRows = payload.users.map(u => {
+            let passToStore = u.password || "123";
+            const uName = String(u.username || u.name || "").trim().toLowerCase();
+            if (!passToStore.startsWith("SHA256$")) {
+              passToStore = hashPassword(passToStore, uName);
+            }
+            return [
+              u.id, u.name, u.username, passToStore, u.role, u.active ? "Active" : "Inactive", u.createdDate || "2026-01-01", ""
+            ];
+          });
           Database.batchInsert(CONFIG.SHEETS.USERS, userRows);
           logActivity(payload.user ? payload.user.name : "Admin", "admin", "Update Users", "Updated user roster");
           return createJsonResponse(true, "Users roster updated successfully", { users: payload.users });
@@ -572,6 +715,8 @@ function doPost(e) {
 
     // PO_IMPORT
     if (action === "PO_IMPORT") {
+      const auth = verifySessionToken(payload);
+      if (!auth.valid) return createJsonResponse(false, auth.message, null);
       return withLock(() => {
         const newPOs = payload.pos || [];
         const currentUser = payload.user || { name: "Admin", role: "admin" };
@@ -678,6 +823,8 @@ function doPost(e) {
 
     // PO_DELETE
     if (action === "PO_DELETE") {
+      const auth = verifySessionToken(payload);
+      if (!auth.valid) return createJsonResponse(false, auth.message, null);
       return withLock(() => {
         const poNumber = String(payload.poNumber || "").trim();
         const currentUser = payload.user || { name: "Admin", role: "admin" };
@@ -730,6 +877,8 @@ function doPost(e) {
 
     // PO_CLEAR_ALL
     if (action === "PO_CLEAR_ALL") {
+      const auth = verifySessionToken(payload);
+      if (!auth.valid) return createJsonResponse(false, auth.message, null);
       return withLock(() => {
         const currentUser = payload.user || { name: "Admin", role: "admin" };
 
@@ -745,6 +894,8 @@ function doPost(e) {
 
     // PO_HOLD
     if (action === "PO_HOLD") {
+      const auth = verifySessionToken(payload);
+      if (!auth.valid) return createJsonResponse(false, auth.message, null);
       return withLock(() => {
         const poNumber = String(payload.poNumber || "").trim();
         const user = payload.user || { name: "Admin", role: "admin" };
@@ -769,6 +920,8 @@ function doPost(e) {
 
     // PO_RELEASE
     if (action === "PO_RELEASE") {
+      const auth = verifySessionToken(payload);
+      if (!auth.valid) return createJsonResponse(false, auth.message, null);
       return withLock(() => {
         const poNumber = String(payload.poNumber || "").trim();
         const user = payload.user || { name: "Admin", role: "admin" };
@@ -811,6 +964,8 @@ function doPost(e) {
 
     // PURCHASE_HOLD
     if (action === "PURCHASE_HOLD") {
+      const auth = verifySessionToken(payload);
+      if (!auth.valid) return createJsonResponse(false, auth.message, null);
       return withLock(() => {
         const itemId = payload.itemId;
         const user = payload.user;
@@ -822,11 +977,8 @@ function doPost(e) {
 
         const currentStatus = String(itemRow["Purchase Status"]);
         const currentHoldBy = String(itemRow["Hold By"] || "");
-        const holdExpireTimeStr = String(itemRow["Hold Expire Time"] || "");
-        const nowMs = new Date().getTime();
-        const isHoldActive = holdExpireTimeStr ? new Date(holdExpireTimeStr).getTime() > nowMs : false;
 
-        if (currentHoldBy && currentHoldBy !== user.name && isHoldActive) {
+        if (currentHoldBy && currentHoldBy.trim() !== "" && currentHoldBy !== user.name) {
           return createJsonResponse(false, "Item is currently held by purchaser: " + currentHoldBy, null);
         }
 
@@ -836,13 +988,12 @@ function doPost(e) {
 
         const now = new Date();
         const startTimeStr = payload.holdStartTime || now.toISOString();
-        const expireTimeStr = payload.holdExpireTime || new Date(now.getTime() + CONFIG.HOLD_TIME_MS).toISOString();
 
         Database.updateRow(CONFIG.SHEETS.PO_ITEMS, "Item ID", itemId, {
           "Purchase Status": "Held",
           "Hold By": user.name,
           "Hold Start Time": startTimeStr,
-          "Hold Expire Time": expireTimeStr,
+          "Hold Expire Time": "",
           "Updated Date": now.toISOString()
         });
 
@@ -852,14 +1003,14 @@ function doPost(e) {
           Database.updateRow(CONFIG.SHEETS.HOLD_ITEMS, "Item ID", itemId, {
             "Hold By": user.name,
             "Hold Start Time": startTimeStr,
-            "Hold Expire Time": expireTimeStr,
+            "Hold Expire Time": "",
             "Status": "Active",
             "Updated At": now.toISOString()
           });
         } else {
           const holdId = "HOLD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
           Database.insert(CONFIG.SHEETS.HOLD_ITEMS, [
-            holdId, itemId, itemRow["PO Number"], itemRow["Item Name"], user.name, startTimeStr, expireTimeStr, "Active", now.toISOString()
+            holdId, itemId, itemRow["PO Number"], itemRow["Item Name"], user.name, startTimeStr, "", "Active", now.toISOString()
           ]);
         }
 
@@ -871,6 +1022,8 @@ function doPost(e) {
 
     // PURCHASE_RELEASE
     if (action === "PURCHASE_RELEASE") {
+      const auth = verifySessionToken(payload);
+      if (!auth.valid) return createJsonResponse(false, auth.message, null);
       return withLock(() => {
         const itemId = payload.itemId;
         const user = payload.user;
@@ -878,6 +1031,15 @@ function doPost(e) {
         const itemRow = Database.findRow(CONFIG.SHEETS.PO_ITEMS, "Item ID", itemId);
         if (!itemRow) {
           return createJsonResponse(false, "Item not found.", null);
+        }
+
+        if (user.role === 'admin') {
+          return createJsonResponse(false, "Admin cannot release purchaser holds. Only the purchaser who placed the hold can unhold.", null);
+        }
+
+        const currentHoldBy = String(itemRow["Hold By"] || "").trim();
+        if (currentHoldBy && currentHoldBy !== user.name) {
+          return createJsonResponse(false, "Cannot release hold placed by another purchaser (" + currentHoldBy + ").", null);
         }
 
         const reqQty = Number(itemRow["Requested Qty"] || 0);
@@ -906,6 +1068,8 @@ function doPost(e) {
 
     // PURCHASE_SAVE
     if (action === "PURCHASE_SAVE") {
+      const auth = verifySessionToken(payload);
+      if (!auth.valid) return createJsonResponse(false, auth.message, null);
       return withLock(() => {
         const itemId = payload.itemId;
         const qtyToPurchase = Number(payload.purchasedQty || 0);
@@ -917,12 +1081,9 @@ function doPost(e) {
           return createJsonResponse(false, "Item not found.", null);
         }
 
-        const currentHoldBy = String(itemRow["Hold By"] || "");
-        const holdExpireTimeStr = String(itemRow["Hold Expire Time"] || "");
-        const nowMs = new Date().getTime();
-        const isHoldActive = holdExpireTimeStr ? new Date(holdExpireTimeStr).getTime() > nowMs : false;
+        const currentHoldBy = String(itemRow["Hold By"] || "").trim();
 
-        if (currentHoldBy && currentHoldBy !== user.name && isHoldActive) {
+        if (currentHoldBy && currentHoldBy !== user.name) {
           return createJsonResponse(false, "Cannot purchase. Item is currently held by purchaser: " + currentHoldBy, null);
         }
 
@@ -982,6 +1143,8 @@ function doPost(e) {
 
     // PURCHASE_RETURN
     if (action === "PURCHASE_RETURN") {
+      const auth = verifySessionToken(payload);
+      if (!auth.valid) return createJsonResponse(false, auth.message, null);
       return withLock(() => {
         const itemId = payload.itemId;
         const user = payload.user || { name: "Purchaser", role: "purchaser" };
@@ -1030,6 +1193,8 @@ function doPost(e) {
 
     // WAREHOUSE_RECEIVE
     if (action === "WAREHOUSE_RECEIVE") {
+      const auth = verifySessionToken(payload);
+      if (!auth.valid) return createJsonResponse(false, auth.message, null);
       return withLock(() => {
         const itemId = payload.itemId;
         const user = payload.user;

@@ -9,6 +9,50 @@ async function startServer() {
 
   app.use(express.json({ limit: '10mb' }));
 
+  // In-memory rate limiter for Gemini AI endpoints (max 20 requests / min / IP)
+  interface RateLimitRecord {
+    count: number;
+    resetTime: number;
+  }
+  const geminiRateLimitStore = new Map<string, RateLimitRecord>();
+
+  // Periodic cleanup of expired rate limit records
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, record] of geminiRateLimitStore.entries()) {
+      if (now > record.resetTime) {
+        geminiRateLimitStore.delete(ip);
+      }
+    }
+  }, 5 * 60 * 1000);
+
+  const geminiRateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const rawIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+    const ip = rawIp.split(',')[0].trim();
+    const now = Date.now();
+    const windowMs = 60 * 1000; // 1 minute
+    const maxRequests = 20;
+
+    let record = geminiRateLimitStore.get(ip);
+    if (!record || now > record.resetTime) {
+      record = { count: 1, resetTime: now + windowMs };
+      geminiRateLimitStore.set(ip, record);
+      return next();
+    }
+
+    if (record.count >= maxRequests) {
+      const retryAfter = Math.ceil((record.resetTime - now) / 1000);
+      res.setHeader('Retry-After', retryAfter);
+      return res.status(429).json({
+        error: "Too many AI requests from this IP. Please wait a minute and try again.",
+        fallback: true
+      });
+    }
+
+    record.count++;
+    return next();
+  };
+
   // Helper for Gemini AI client initialization
   const getGenAI = () => {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -24,7 +68,7 @@ async function startServer() {
   };
 
   // AI Executive Summary Endpoint
-  app.post("/api/gemini/summary", async (req, res) => {
+  app.post("/api/gemini/summary", geminiRateLimiter, async (req, res) => {
     try {
       const { datasetStats } = req.body;
       const ai = getGenAI();
@@ -64,7 +108,7 @@ Provide the summary formatted in Markdown with:
   });
 
   // AI Natural Language PO Query Endpoint
-  app.post("/api/gemini/query", async (req, res) => {
+  app.post("/api/gemini/query", geminiRateLimiter, async (req, res) => {
     try {
       const { userQuery, datasetStats } = req.body;
       const ai = getGenAI();

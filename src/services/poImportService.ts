@@ -48,14 +48,14 @@ export async function parsePOFile(file: File): Promise<{ rows: RawPOImportRow[];
     const worksheet = workbook.Sheets[firstSheetName];
     
     // Convert to 2D array matrix
-    const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' }) as any[][];
+    const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' }) as (string | number)[][];
     
     if (!matrix || matrix.length === 0) {
       return { rows: [], parseError: 'The uploaded spreadsheet is empty.' };
     }
 
     return parseMatrixToRows(matrix);
-  } catch (err: any) {
+  } catch (err: unknown) {
     // If file is text based fallback
     try {
       const text = await file.text();
@@ -63,7 +63,7 @@ export async function parsePOFile(file: File): Promise<{ rows: RawPOImportRow[];
         return parsePOText(text);
       }
     } catch {}
-    return { rows: [], parseError: `Failed to parse file: ${err?.message || 'Invalid format'}` };
+    return { rows: [], parseError: `Failed to parse file: ${(err as Error)?.message || 'Invalid format'}` };
   }
 }
 
@@ -151,7 +151,7 @@ export function downloadSampleXLSXTemplate() {
  */
 export function downloadLargeScaleSampleXLSXTemplate(targetItemsCount = 1000) {
   const headers = REQUIRED_HEADERS;
-  const sampleData: any[][] = [headers];
+  const sampleData: (string | number)[][] = [headers];
 
   const departments = ['Fresh Produce', 'Dairy & Refrigerated', 'Grocery & Staples', 'Frozen Foods', 'Beverages', 'Hardware & Tools', 'Office Supplies', 'Electronics & IT'];
   const locations = ['Central Warehouse Bay 1', 'Cold Storage Unit A', 'North Distribution Hub', 'South Regional Facility'];
@@ -217,7 +217,7 @@ export function downloadLargeScaleSampleXLSXTemplate(targetItemsCount = 1000) {
  * Exports current Purchase Orders and items to an XLSX file
  */
 export function exportPOsToXLSX(pos: PurchaseOrder[]) {
-  const exportRows: any[][] = [REQUIRED_HEADERS];
+  const exportRows: (string | number)[][] = [REQUIRED_HEADERS];
 
   pos.forEach(po => {
     (po.items || []).forEach((item, idx) => {
@@ -272,7 +272,7 @@ export function parsePOText(rawText: string): { rows: RawPOImportRow[]; parseErr
   return parseMatrixToRows(matrix);
 }
 
-function parseMatrixToRows(matrix: any[][]): { rows: RawPOImportRow[]; parseError?: string } {
+function parseMatrixToRows(matrix: (string | number)[][]): { rows: RawPOImportRow[]; parseError?: string } {
   if (matrix.length === 0) {
     return { rows: [], parseError: 'Spreadsheet has no rows.' };
   }

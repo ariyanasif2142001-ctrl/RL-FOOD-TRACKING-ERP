@@ -141,7 +141,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
           ].map(cat => (
             <button
               key={cat.id}
-              onClick={() => setActiveCategory(cat.id as any)}
+              onClick={() => setActiveCategory(cat.id as Parameters<typeof setActiveCategory>[0])}
               className={`px-2.5 py-1 rounded-xl transition whitespace-nowrap ${
                 activeCategory === cat.id
                   ? 'bg-emerald-600 text-white shadow-2xs'

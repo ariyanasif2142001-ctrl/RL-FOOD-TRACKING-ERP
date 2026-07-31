@@ -1,5 +1,6 @@
 import { getAppConfig } from '../config/appConfig';
 import { User, PurchaseOrder, AuditLog } from '../types';
+import { getCurrentUser } from './storage';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -20,6 +21,9 @@ export async function postApi<T = any>(action: string, payload: Record<string, a
     };
   }
 
+  const activeUser = getCurrentUser();
+  const token = payload.token || payload.user?.token || activeUser?.token;
+
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -29,6 +33,7 @@ export async function postApi<T = any>(action: string, payload: Record<string, a
       },
       body: JSON.stringify({
         action,
+        token,
         ...payload,
         timestamp: new Date().toISOString()
       })
@@ -45,17 +50,17 @@ export async function postApi<T = any>(action: string, payload: Record<string, a
       data: json.data !== undefined ? json.data : json,
       timestamp: json.timestamp || new Date().toISOString()
     };
-  } catch (error: any) {
-    console.info(`[Google Sheets API] Connection note for action ${action}:`, error?.message || 'Failed to fetch');
+  } catch (error: unknown) {
+    console.info(`[Google Sheets API] Connection note for action ${action}:`, (error as Error)?.message || 'Failed to fetch');
     return {
       success: false,
-      message: error?.message || 'Network error connecting to Google Sheets Web App. Please verify Web App URL in settings.',
+      message: (error as Error)?.message || 'Network error connecting to Google Sheets Web App. Please verify Web App URL in settings.',
       timestamp: new Date().toISOString()
     };
   }
 }
 
-export async function getApi<T = any>(action: string, params: Record<string, string> = {}): Promise<ApiResponse<T>> {
+export async function getApi<T = unknown>(action: string, params: Record<string, string> = {}): Promise<ApiResponse<T>> {
   const config = getAppConfig();
   let url = config.webAppUrl;
 
@@ -82,11 +87,11 @@ export async function getApi<T = any>(action: string, params: Record<string, str
       data: json.data !== undefined ? json.data : json,
       timestamp: json.timestamp || new Date().toISOString()
     };
-  } catch (error: any) {
-    console.info(`[Google Sheets API] GET connection note for action ${action}:`, error?.message || 'Failed to fetch');
+  } catch (error: unknown) {
+    console.info(`[Google Sheets API] GET connection note for action ${action}:`, (error as Error)?.message || 'Failed to fetch');
     return {
       success: false,
-      message: error?.message || 'Network error.',
+      message: (error as Error)?.message || 'Network error.',
       timestamp: new Date().toISOString()
     };
   }

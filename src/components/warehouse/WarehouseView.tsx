@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { PurchaseOrder, POItem, User } from '../../types';
+import { PurchaseOrder, POItem, User, ReceiveBatchLog } from '../../types';
 import { Warehouse, CheckCircle2, Clock, Search, Filter, RefreshCw, Printer, AlertTriangle, ShieldCheck, History, Send, AlertCircle } from 'lucide-react';
+
+export interface WarehouseProcessedItem extends POItem {
+  parentPo: PurchaseOrder;
+  ordered: number;
+  purchased: number;
+  received: number;
+  passed: number;
+  damaged: number;
+  backorder: number;
+  remainingToReceive: number;
+  computedReceiveStatus: 'Pending Receive' | 'Partial Receive' | 'Completed Receive';
+}
 
 interface WarehouseViewProps {
   pos: PurchaseOrder[];
@@ -42,14 +54,14 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'waiting' | 'pending' | 'completed' | 'damaged'>('all');
 
   // Modal State for QC & Partial Receiving
-  const [qcModalItem, setQcModalItem] = useState<any | null>(null);
+  const [qcModalItem, setQcModalItem] = useState<WarehouseProcessedItem | null>(null);
   const [batchReceivedQty, setBatchReceivedQty] = useState<string>('');
   const [batchPassedQty, setBatchPassedQty] = useState<string>('');
   const [batchDamagedQty, setBatchDamagedQty] = useState<string>('0');
   const [qcNotes, setQcNotes] = useState<string>('');
 
   // Logs Modal State
-  const [logsModalItem, setLogsModalItem] = useState<any | null>(null);
+  const [logsModalItem, setLogsModalItem] = useState<WarehouseProcessedItem | null>(null);
 
   // Save filters to localStorage on change
   useEffect(() => {
@@ -163,7 +175,7 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
   const totalDamagedUnits = allItems.reduce((acc, i) => acc + (i.damaged || 0), 0);
 
   // Open QC Modal for an item
-  const handleOpenQcModal = (item: any) => {
+  const handleOpenQcModal = (item: WarehouseProcessedItem) => {
     const defaultBatch = item.remainingToReceive > 0 ? item.remainingToReceive : (item.purchased || 1);
     setQcModalItem(item);
     setBatchReceivedQty(String(defaultBatch));
@@ -225,7 +237,7 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
     }
   };
 
-  const renderItemCard = (item: any, idx: number) => {
+  const renderItemCard = (item: WarehouseProcessedItem, idx: number) => {
     const isCompleted = item.computedReceiveStatus === 'Completed Receive';
     const canReceive = item.purchased > 0 && !isCompleted;
     const hasDamaged = (item.damaged || 0) > 0;
@@ -1058,7 +1070,7 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
             <p className="text-xs font-bold text-slate-800">{logsModalItem.itemName} <span className="text-slate-500 font-mono">(PO #{logsModalItem.parentPo.poNumber})</span></p>
 
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {(logsModalItem.receiveLogs || []).map((log: any, i: number) => (
+              {(logsModalItem.receiveLogs || []).map((log: ReceiveBatchLog, i: number) => (
                 <div key={log.id || i} className="p-2 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1">
                   <div className="flex justify-between text-[10px] text-slate-500 font-semibold">
                     <span>Batch #{i + 1} • {log.receivedBy}</span>

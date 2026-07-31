@@ -52,7 +52,7 @@ export const SystemTestsRunner: React.FC<SystemTestsRunnerProps> = ({
           durationMs: duration,
           details: res.details
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         const duration = Math.round(performance.now() - start);
         testResults.push({
           id,
@@ -61,7 +61,7 @@ export const SystemTestsRunner: React.FC<SystemTestsRunnerProps> = ({
           description,
           passed: false,
           durationMs: duration,
-          details: `Uncaught Exception: ${err?.message || String(err)}`
+          details: `Uncaught Exception: ${(err as Error)?.message || String(err)}`
         });
       }
     };

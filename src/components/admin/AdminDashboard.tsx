@@ -116,7 +116,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsSendingTelegramSummary(true);
     setShowTgReportMenu(false);
 
-    let res: any = null;
+    let res: { success: boolean; error?: string } | null = null;
     let title = '';
 
     if (type === 'master') {
@@ -336,8 +336,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setNowTimestamp(Date.now());
-    }, 1000);
+      if (!document.hidden) {
+        setNowTimestamp(Date.now());
+      }
+    }, 5000);
     return () => clearInterval(timer);
   }, []);
 
@@ -586,8 +588,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       return {
         ...i,
+        poNumber: i.poNumber || p.poNumber,
+        department: i.department || p.department || 'General',
         purchaseStatus: normStatus,
-        holdBy: isHeld ? (i.holdBy || 'Purchaser') : '',
+        holdBy: isHeld ? (i.holdBy || i.holdByName || 'Purchaser') : '',
+        holdById: isHeld ? (i.holdById || '') : '',
+        holdByName: isHeld ? (i.holdByName || i.holdBy || 'Purchaser') : '',
+        holdStartTime: isHeld ? (i.holdStartTime || i.holdSince || new Date().toISOString()) : '',
+        holdSince: isHeld ? (i.holdSince || i.holdStartTime || new Date().toISOString()) : '',
         holdExpireTime: ''
       };
     });
@@ -1525,29 +1533,64 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       ) : (
                         <div className="overflow-x-auto mt-1 max-h-[250px] overflow-y-auto">
                           <table className="w-full text-left text-xs">
-                            <thead className="bg-purple-50 text-purple-900 font-bold uppercase text-[9px] sticky top-0">
+                            <thead className="bg-purple-100/80 text-purple-950 font-bold uppercase text-[10px] sticky top-0 z-10 shadow-2xs">
                               <tr>
                                 <th className="p-2">PO Number</th>
                                 <th className="p-2">Item Name</th>
-                                <th className="p-2 text-center">Req Qty</th>
-                                <th className="p-2">Hold By</th>
+                                <th className="p-2">Department</th>
+                                <th className="p-2 text-center">Quantity</th>
+                                <th className="p-2">Held By</th>
+                                <th className="p-2">Hold Since</th>
+                                <th className="p-2 text-center">Status</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-medium">
-                              {displayHeldItems.map((item, idx) => (
-                                <tr key={item.id ? `${item.id}-${idx}` : `held-${idx}`} className="hover:bg-purple-50/40 transition">
-                                  <td className="p-2 font-mono font-bold text-purple-800">{item.poNumber}</td>
-                                  <td className="p-2 font-bold text-slate-900">
-                                    <span>{item.itemName}</span>
-                                  </td>
-                                  <td className="p-2 text-center font-bold text-slate-800">{item.requestedQty} {item.unit || ''}</td>
-                                  <td className="p-2 text-slate-800 font-bold">
-                                    <span className="bg-purple-100 text-purple-900 px-2 py-0.5 rounded-full text-[10px] inline-flex items-center gap-1">
-                                      🔒 {item.holdBy || 'Purchaser'}
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
+                              {displayHeldItems.map((item, idx) => {
+                                const holdTime = item.holdSince || item.holdStartTime;
+                                let formattedHoldTime = 'N/A';
+                                if (holdTime) {
+                                  try {
+                                    const d = new Date(holdTime);
+                                    if (!isNaN(d.getTime())) {
+                                      formattedHoldTime = d.toLocaleString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: true
+                                      });
+                                    }
+                                  } catch {
+                                    formattedHoldTime = holdTime;
+                                  }
+                                }
+
+                                return (
+                                  <tr key={item.id ? `${item.id}-${idx}` : `held-${idx}`} className="hover:bg-purple-50/40 transition">
+                                    <td className="p-2 font-mono font-bold text-purple-800">{item.poNumber}</td>
+                                    <td className="p-2 font-bold text-slate-900">
+                                      <span>{item.itemName}</span>
+                                    </td>
+                                    <td className="p-2 text-slate-600 font-medium">{item.department || 'General'}</td>
+                                    <td className="p-2 text-center font-bold text-slate-800">{item.requestedQty || item.orderedQty || 0} {item.unit || ''}</td>
+                                    <td className="p-2 text-slate-800 font-bold">
+                                      <div className="flex flex-col">
+                                        <span className="text-slate-900 font-bold">{item.holdByName || item.holdBy || 'Purchaser'}</span>
+                                        {item.holdById && (
+                                          <span className="text-[10px] text-slate-400 font-mono">ID: {item.holdById}</span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="p-2 text-slate-600 font-mono text-[11px] whitespace-nowrap">{formattedHoldTime}</td>
+                                    <td className="p-2 text-center">
+                                      <span className="bg-purple-100 text-purple-900 border border-purple-200 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1">
+                                        <Lock className="w-3 h-3 text-purple-600 shrink-0" />
+                                        HOLD
+                                      </span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
@@ -2510,7 +2553,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
             <div>
               <label className="text-xs font-bold text-slate-700">Role Assignment</label>
-              <select value={newUserRole} onChange={e => setNewUserRole(e.target.value as any)} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs mt-0.5 outline-none focus:border-blue-500 font-medium cursor-pointer">
+              <select value={newUserRole} onChange={e => setNewUserRole(e.target.value as User['role'])} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs mt-0.5 outline-none focus:border-blue-500 font-medium cursor-pointer">
                 <option value="admin">Admin</option>
                 <option value="purchaser">Purchaser</option>
                 <option value="warehouse">Warehouse</option>

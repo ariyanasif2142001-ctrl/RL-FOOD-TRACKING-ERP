@@ -12,17 +12,23 @@ export interface SendMessageResult {
   error?: string;
 }
 
+export interface TelegramInlineButton {
+  text: string;
+  url?: string;
+  callback_data?: string;
+}
+
 export interface SendTelegramOptions {
   silent?: boolean;
   includeButtons?: boolean;
   customUrl?: string;
-  inlineKeyboard?: any[][];
+  inlineKeyboard?: TelegramInlineButton[][];
 }
 
 /**
   * Safely escape HTML characters in user input to prevent Telegram API 400 Bad Request errors
   */
-function escapeHtml(text: any): string {
+function escapeHtml(text: unknown): string {
   if (text === undefined || text === null) return '';
   return String(text)
     .replace(/&/g, '&amp;')
@@ -58,7 +64,7 @@ export async function sendTelegramMessage(
 
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
-  const payload: any = {
+  const payload: Record<string, unknown> = {
     chat_id: chatId,
     text: messageHtml,
     parse_mode: 'HTML',
@@ -122,11 +128,11 @@ export async function sendTelegramMessage(
       success: false, 
       error: `Telegram API Error (${data.error_code}): ${data.description || 'Failed to send'}` 
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Telegram Service Fetch Error:', err);
     return { 
       success: false, 
-      error: err.message || 'Network error connecting to Telegram API.' 
+      error: (err as Error).message || 'Network error connecting to Telegram API.' 
     };
   }
 }
@@ -191,8 +197,8 @@ export async function detectTelegramChatId(botToken: string): Promise<{
       success: false,
       error: 'Could not find chat ID in updates. Send a message in your group and retry.'
     };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'Failed to connect to Telegram.' };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message || 'Failed to connect to Telegram.' };
   }
 }
 
@@ -417,7 +423,7 @@ export async function notifyDailySummaryReport(
       } else if (status === 'Partial Purchased') {
         purchasedItems++;
         fulfilledQty += (item.purchasedQty || 0);
-      } else if ((item as any).warehouseQty && (item as any).warehouseQty >= itemQty) {
+      } else if (item.warehouseQty && item.warehouseQty >= itemQty) {
         warehouseReceivedItems++;
         fulfilledQty += itemQty;
       } else {
@@ -523,8 +529,8 @@ export async function notifyHoldItemsReport(
         holdList.push({
           poNumber: po.poNumber || 'N/A',
           itemName: item.itemName || 'Unnamed Item',
-          reason: (item as any).holdReason || (item as any).reason || (po as any).holdReason || 'No reason specified',
-          heldBy: (item as any).heldBy || (item as any).holdBy || 'Admin'
+          reason: item.holdReason || (item as { reason?: string }).reason || (po as { holdReason?: string }).holdReason || 'No reason specified',
+          heldBy: item.holdBy || 'Admin'
         });
       }
     });
@@ -580,7 +586,7 @@ export async function notifyPurchasedInTransitReport(
           poNumber: po.poNumber || 'N/A',
           itemName: item.itemName || 'Unnamed Item',
           qty: item.purchasedQty || item.requestedQty || 0,
-          supplier: (item as any).supplierName || (item as any).supplier || 'Standard Supplier',
+          supplier: item.supplierName || (item as { supplier?: string }).supplier || 'Standard Supplier',
           date: item.purchasedAt || po.orderDate || 'Today'
         });
       }
@@ -631,11 +637,11 @@ export async function notifyWarehouseInventoryReport(
 
   pos.forEach(po => {
     (po.items || []).forEach(item => {
-      if ((item as any).warehouseQty && (item as any).warehouseQty > 0) {
+      if (item.warehouseQty && item.warehouseQty > 0) {
         warehouseList.push({
           poNumber: po.poNumber || 'N/A',
           itemName: item.itemName || 'Unnamed Item',
-          qty: (item as any).warehouseQty,
+          qty: item.warehouseQty,
           location: po.location || 'Central Warehouse'
         });
       }
@@ -703,7 +709,7 @@ export async function sendCustomTelegramAlert(
 /**
  * Helper to get clean SL Number string
  */
-function getItemSlNo(item: any, fallbackIndex: number): string {
+function getItemSlNo(item: POItem, fallbackIndex: number): string {
   if (item.slNumber !== undefined && item.slNumber !== null && String(item.slNumber).trim() !== '') {
     const num = parseInt(String(item.slNumber), 10);
     if (!isNaN(num)) {
@@ -772,8 +778,8 @@ export async function notifySinglePOReport(
       if (item.brand && item.brand.trim() !== '') {
         line += ` | Brand: <i>${escapeHtml(item.brand)}</i>`;
       }
-      if (status === 'Held' && ((item as any).holdReason || (item as any).reason)) {
-        line += `\n   • Hold Reason: <i>"${escapeHtml((item as any).holdReason || (item as any).reason)}"</i>`;
+      if (status === 'Held' && (item.holdReason || (item as { reason?: string }).reason)) {
+        line += `\n   • Hold Reason: <i>"${escapeHtml(item.holdReason || (item as { reason?: string }).reason)}"</i>`;
       }
       return line;
     }).join('\n\n');
@@ -796,7 +802,7 @@ export async function notifySinglePOReport(
         `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
         `<b>📄 LINE ITEM DETAILS ${totalChunks > 1 ? `(Part 1/${totalChunks})` : ''}:</b>\n\n` +
         `${chunkDetails || '<i>No line items registered</i>'}\n\n` +
-        ((po as any).remarks || po.dispatchNotes ? `💬 <b>PO Notes:</b> <i>"${escapeHtml((po as any).remarks || po.dispatchNotes)}"</i>\n\n` : '') +
+        ((po as { remarks?: string }).remarks || po.dispatchNotes ? `💬 <b>PO Notes:</b> <i>"${escapeHtml((po as { remarks?: string }).remarks || po.dispatchNotes)}"</i>\n\n` : '') +
         `👤 <b>Sent By:</b> ${escapeHtml(triggeredBy)}\n` +
         `⏰ <b>Timestamp:</b> ${new Date().toLocaleTimeString()}`;
     } else {
@@ -809,7 +815,7 @@ export async function notifySinglePOReport(
 
     const overrideConfig = targetChatId && config.telegramConfig?.botToken ? { botToken: config.telegramConfig.botToken, chatId: targetChatId } : undefined;
     
-    let inlineKeyboard: any[][] | undefined = undefined;
+    let inlineKeyboard: TelegramInlineButton[][] | undefined = undefined;
     if (c === totalChunks - 1) {
       const targetUrl = config.telegramConfig?.webAppDisplayUrl || 'https://rlfood-tracking-erp.netlify.app/';
       inlineKeyboard = [];
@@ -1396,7 +1402,7 @@ export async function processTelegramUpdates(
             { botToken: token, chatId }
           );
         } else {
-          const matches: { item: any; poNumber: string }[] = [];
+          const matches: { item: POItem; poNumber: string }[] = [];
           const q = arg.toLowerCase();
           currentPOs.forEach(p => {
             (p.items || []).forEach(item => {
@@ -1449,9 +1455,9 @@ export async function processTelegramUpdates(
     }
 
     return { processedCount, lastCommand };
-  } catch (err: any) {
-    console.warn('Telegram background polling notice:', err?.message || err);
-    return { processedCount: 0, error: err?.message || 'Failed to connect to Telegram update polling.' };
+  } catch (err: unknown) {
+    console.warn('Telegram background polling notice:', (err as Error)?.message || err);
+    return { processedCount: 0, error: (err as Error)?.message || 'Failed to connect to Telegram update polling.' };
   }
 }
 

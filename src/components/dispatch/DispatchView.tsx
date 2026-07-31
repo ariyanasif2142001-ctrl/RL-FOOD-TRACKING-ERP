@@ -230,7 +230,7 @@ export const DispatchView: React.FC<DispatchViewProps> = ({ pos, currentUser }) 
       'Pending Items': m.remainingItems,
     }));
 
-    const itemRows: any[] = [];
+    const itemRows: Record<string, string | number>[] = [];
     filteredMetrics.forEach(m => {
       m.po.items.forEach((item, idx) => {
         const requested = item.requestedQty || item.orderedQty || 0;
@@ -637,7 +637,7 @@ export const DispatchView: React.FC<DispatchViewProps> = ({ pos, currentUser }) 
                 <label className="text-[10px] font-bold uppercase text-slate-400">Delivery Status</label>
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  onChange={(e) => setStatusFilter(e.target.value as Parameters<typeof setStatusFilter>[0])}
                   className="w-full mt-0.5 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-indigo-900 font-bold"
                 >
                   <option value="all">All Delivery Statuses</option>
@@ -877,7 +877,7 @@ export const DispatchView: React.FC<DispatchViewProps> = ({ pos, currentUser }) 
                 <label className="text-[10px] font-bold uppercase text-slate-400 shrink-0">Status Filter:</label>
                 <select
                   value={trackingStatusFilter}
-                  onChange={(e) => setTrackingStatusFilter(e.target.value as any)}
+                  onChange={(e) => setTrackingStatusFilter(e.target.value as Parameters<typeof setTrackingStatusFilter>[0])}
                   className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold"
                 >
                   <option value="all">All Delivery Notes</option>

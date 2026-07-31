@@ -92,11 +92,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     setIsAuthenticating(true);
 
-    // Try live API authentication
+    // Authenticate via Google Apps Script backend (Sheets API)
     const apiRes = await apiLogin(q, passwordInput);
 
     if (apiRes.success && apiRes.data?.user) {
-      const authUser = apiRes.data.user;
+      const authUser: User = {
+        ...apiRes.data.user,
+        token: apiRes.data.user.token || (apiRes.data as { token?: string })?.token
+      };
       saveRememberMePreference(usernameInput);
       setRedirectNotice(`Authenticated! Redirecting to ${authUser.role.toUpperCase()} Portal...`);
       onAuditLog?.('User Login', `Successfully authenticated via API credentials as ${authUser.name} (${authUser.role})`, authUser);
@@ -105,57 +108,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         setIsAuthenticating(false);
         setRedirectNotice(null);
         onLogin(authUser, rememberMe);
-        setPasswordInput('');
-        onClose();
-      }, 400);
-      return;
-    }
-
-    // Fallback: match fetched users roster
-    const foundUser = users.find(u => {
-      const uName = (u.username || '').toLowerCase();
-      const uEmail = (u.email || '').toLowerCase();
-      const uFullName = (u.name || '').toLowerCase();
-      const cleanFullName = uFullName.replace(/^rl\s+/i, '');
-
-      return (
-        uName === q ||
-        uEmail === q ||
-        uFullName === q ||
-        cleanFullName === q ||
-        `rl ${cleanFullName}` === q ||
-        `rl_${cleanFullName}` === q ||
-        `rl_${uName}` === q
-      );
-    });
-
-    if (foundUser) {
-      if (
-        foundUser.password &&
-        foundUser.password.trim() !== passwordInput.trim() &&
-        foundUser.password.trim().toLowerCase() !== passwordInput.trim().toLowerCase()
-      ) {
-        setIsAuthenticating(false);
-        setLoginError('Invalid password for user account.');
-        onAuditLog?.('Login Failure', `Failed login attempt (incorrect password) for username/email: "${usernameInput}"`);
-        return;
-      }
-
-      if (!foundUser.active || foundUser.status === 'Inactive') {
-        setIsAuthenticating(false);
-        setLoginError('Your account is disabled. Inactive users cannot login.');
-        onAuditLog?.('Login Blocked', `Blocked login attempt for inactive user account: "${foundUser.name}"`);
-        return;
-      }
-
-      saveRememberMePreference(usernameInput);
-      setRedirectNotice(`Authenticated! Auto-redirecting to ${foundUser.role.toUpperCase()} View...`);
-      onAuditLog?.('User Login', `Successfully logged in as ${foundUser.name} (${foundUser.role.toUpperCase()})`, foundUser);
-
-      setTimeout(() => {
-        setIsAuthenticating(false);
-        setRedirectNotice(null);
-        onLogin(foundUser, rememberMe);
         setPasswordInput('');
         onClose();
       }, 400);
@@ -175,13 +127,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
+    const userWithToken: User = {
+      ...user,
+      token: user.token || ("SESS-QUICK-" + Date.now() + "-" + Math.random().toString(36).substring(2, 8).toUpperCase())
+    };
+
     saveRememberMePreference(user.username || user.email || user.name);
     setRedirectNotice(`Auto-redirecting to ${user.role.toUpperCase()} View (${user.name})...`);
-    onAuditLog?.('User Quick Login', `Switched active user session to ${user.name} (${user.role.toUpperCase()})`, user);
+    onAuditLog?.('User Quick Login', `Switched active user session to ${user.name} (${user.role.toUpperCase()})`, userWithToken);
 
     setTimeout(() => {
       setRedirectNotice(null);
-      onLogin(user, rememberMe);
+      onLogin(userWithToken, rememberMe);
       onClose();
     }, 300);
   };

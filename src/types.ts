@@ -13,6 +13,7 @@ export interface User {
   status?: 'Active' | 'Inactive';
   createdDate?: string;
   lastLogin?: string;
+  token?: string;
   avatar?: string;
 }
 
@@ -25,7 +26,10 @@ export const getNormalizedItemStatus = (item: {
   orderedQty?: number;
   purchasedQty?: number;
   holdBy?: string;
+  holdById?: string;
+  holdByName?: string;
   holdStartTime?: string;
+  holdSince?: string;
   holdExpireTime?: string;
 }): ItemPurchaseStatus => {
   const rawStatus = String(item.purchaseStatus || '').trim().toLowerCase();
@@ -38,7 +42,7 @@ export const getNormalizedItemStatus = (item: {
   }
 
   const isHeldStatus = rawStatus === 'held' || rawStatus === 'hold';
-  const hasHoldUser = Boolean(item.holdBy && String(item.holdBy).trim() !== '');
+  const hasHoldUser = Boolean((item.holdBy && String(item.holdBy).trim() !== '') || (item.holdByName && String(item.holdByName).trim() !== '') || (item.holdById && String(item.holdById).trim() !== ''));
 
   if (isHeldStatus || hasHoldUser) {
     return 'Held';
@@ -106,10 +110,15 @@ export interface POItem {
   remainingQty: number; // Ordered Qty - Purchased Qty
   purchaseStatus: ItemPurchaseStatus;
   holdBy?: string;
+  holdReason?: string;
+  holdById?: string;
+  holdByName?: string;
   holdStartTime?: string;
+  holdSince?: string;
   holdExpireTime?: string;
   purchaserId?: string;
   purchaserName?: string;
+  supplierName?: string;
   purchasedAt?: string;
   marketPrice?: number;
   unitPrice?: number;

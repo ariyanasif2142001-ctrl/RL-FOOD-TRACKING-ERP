@@ -71,7 +71,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const getRoleBadge = (user: User) => {
-    const isSuper = user.isSuperAdmin || user.name === 'RL TAKMIL' || user.name === 'RL MUSTAQ' || user.id === 'u-takmil' || user.id === 'u-mustaq' || (user.role as any) === 'superadmin';
+    const isSuper = user.isSuperAdmin || user.name === 'RL TAKMIL' || user.name === 'RL MUSTAQ' || user.id === 'u-takmil' || user.id === 'u-mustaq' || (user.role as string) === 'superadmin';
     if (isSuper) {
       return {
         label: 'Super Admin',

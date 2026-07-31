@@ -12,7 +12,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL TAKMIL',
     email: 'takmil@rlfood.com',
     username: 'RL TAKMIL',
-    password: 'RL4829',
     role: 'admin',
     isSuperAdmin: true,
     active: true,
@@ -24,7 +23,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL MUSTAQ',
     email: 'mustaq@rlfood.com',
     username: 'RL MUSTAQ',
-    password: 'RL7314',
     role: 'admin',
     isSuperAdmin: true,
     active: true,
@@ -36,7 +34,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL POLASH',
     email: 'polash@rlfood.com',
     username: 'RL POLASH',
-    password: 'RL2958',
     role: 'admin',
     active: true,
     status: 'Active',
@@ -47,7 +44,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL MURSHID',
     email: 'murshid@rlfood.com',
     username: 'RL MURSHID',
-    password: 'RL8163',
     role: 'admin',
     active: true,
     status: 'Active',
@@ -58,7 +54,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL SAMIR',
     email: 'samir@rlfood.com',
     username: 'RL SAMIR',
-    password: 'RL5027',
     role: 'admin',
     active: true,
     status: 'Active',
@@ -69,7 +64,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL NISAM',
     email: 'nisam@rlfood.com',
     username: 'RL NISAM',
-    password: 'RL9481',
     role: 'admin',
     active: true,
     status: 'Active',
@@ -80,7 +74,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL IQBAL',
     email: 'iqbal@rlfood.com',
     username: 'RL IQBAL',
-    password: 'RL3921',
     role: 'purchaser',
     active: true,
     status: 'Active',
@@ -91,7 +84,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL MINHAZ',
     email: 'minhaz@rlfood.com',
     username: 'RL MINHAZ',
-    password: 'RL8410',
     role: 'purchaser',
     active: true,
     status: 'Active',
@@ -102,7 +94,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL ASRAF',
     email: 'asraf@rlfood.com',
     username: 'RL ASRAF',
-    password: 'RL2675',
     role: 'purchaser',
     active: true,
     status: 'Active',
@@ -113,7 +104,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL ASIF',
     email: 'asif@rlfood.com',
     username: 'RL ASIF',
-    password: 'RL5194',
     role: 'purchaser',
     active: true,
     status: 'Active',
@@ -124,7 +114,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL SADAKA',
     email: 'sadaka@rlfood.com',
     username: 'RL SADAKA',
-    password: 'RL7032',
     role: 'purchaser',
     active: true,
     status: 'Active',
@@ -135,7 +124,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL SAHER',
     email: 'saher@rlfood.com',
     username: 'RL SAHER',
-    password: 'RL1846',
     role: 'purchaser',
     active: true,
     status: 'Active',
@@ -146,7 +134,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL NIYAS',
     email: 'niyas@rlfood.com',
     username: 'RL NIYAS',
-    password: 'RL6209',
     role: 'purchaser',
     active: true,
     status: 'Active',
@@ -157,7 +144,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL NADIR',
     email: 'nadir@rlfood.com',
     username: 'RL NADIR',
-    password: 'RL4381',
     role: 'purchaser',
     active: true,
     status: 'Active',
@@ -168,7 +154,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL MANOJ',
     email: 'manoj@rlfood.com',
     username: 'RL MANOJ',
-    password: 'RL9157',
     role: 'purchaser',
     active: true,
     status: 'Active',
@@ -179,7 +164,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL AL AMIN',
     email: 'alamin@rlfood.com',
     username: 'RL AL AMIN',
-    password: 'RL3145',
     role: 'warehouse',
     active: true,
     status: 'Active',
@@ -190,7 +174,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL ASIQ',
     email: 'asiq@rlfood.com',
     username: 'RL ASIQ',
-    password: 'RL6820',
     role: 'warehouse',
     active: true,
     status: 'Active',
@@ -201,7 +184,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL EMDADUL',
     email: 'emdadul@rlfood.com',
     username: 'RL EMDADUL',
-    password: 'RL4719',
     role: 'warehouse',
     active: true,
     status: 'Active',
@@ -212,7 +194,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL OPU',
     email: 'opu@rlfood.com',
     username: 'RL OPU',
-    password: 'RL8352',
     role: 'warehouse',
     active: true,
     status: 'Active',
@@ -223,7 +204,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL NAHID',
     email: 'nahid@rlfood.com',
     username: 'RL NAHID',
-    password: 'RL5284',
     role: 'dispatch',
     active: true,
     status: 'Active',
@@ -234,7 +214,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL ISMAIL',
     email: 'ismail@rlfood.com',
     username: 'RL ISMAIL',
-    password: 'RL7391',
     role: 'dispatch',
     active: true,
     status: 'Active',
@@ -245,7 +224,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL ATIQ',
     email: 'atiq@rlfood.com',
     username: 'RL ATIQ',
-    password: 'RL1046',
     role: 'dispatch',
     active: true,
     status: 'Active',
@@ -256,7 +234,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL OBAIDUL',
     email: 'obaidul@rlfood.com',
     username: 'RL OBAIDUL',
-    password: 'RL8623',
     role: 'dispatch',
     active: true,
     status: 'Active',
@@ -267,7 +244,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL TAMIM',
     email: 'tamim@rlfood.com',
     username: 'RL TAMIM',
-    password: 'RL3957',
     role: 'dispatch',
     active: true,
     status: 'Active',
@@ -278,7 +254,6 @@ export const INITIAL_USERS: User[] = [
     name: 'RL RAKIB',
     email: 'rakib@rlfood.com',
     username: 'RL RAKIB',
-    password: 'RL6120',
     role: 'dispatch',
     active: true,
     status: 'Active',
@@ -433,7 +408,6 @@ export function sanitizeAndMergeAdmins(rawUsers: User[]): User[] {
       return {
         ...existing,
         username: defaultAdmin.username,
-        password: defaultAdmin.password,
         role: 'admin' as const,
         isSuperAdmin: defaultAdmin.isSuperAdmin,
         active: true,
@@ -449,7 +423,6 @@ export function sanitizeAndMergeAdmins(rawUsers: User[]): User[] {
       return {
         ...existing,
         username: defaultPurchaser.username,
-        password: defaultPurchaser.password,
         role: 'purchaser' as const,
         active: true,
         status: 'Active' as const
@@ -464,7 +437,6 @@ export function sanitizeAndMergeAdmins(rawUsers: User[]): User[] {
       return {
         ...existing,
         username: defaultReceiver.username,
-        password: defaultReceiver.password,
         role: 'warehouse' as const,
         active: true,
         status: 'Active' as const
@@ -479,7 +451,6 @@ export function sanitizeAndMergeAdmins(rawUsers: User[]): User[] {
       return {
         ...existing,
         username: defaultDispatch.username,
-        password: defaultDispatch.password,
         role: 'dispatch' as const,
         active: true,
         status: 'Active' as const
@@ -497,7 +468,7 @@ export function getCurrentUser(): User | null {
     try {
       const parsed = JSON.parse(data);
       if (parsed && parsed.name) {
-        if (parsed.name === 'RL TAKMIL' || parsed.name === 'RL MUSTAQ' || parsed.id === 'u-takmil' || parsed.id === 'u-mustaq' || (parsed as any).role === 'superadmin') {
+        if (parsed.name === 'RL TAKMIL' || parsed.name === 'RL MUSTAQ' || parsed.id === 'u-takmil' || parsed.id === 'u-mustaq' || (parsed as { role?: string }).role === 'superadmin') {
           parsed.isSuperAdmin = true;
         }
         const allowedAdmins = ['RL TAKMIL', 'RL MUSTAQ', 'RL POLASH', 'RL MURSHID', 'RL SAMIR', 'RL NISAM'];
@@ -516,7 +487,7 @@ export function getCurrentUser(): User | null {
 
 export function saveCurrentUser(user: User | null, remember: boolean = true) {
   if (user) {
-    if (user.name === 'RL TAKMIL' || user.name === 'RL MUSTAQ' || user.id === 'u-takmil' || user.id === 'u-mustaq' || (user as any).role === 'superadmin') {
+    if (user.name === 'RL TAKMIL' || user.name === 'RL MUSTAQ' || user.id === 'u-takmil' || user.id === 'u-mustaq' || (user.role as string) === 'superadmin') {
       user.isSuperAdmin = true;
     }
     sessionStorage.setItem(KEY_CURRENT_USER, JSON.stringify(user));

@@ -130,14 +130,14 @@ export const DeliveryChallanModal: React.FC<DeliveryChallanModalProps> = ({ po, 
   };
 
   // Update item details manually
-  const updateItemDetail = (id: string, field: keyof ChallanItem, value: any) => {
+  const updateItemDetail = (id: string, field: keyof ChallanItem, value: ChallanItem[keyof ChallanItem]) => {
     let updatedItemForMapping: ChallanItem | null = null;
 
     setChallanItems(prev => prev.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
         if (field === 'sku') {
-          if (value && value.trim()) {
+          if (value && String(value).trim()) {
             updated.included = true;
           } else {
             updated.included = false;

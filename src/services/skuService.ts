@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { MasterSKUEntry, POItem } from '../types';
+import { MasterSKUEntry, POItem, PurchaseOrder } from '../types';
 
 const STORAGE_KEY_MASTER_SKU = 'rl_master_sku_mappings';
 const STORAGE_KEY_SKU_URL = 'rl_master_sku_sheet_url';
@@ -155,7 +155,7 @@ export function saveMasterSKUMappings(mappings: MasterSKUEntry[]): void {
   try {
     const json = JSON.stringify(mappings);
     localStorage.setItem(STORAGE_KEY_MASTER_SKU, json);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.warn('LocalStorage quota exceeded for Master SKU mappings. Using IndexedDB & in-memory cache.', err);
     try {
       const truncated = mappings.slice(0, 300);
@@ -239,7 +239,7 @@ export function extractSKUsFromWorkbook(workbook: XLSX.WorkBook, preferredSheetN
     throw new Error(`Sheet '${targetSheetName}' not found in workbook.`);
   }
 
-  const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false }) as any[][];
+  const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false }) as (string | number)[][];
   if (!matrix || matrix.length < 2) {
     throw new Error(`No data rows found in sheet '${targetSheetName}'.`);
   }
@@ -359,9 +359,9 @@ export async function fetchAndSyncMasterSKUsFromUrl(rawUrl: string, preferredShe
     } else {
       return { success: false, count: 0, message: `No valid SKU mappings found in sheet '${targetSheetName}'.` };
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Master SKU Sync error:', err);
-    return { success: false, count: 0, message: `Failed to fetch sheet: ${err?.message || 'Network error'}` };
+    return { success: false, count: 0, message: `Failed to fetch sheet: ${(err as Error)?.message || 'Network error'}` };
   }
 }
 
@@ -415,14 +415,14 @@ export function matchPOItemToMasterSKU(item: Partial<POItem>, mappings?: MasterS
 /**
  * Re-evaluates purchase order items against current Master SKU database
  */
-export function reMatchPOsWithMasterSKU(pos: any[], mappings?: MasterSKUEntry[]): any[] {
+export function reMatchPOsWithMasterSKU(pos: PurchaseOrder[], mappings?: MasterSKUEntry[]): PurchaseOrder[] {
   const masterList = mappings || getMasterSKUMappings();
   if (!masterList || masterList.length === 0 || !pos || pos.length === 0) return pos;
 
   return pos.map(po => {
     if (!po || !po.items) return po;
     let hasChanges = false;
-    const updatedItems = po.items.map((item: any) => {
+    const updatedItems = po.items.map((item: POItem) => {
       const matched = matchPOItemToMasterSKU(item, masterList);
       if (
         matched.sku !== item.sku ||
@@ -498,9 +498,9 @@ export function savePoItemSkuMapping(
       const pos = JSON.parse(localPosRaw);
       if (Array.isArray(pos)) {
         let updatedAny = false;
-        const updatedPos = pos.map((p: any) => {
+        const updatedPos = pos.map((p: PurchaseOrder) => {
           if (p.poNumber && p.poNumber.trim().toLowerCase() === normPo) {
-            const nextItems = (p.items || []).map((item: any) => {
+            const nextItems = (p.items || []).map((item: POItem) => {
               const matchById = poItemId && item.id === poItemId;
               const matchByName = normName && item.itemName && item.itemName.trim().toLowerCase() === normName;
               if (matchById || matchByName) {

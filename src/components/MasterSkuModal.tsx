@@ -97,8 +97,8 @@ export const MasterSkuModal: React.FC<MasterSkuModalProps> = ({ isOpen, onClose,
       } else {
         throw new Error('No valid SKU mappings found');
       }
-    } catch (err: any) {
-      setSyncMessage({ text: `Failed to import file: ${err.message}`, type: 'error' });
+    } catch (err: unknown) {
+      setSyncMessage({ text: `Failed to import file: ${(err as Error).message}`, type: 'error' });
     } finally {
       setIsSyncing(false);
     }
