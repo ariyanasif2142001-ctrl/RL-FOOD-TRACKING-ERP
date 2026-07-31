@@ -597,11 +597,6 @@ function verifySessionToken(payload) {
     return { valid: true, session: sess };
   }
 
-  // Allow server-issued SESS- tokens
-  if (token.startsWith("SESS-")) {
-    return { valid: true };
-  }
-
   return { valid: false, message: "Unauthorized: Invalid or expired session token. Access denied." };
 }
 

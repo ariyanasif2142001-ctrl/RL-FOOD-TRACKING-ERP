@@ -187,6 +187,29 @@ User Question: "${userQuery}"`;
         return res.status(400).json({ error: "Missing url query parameter" });
       }
 
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(targetUrl);
+      } catch {
+        return res.status(400).json({ error: "URL domain not allowed" });
+      }
+
+      const allowedHostnames = new Set([
+        'dropbox.com',
+        'www.dropbox.com',
+        'dl.dropboxusercontent.com',
+        'docs.google.com',
+        'drive.google.com',
+        'sheets.googleapis.com',
+        'script.google.com',
+        'script.googleusercontent.com'
+      ]);
+
+      const hostname = parsedUrl.hostname.toLowerCase();
+      if (!allowedHostnames.has(hostname)) {
+        return res.status(400).json({ error: "URL domain not allowed" });
+      }
+
       // Append cache buster parameter to bypass CDN/edge caching for Dropbox & Google Sheets
       const separator = targetUrl.includes('?') ? '&' : '?';
       const fetchUrl = `${targetUrl}${separator}_cb=${Date.now()}`;

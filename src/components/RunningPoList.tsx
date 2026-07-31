@@ -13,7 +13,12 @@ interface RunningPoListProps {
   title?: string;
   className?: string;
   onDeletePO?: (poNumber: string) => void;
+  onDeletePo?: (poNumber: string) => void;
   onClearAllPOs?: () => void;
+  onSelectPo?: (po: PurchaseOrder) => void;
+  onUpdatePoStatus?: (poNumber: string, status: string) => void;
+  onBulkUpdatePoStatus?: (poNumbers: string[], status: string) => void;
+  onBulkDeletePOs?: (poNumbers: string[]) => void;
 }
 
 export const RunningPoList: React.FC<RunningPoListProps> = ({ 
@@ -21,7 +26,12 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
   title = "Purchase Orders Management (All & Active Orders)",
   className = "",
   onDeletePO,
-  onClearAllPOs
+  onDeletePo,
+  onClearAllPOs,
+  onSelectPo,
+  onUpdatePoStatus,
+  onBulkUpdatePoStatus,
+  onBulkDeletePOs
 }) => {
   // Running PO List Filter States
   const [runningPoSearch, setRunningPoSearch] = useState<string>('');
@@ -29,6 +39,10 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
   const [runningPoDeptFilter, setRunningPoDeptFilter] = useState<string>('ALL');
   const [runningPoLocFilter, setRunningPoLocFilter] = useState<string>('ALL');
   const [runningPoStatusFilter, setRunningPoStatusFilter] = useState<string>('ACTIVE');
+
+  // Bulk selection states
+  const [selectedPoNumbers, setSelectedPoNumbers] = useState<Set<string>>(new Set());
+  const [bulkStatusSelectValue, setBulkStatusSelectValue] = useState<string>('');
 
   // Selected PO Modal for detailed report view
   const [selectedPoForDetail, setSelectedPoForDetail] = useState<PurchaseOrder | null>(null);
@@ -123,9 +137,96 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
     });
   }, [pos, runningPoStatusFilter, runningPoDeptFilter, runningPoLocFilter, runningPoSearch, runningPoItemSearch]);
 
+  // Selected POs derived state (respecting active filters)
+  const selectedPOs = useMemo(() => {
+    return filteredRunningPOs.filter(po => selectedPoNumbers.has(po.poNumber));
+  }, [filteredRunningPOs, selectedPoNumbers]);
+
+  const isAllFilteredSelected = useMemo(() => {
+    return filteredRunningPOs.length > 0 && filteredRunningPOs.every(po => selectedPoNumbers.has(po.poNumber));
+  }, [filteredRunningPOs, selectedPoNumbers]);
+
+  const handleSelectAll = () => {
+    const next = new Set(selectedPoNumbers);
+    if (isAllFilteredSelected) {
+      filteredRunningPOs.forEach(po => next.delete(po.poNumber));
+    } else {
+      filteredRunningPOs.forEach(po => next.add(po.poNumber));
+    }
+    setSelectedPoNumbers(next);
+  };
+
+  const handleToggleSelectPo = (poNumber: string) => {
+    const next = new Set(selectedPoNumbers);
+    if (next.has(poNumber)) {
+      next.delete(poNumber);
+    } else {
+      next.add(poNumber);
+    }
+    setSelectedPoNumbers(next);
+  };
+
+  const handleBulkStatusChange = (newStatus: string) => {
+    if (!newStatus || selectedPOs.length === 0) return;
+
+    const poNumbers = selectedPOs.map(p => p.poNumber);
+
+    if (onBulkUpdatePoStatus) {
+      onBulkUpdatePoStatus(poNumbers, newStatus);
+    } else if (onUpdatePoStatus) {
+      poNumbers.forEach(poNum => onUpdatePoStatus(poNum, newStatus));
+    } else {
+      // Local loop update over selected items
+      selectedPOs.forEach(po => {
+        po.purchaseStatus = newStatus as any;
+        if (po.items && Array.isArray(po.items)) {
+          po.items.forEach(item => {
+            if (newStatus === 'Completed') {
+              item.purchaseStatus = 'Purchased';
+            } else if (newStatus === 'Pending') {
+              item.purchaseStatus = 'Pending';
+            } else if (newStatus === 'Held') {
+              item.purchaseStatus = 'Held';
+            } else if (newStatus === 'Partial') {
+              item.purchaseStatus = 'Partial Purchased';
+            }
+          });
+        }
+      });
+      window.dispatchEvent(new CustomEvent('po_data_updated', { detail: pos }));
+    }
+
+    // Clear selection after action completes
+    setSelectedPoNumbers(new Set());
+    setBulkStatusSelectValue('');
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedPOs.length === 0) return;
+
+    const poNumbers = selectedPOs.map(p => p.poNumber);
+    const deleteHandler = onDeletePO || onDeletePo;
+
+    const confirmMsg = `Are you sure you want to delete ${selectedPOs.length} selected Purchase Order(s)?\n\nPO Numbers: ${poNumbers.slice(0, 5).join(', ')}${poNumbers.length > 5 ? '...' : ''}\n\nThis action cannot be undone.`;
+
+    if (window.confirm(confirmMsg)) {
+      if (onBulkDeletePOs) {
+        onBulkDeletePOs(poNumbers);
+      } else if (deleteHandler) {
+        poNumbers.forEach(poNum => deleteHandler(poNum));
+      } else {
+        const remainingPOs = pos.filter(p => !poNumbers.includes(p.poNumber));
+        window.dispatchEvent(new CustomEvent('po_data_updated', { detail: remainingPOs }));
+      }
+      // Clear selection after action completes
+      setSelectedPoNumbers(new Set());
+    }
+  };
+
   // Excel (CSV) Export
-  const exportRunningPOsToCSV = () => {
-    if (filteredRunningPOs.length === 0) return;
+  const exportRunningPOsToCSV = (targetPOs?: PurchaseOrder[]) => {
+    const listToExport = targetPOs || filteredRunningPOs;
+    if (listToExport.length === 0) return;
 
     const headers = [
       "PO Number",
@@ -141,7 +242,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
       "Item Details"
     ];
 
-    const rows = filteredRunningPOs.map(po => {
+    const rows = listToExport.map(po => {
       const items = po.items || [];
       const total = items.length;
       const purchased = items.filter(i => i.purchaseStatus === 'Purchased').length;
@@ -176,8 +277,9 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
   };
 
   // PDF Export for Filtered Running POs
-  const exportRunningPOsToPDF = () => {
-    if (filteredRunningPOs.length === 0) return;
+  const exportRunningPOsToPDF = (targetPOs?: PurchaseOrder[]) => {
+    const listToExport = targetPOs || filteredRunningPOs;
+    if (listToExport.length === 0) return;
 
     const printWindow = window.open('', '_blank', 'width=1000,height=800');
     if (!printWindow) {
@@ -536,6 +638,80 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
           </select>
         </div>
 
+        {/* Conditional Bulk Actions Bar */}
+        {selectedPOs.length > 0 && (
+          <div className="bg-slate-900 text-white rounded-xl p-2.5 sm:px-3 border border-slate-800 flex flex-wrap items-center justify-between gap-2 shadow-md mt-2 animate-in fade-in duration-200">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 bg-blue-600/30 text-blue-300 border border-blue-500/40 font-bold rounded-lg text-xs flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
+                <span>{selectedPOs.length} selected</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedPoNumbers(new Set())}
+                className="text-[11px] font-semibold text-slate-400 hover:text-slate-200 underline cursor-pointer"
+              >
+                Deselect All
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Change Status Dropdown */}
+              <div className="flex items-center gap-1">
+                <select
+                  value={bulkStatusSelectValue}
+                  onChange={(e) => handleBulkStatusChange(e.target.value)}
+                  className="px-2.5 py-1 bg-slate-800 text-slate-100 border border-slate-700 rounded-lg text-xs font-bold outline-none focus:border-blue-500 cursor-pointer"
+                >
+                  <option value="">Change Status...</option>
+                  <option value="Pending">Set Pending</option>
+                  <option value="Partial">Set Partial</option>
+                  <option value="Completed">Set Completed</option>
+                  <option value="Held">Set Hold</option>
+                </select>
+              </div>
+
+              {/* Export Options */}
+              <button
+                type="button"
+                onClick={() => {
+                  exportRunningPOsToCSV(selectedPOs);
+                  setSelectedPoNumbers(new Set());
+                }}
+                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 transition cursor-pointer"
+                title="Export selected POs to Excel (CSV)"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Export Excel ({selectedPOs.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  exportRunningPOsToPDF(selectedPOs);
+                  setSelectedPoNumbers(new Set());
+                }}
+                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 transition cursor-pointer"
+                title="Export selected POs to PDF"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Export PDF ({selectedPOs.length})</span>
+              </button>
+
+              {/* Bulk Delete */}
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 transition cursor-pointer"
+                title="Delete selected POs"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete ({selectedPOs.length})</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Running PO Table */}
         {filteredRunningPOs.length === 0 ? (
           <div className="text-center py-8 space-y-2">
@@ -561,6 +737,15 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[9px] sticky top-0 z-10 shadow-2xs">
                 <tr>
+                  <th className="p-2 w-8 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllFilteredSelected}
+                      onChange={handleSelectAll}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer w-3.5 h-3.5 accent-blue-600"
+                      title={isAllFilteredSelected ? "Deselect all filtered POs" : "Select all filtered POs"}
+                    />
+                  </th>
                   <th className="p-2">PO Number</th>
                   <th className="p-2">Department</th>
                   <th className="p-2">Location</th>
@@ -574,13 +759,25 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                   const totalItems = po.items ? po.items.length : 0;
                   const purchasedCount = (po.items || []).filter(i => i.purchaseStatus === 'Purchased').length;
                   const percent = totalItems > 0 ? Math.round((purchasedCount / totalItems) * 100) : 0;
+                  const isSelected = selectedPoNumbers.has(po.poNumber);
 
                   return (
                     <tr 
                       key={po.id ? `${po.id}-${idx}` : `rpo-${idx}`} 
-                      className="hover:bg-blue-50/50 transition cursor-pointer" 
-                      onClick={() => setSelectedPoForDetail(po)}
+                      className={`hover:bg-blue-50/50 transition cursor-pointer ${isSelected ? 'bg-blue-50/70' : ''}`} 
+                      onClick={() => {
+                        if (onSelectPo) onSelectPo(po);
+                        setSelectedPoForDetail(po);
+                      }}
                     >
+                      <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectPo(po.poNumber)}
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer w-3.5 h-3.5 accent-blue-600"
+                        />
+                      </td>
                       <td className="p-2 font-mono font-bold text-blue-700">
                         <button
                           type="button"
@@ -648,7 +845,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                             <Eye className="w-3 h-3" />
                             <span>Report</span>
                           </button>
-                          {onDeletePO && (
+                          {(onDeletePO || onDeletePo) && (
                             <button
                               type="button"
                               onClick={(e) => {
@@ -920,7 +1117,8 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  if (onDeletePO && poToDelete) onDeletePO(poToDelete);
+                  const handler = onDeletePO || onDeletePo;
+                  if (handler && poToDelete) handler(poToDelete);
                   setPoToDelete(null);
                 }}
                 className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg cursor-pointer shadow-xs"

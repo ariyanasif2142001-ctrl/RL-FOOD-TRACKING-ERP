@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, PurchaseOrder, SheetsConfig, AuditLog, POItem, MasterStatus, getNormalizedItemStatus, ReceiveBatchLog } from './types';
 import { 
@@ -18,14 +18,16 @@ import {
 import { Header } from './components/Header';
 import { CompanyLogo } from './components/CompanyLogo';
 import { LoginModal } from './components/LoginModal';
-import { AdminDashboard } from './components/admin/AdminDashboard';
-import { PurchaserView } from './components/purchaser/PurchaserView';
-import { WarehouseView } from './components/warehouse/WarehouseView';
-import { DispatchView } from './components/dispatch/DispatchView';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { notifyItemHold, notifyItemPurchased, notifyWarehouseReceived, notifyPODispatched, notifyActivityLog, processTelegramUpdates, notifyDailySummaryReport, notifyPendingPurchasesReport, notifyHoldItemsReport, notifyDiscrepancyAlert } from './services/telegramService';
 import { fetchAndSyncMasterSKUsFromUrl, getMasterSKUSheetUrl, reMatchPOsWithMasterSKU } from './services/skuService';
-import { RefreshCw, AlertCircle, Database, CheckCircle, Loader2, Sparkles, X } from 'lucide-react';
+import { getNotificationPermission, requestNotificationPermission, sendBrowserNotification } from './services/notificationService';
+import { RefreshCw, AlertCircle, Database, CheckCircle, Loader2, Sparkles, X, Bell } from 'lucide-react';
+
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const PurchaserView = lazy(() => import('./components/purchaser/PurchaserView').then(m => ({ default: m.PurchaserView })));
+const WarehouseView = lazy(() => import('./components/warehouse/WarehouseView').then(m => ({ default: m.WarehouseView })));
+const DispatchView = lazy(() => import('./components/dispatch/DispatchView').then(m => ({ default: m.DispatchView })));
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(getCurrentUser());
@@ -88,6 +90,28 @@ export default function App() {
   const [isMasterSkuOpen, setIsMasterSkuOpen] = useState<boolean>(false);
 
   const [toast, setToast] = useState<{ message: string; success: boolean } | null>(null);
+
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(getNotificationPermission());
+  const [isNotifBannerDismissed, setIsNotifBannerDismissed] = useState<boolean>(() => {
+    return typeof sessionStorage !== 'undefined' && sessionStorage.getItem('rl_notif_banner_dismissed') === 'true';
+  });
+
+  const handleEnableNotifications = async () => {
+    const perm = await requestNotificationPermission();
+    setNotifPermission(perm);
+    if (perm === 'granted') {
+      sendBrowserNotification('Notifications Active 🔔', {
+        body: 'You will now receive real-time updates for PO creation, holds, purchases, and dispatches.'
+      });
+    }
+  };
+
+  const handleDismissNotifBanner = () => {
+    setIsNotifBannerDismissed(true);
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('rl_notif_banner_dismissed', 'true');
+    }
+  };
 
   const showToast = (message: string, success: boolean = true) => {
     setToast({ message, success });
@@ -1202,6 +1226,36 @@ export default function App() {
         </div>
       )}
 
+      {/* Subtle Non-Intrusive Notification Permission Banner */}
+      {notifPermission === 'default' && !isNotifBannerDismissed && (
+        <div className="bg-[#08281B] border-b border-emerald-800/80 text-emerald-100 px-3 sm:px-6 py-2 text-xs flex items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2 min-w-0">
+            <Bell className="w-4 h-4 text-amber-400 shrink-0 animate-bounce" />
+            <span className="truncate font-medium text-[11px] sm:text-xs text-emerald-100">
+              Enable browser notifications to receive real-time alerts for PO creations, holds, purchases, and dispatches.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleEnableNotifications}
+              type="button"
+              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-[11px] transition active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-2xs"
+            >
+              <Bell className="w-3 h-3" />
+              <span>Enable Alerts</span>
+            </button>
+            <button
+              onClick={handleDismissNotifBanner}
+              type="button"
+              className="p-1 text-emerald-400 hover:text-white rounded-md transition cursor-pointer"
+              title="Dismiss Notification Banner"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area */}
       <main className="flex-1 pb-12 w-full overflow-y-auto min-h-screen">
         {isLoading ? (
@@ -1235,65 +1289,71 @@ export default function App() {
         ) : (
           <div className="pt-4 px-2 sm:px-6 max-w-7xl mx-auto">
             {/* Role Specific Dashboard */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentUser.role}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                {currentUser.role === 'admin' && (
-                <AdminDashboard
-                  pos={pos}
-                  users={users}
-                  sheetsConfig={sheetsConfig}
-                  auditLogs={auditLogs}
-                  onImportPOs={handleImportPOs}
-                  onUpdateUsers={handleUpdateUsers}
-                  onSaveSheetsConfig={handleSaveSheetsConfig}
-                  onSync={() => loadMasterData(true)}
-                  onDeletePO={handleDeletePO}
-                  onClearAllPOs={handleClearAllPOs}
-                  onShowToast={showToast}
-                  isSyncing={isSyncing}
-                  currentUser={currentUser}
-                  externalActiveTab={adminActiveTab}
-                  onSelectAdminTab={setAdminActiveTab}
-                  isExternalMasterSkuOpen={isMasterSkuOpen}
-                  onCloseExternalMasterSkuModal={() => setIsMasterSkuOpen(false)}
-                />
-              )}
+            <Suspense fallback={
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+              </div>
+            }>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentUser.role}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {currentUser.role === 'admin' && (
+                    <AdminDashboard
+                      pos={pos}
+                      users={users}
+                      sheetsConfig={sheetsConfig}
+                      auditLogs={auditLogs}
+                      onImportPOs={handleImportPOs}
+                      onUpdateUsers={handleUpdateUsers}
+                      onSaveSheetsConfig={handleSaveSheetsConfig}
+                      onSync={() => loadMasterData(true)}
+                      onDeletePO={handleDeletePO}
+                      onClearAllPOs={handleClearAllPOs}
+                      onShowToast={showToast}
+                      isSyncing={isSyncing}
+                      currentUser={currentUser}
+                      externalActiveTab={adminActiveTab}
+                      onSelectAdminTab={setAdminActiveTab}
+                      isExternalMasterSkuOpen={isMasterSkuOpen}
+                      onCloseExternalMasterSkuModal={() => setIsMasterSkuOpen(false)}
+                    />
+                  )}
 
-              {currentUser.role === 'purchaser' && (
-                <PurchaserView
-                  pos={pos}
-                  currentUser={currentUser}
-                  onHoldItem={handleHoldItem}
-                  onReleaseHold={handleReleaseHold}
-                  onRecordPurchase={handleRecordPurchase}
-                  onReturnItem={handleReturnItem}
-                />
-              )}
+                  {currentUser.role === 'purchaser' && (
+                    <PurchaserView
+                      pos={pos}
+                      currentUser={currentUser}
+                      onHoldItem={handleHoldItem}
+                      onReleaseHold={handleReleaseHold}
+                      onRecordPurchase={handleRecordPurchase}
+                      onReturnItem={handleReturnItem}
+                    />
+                  )}
 
-              {currentUser.role === 'warehouse' && (
-                <WarehouseView
-                  pos={pos}
-                  currentUser={currentUser}
-                  onReceiveComplete={handleReceiveComplete}
-                />
-              )}
+                  {currentUser.role === 'warehouse' && (
+                    <WarehouseView
+                      pos={pos}
+                      currentUser={currentUser}
+                      onReceiveComplete={handleReceiveComplete}
+                    />
+                  )}
 
-              {currentUser.role === 'dispatch' && (
-                <DispatchView
-                  pos={pos}
-                  currentUser={currentUser}
-                  onDispatchPO={handleDispatchPO}
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
+                  {currentUser.role === 'dispatch' && (
+                    <DispatchView
+                      pos={pos}
+                      currentUser={currentUser}
+                      onDispatchPO={handleDispatchPO}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </Suspense>
+          </div>
         )}
       </main>
 

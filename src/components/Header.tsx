@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, SheetsConfig } from '../types';
-import { RefreshCw, UserCheck, Shield, ShoppingBag, Warehouse, Truck, LogOut, Crown, Camera, Upload, X, Check, Smartphone, Download, Share, PlusSquare, ExternalLink, Search, Command, ChevronDown, User as UserIcon, Mail, Sparkles, Key, Users, Database, Send, CheckCircle2, BookOpen, FileSpreadsheet, Settings } from 'lucide-react';
+import { RefreshCw, UserCheck, Shield, ShoppingBag, Warehouse, Truck, LogOut, Crown, Camera, Upload, X, Check, Smartphone, Download, Share, PlusSquare, ExternalLink, Search, Command, ChevronDown, User as UserIcon, Mail, Sparkles, Key, Users, Database, Send, CheckCircle2, BookOpen, FileSpreadsheet, Settings, Bell } from 'lucide-react';
 import { CompanyLogo } from './CompanyLogo';
+import { getNotificationPermission, requestNotificationPermission, sendBrowserNotification } from '../services/notificationService';
 
 interface HeaderProps {
   currentUser: User;
@@ -31,8 +32,30 @@ export const Header: React.FC<HeaderProps> = ({
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [avatarUrlInput, setAvatarUrlInput] = useState(currentUser.avatar || '');
+  const [notifState, setNotifState] = useState(getNotificationPermission());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setNotifState(getNotificationPermission());
+  }, []);
+
+  const handleNotifClick = async () => {
+    const current = getNotificationPermission();
+    if (current === 'default') {
+      const res = await requestNotificationPermission();
+      setNotifState(res);
+      if (res === 'granted') {
+        sendBrowserNotification('Notifications Enabled 🔔', {
+          body: 'You will now receive real-time alerts for Purchase Orders, holds, purchases, and dispatches.'
+        });
+      }
+    } else if (current === 'granted') {
+      sendBrowserNotification('Notifications Active 🔔', {
+        body: 'Browser notifications are working and active for RL Food ERP.'
+      });
+    }
+  };
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -143,6 +166,34 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="inline md:hidden text-[10px]">Sync</span>
             <RefreshCw className={`w-3 h-3 shrink-0 ${isSyncing ? 'animate-spin text-emerald-300' : 'text-emerald-400'}`} />
           </button>
+
+          {/* Browser Notification Status / Toggle Button */}
+          {notifState !== 'unsupported' && (
+            <button
+              type="button"
+              onClick={handleNotifClick}
+              id="btn-notif-toggle"
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1 rounded-lg border text-[10px] sm:text-xs font-bold transition active:scale-95 cursor-pointer ${
+                notifState === 'granted'
+                  ? 'bg-emerald-950/80 border-emerald-800 text-emerald-300 hover:bg-emerald-900'
+                  : notifState === 'default'
+                  ? 'bg-amber-950/80 border-amber-700/90 text-amber-300 hover:bg-amber-900 animate-pulse'
+                  : 'bg-slate-900 border-slate-700 text-slate-400 opacity-60'
+              }`}
+              title={
+                notifState === 'granted'
+                  ? 'Browser Notifications are Active (Click to test)'
+                  : notifState === 'default'
+                  ? 'Click to Enable Browser Notifications'
+                  : 'Notifications Blocked in Browser Settings'
+              }
+            >
+              <Bell className={`w-3 h-3 shrink-0 ${notifState === 'granted' ? 'text-emerald-400' : notifState === 'default' ? 'text-amber-400' : 'text-slate-400'}`} />
+              <span className="hidden lg:inline text-[10px]">
+                {notifState === 'granted' ? 'Alerts Active' : notifState === 'default' ? 'Enable Alerts' : 'Alerts Blocked'}
+              </span>
+            </button>
+          )}
 
           {/* Current User Profile & Role Dropdown Menu */}
           <div className="relative border-l border-slate-800 pl-1 sm:pl-2" ref={profileMenuRef}>

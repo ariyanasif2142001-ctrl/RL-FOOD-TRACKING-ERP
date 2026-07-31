@@ -1,5 +1,13 @@
 import { getAppConfig, TelegramConfig } from '../config/appConfig';
 import { PurchaseOrder, POItem, MasterStatus, AuditLog, getNormalizedItemStatus } from '../types';
+import { 
+  notifyBrowserNewPO, 
+  notifyBrowserBulkPO, 
+  notifyBrowserItemHold, 
+  notifyBrowserItemPurchased, 
+  notifyBrowserWarehouseReceived, 
+  notifyBrowserPODispatched 
+} from './notificationService';
 
 /**
  * Telegram Bot Notification Service
@@ -213,6 +221,9 @@ export async function notifyNewPOImported(
   totalQty: number,
   importedBy: string
 ) {
+  // Fire browser notification
+  notifyBrowserNewPO(poNumber, department, itemCount, importedBy).catch(() => {});
+
   const config = getAppConfig();
   if (!config.telegramConfig?.enabled) return;
   if (config.telegramConfig?.notifyEvents?.onNewPO === false) return;
@@ -239,6 +250,9 @@ export async function notifyBulkPOImported(
   importedBy: string,
   samplePoNumbers?: string[]
 ) {
+  // Fire browser notification
+  notifyBrowserBulkPO(totalPOs, totalItems, importedBy).catch(() => {});
+
   const config = getAppConfig();
   if (!config.telegramConfig?.enabled) return;
   if (config.telegramConfig?.notifyEvents?.onPoImport === false) return;
@@ -266,6 +280,9 @@ export async function notifyItemHold(
   purchaserName: string,
   notes?: string
 ) {
+  // Fire browser notification
+  notifyBrowserItemHold(poNumber, itemName, purchaserName, notes).catch(() => {});
+
   const config = getAppConfig();
   if (!config.telegramConfig?.enabled) return;
   if (config.telegramConfig?.notifyEvents?.onItemHold === false) return;
@@ -292,6 +309,9 @@ export async function notifyItemPurchased(
   purchaserName: string,
   notes?: string
 ) {
+  // Fire browser notification
+  notifyBrowserItemPurchased(poNumber, itemName, purchasedQty, unit, purchaserName).catch(() => {});
+
   const config = getAppConfig();
   if (!config.telegramConfig?.enabled) return;
   if (config.telegramConfig?.notifyEvents?.onPurchased === false) return;
@@ -320,6 +340,9 @@ export async function notifyWarehouseReceived(
   receiverName: string,
   notes?: string
 ) {
+  // Fire browser notification
+  notifyBrowserWarehouseReceived(poNumber, itemName, receivedQty, unit, receiverName).catch(() => {});
+
   const config = getAppConfig();
   if (!config.telegramConfig?.enabled) return;
   if (config.telegramConfig?.notifyEvents?.onWarehouseReceived === false) return;
@@ -345,6 +368,9 @@ export async function notifyPODispatched(
   dispatcherName: string,
   notes?: string
 ) {
+  // Fire browser notification
+  notifyBrowserPODispatched(poNumber, customerName, dispatcherName).catch(() => {});
+
   const config = getAppConfig();
   if (!config.telegramConfig?.enabled) return;
   if (config.telegramConfig?.notifyEvents?.onDispatched === false) return;
