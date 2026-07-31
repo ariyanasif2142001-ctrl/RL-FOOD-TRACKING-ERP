@@ -571,7 +571,7 @@ export const DispatchView: React.FC<DispatchViewProps> = ({ pos, currentUser }) 
           </div>
 
           {/* RUNNING PO LIST (ACTIVE ORDERS) */}
-          <RunningPoList pos={pos} />
+          <RunningPoList pos={pos} allowDelete={false} allowStatusChange={false} />
 
           {/* Filter Bar */}
           <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2 text-xs">

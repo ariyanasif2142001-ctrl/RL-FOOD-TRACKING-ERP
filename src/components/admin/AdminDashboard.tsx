@@ -301,7 +301,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       if (runningPoStatusFilter === 'ACTIVE') {
         if (po.purchaseStatus === 'Completed') return false;
       } else if (runningPoStatusFilter === 'Held') {
-        if (!po.isHeldByAdmin && po.purchaseStatus !== 'Held' && !(po.items || []).some(i => i.purchaseStatus === 'Held')) return false;
+        if (!po.isHeldByAdmin && po.purchaseStatus !== 'Held' && !(po.items || []).some(i => getNormalizedItemStatus(i) === 'Held')) return false;
       } else if (runningPoStatusFilter !== 'ALL') {
         if (po.purchaseStatus !== runningPoStatusFilter) return false;
       }
@@ -975,6 +975,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* Running PO Cards Component */}
               <RunningPoList
                 pos={filteredRunningPOs}
+                allowDelete={true}
+                allowStatusChange={true}
                 onSelectPo={(po) => setSelectedPoForDetail(po)}
                 onDeletePO={(poNumber) => {
                   if (onDeletePO) onDeletePO(poNumber);

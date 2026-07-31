@@ -480,9 +480,12 @@ function assemblePOs() {
     const totalItems = poItems.length;
     const totalQuantity = poItems.reduce((sum, item) => sum + (item.requestedQty || 0), 0);
 
+    const isHeldByAdmin = m ? (String(m["Is Held By Admin"] || "").toUpperCase() === "TRUE") : false;
+    const holdByAdminName = m ? String(m["Hold By Admin"] || "") : "";
+    const anyHeld = poItems.some(i => i.purchaseStatus === 'Held' || Boolean(i.holdBy && String(i.holdBy).trim() !== ''));
     const allPurchased = poItems.length > 0 && poItems.every(i => i.purchaseStatus === 'Purchased' || (i.remainingQty === 0 && i.purchasedQty > 0));
     const anyPurchased = poItems.some(i => i.purchasedQty > 0 || i.purchaseStatus === 'Partial Purchased' || i.purchaseStatus === 'Purchased');
-    const purchaseStatus = allPurchased ? 'Completed' : (anyPurchased ? 'Partial' : 'Pending');
+    const purchaseStatus = isHeldByAdmin || anyHeld ? 'Held' : (allPurchased ? 'Completed' : (anyPurchased ? 'Partial' : 'Pending'));
 
     posList.push({
       id: poNumber,
@@ -495,8 +498,8 @@ function assemblePOs() {
       totalItems: totalItems,
       totalQuantity: totalQuantity,
       purchaseStatus: purchaseStatus,
-      isHeldByAdmin: false,
-      holdByAdmin: "",
+      isHeldByAdmin: isHeldByAdmin,
+      holdByAdmin: holdByAdminName,
       receiveStatus: m ? String(m["Receive Status"] || "Pending") : "Pending",
       status: purchaseStatus.toLowerCase(),
       createdBy: m ? String(m["Created By"] || "Admin") : "Admin",

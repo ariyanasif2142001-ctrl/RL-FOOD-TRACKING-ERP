@@ -224,7 +224,8 @@ export default function App() {
 
       const allItemsPurchased = updatedItems.length > 0 && updatedItems.every(i => i.purchaseStatus === 'Purchased');
       const anyItemsPurchased = updatedItems.some(i => i.purchaseStatus === 'Partial Purchased' || i.purchaseStatus === 'Purchased');
-      const calculatedPoStatus = allItemsPurchased ? 'Completed' : (anyItemsPurchased ? 'Partial' : 'Pending');
+      const anyItemsHeld = updatedItems.some(i => getNormalizedItemStatus(i) === 'Held');
+      const calculatedPoStatus = po.isHeldByAdmin || anyItemsHeld ? 'Held' : (allItemsPurchased ? 'Completed' : (anyItemsPurchased ? 'Partial' : 'Pending'));
 
       return {
         ...po,
@@ -511,9 +512,8 @@ export default function App() {
 
     const holdStart = new Date().toISOString();
 
-    const updatePOsWithHold = (poList: PurchaseOrder[]) => poList.map(po => ({
-      ...po,
-      items: (po.items || []).map(item => {
+    const updatePOsWithHold = (poList: PurchaseOrder[]) => poList.map(po => {
+      const newItems = (po.items || []).map(item => {
         if (String(item.id).trim() === String(itemId).trim()) {
           return {
             ...item,
@@ -527,8 +527,19 @@ export default function App() {
           };
         }
         return item;
-      })
-    }));
+      });
+
+      const allItemsPurchased = newItems.length > 0 && newItems.every(i => getNormalizedItemStatus(i) === 'Purchased');
+      const anyItemsPurchased = newItems.some(i => getNormalizedItemStatus(i) === 'Partial Purchased' || getNormalizedItemStatus(i) === 'Purchased');
+      const anyItemsHeld = newItems.some(i => getNormalizedItemStatus(i) === 'Held');
+      const calculatedPoStatus = po.isHeldByAdmin || anyItemsHeld ? 'Held' : (allItemsPurchased ? 'Completed' : (anyItemsPurchased ? 'Partial' : 'Pending'));
+
+      return {
+        ...po,
+        purchaseStatus: calculatedPoStatus,
+        items: newItems
+      };
+    });
 
     // 1. Immediately update local state & local storage
     const updatedPOs = updatePOsWithHold(pos);
@@ -582,9 +593,8 @@ export default function App() {
       return { success: false, message: `Only ${ownerName} who placed the hold can unhold this item.` };
     }
 
-    const updatePOsReleaseHold = (poList: PurchaseOrder[]) => poList.map(po => ({
-      ...po,
-      items: (po.items || []).map(item => {
+    const updatePOsReleaseHold = (poList: PurchaseOrder[]) => poList.map(po => {
+      const newItems = (po.items || []).map(item => {
         if (String(item.id).trim() === String(itemId).trim()) {
           const reqQty = item.requestedQty || item.orderedQty || 0;
           const purQty = item.purchasedQty || 0;
@@ -601,8 +611,19 @@ export default function App() {
           };
         }
         return item;
-      })
-    }));
+      });
+
+      const allItemsPurchased = newItems.length > 0 && newItems.every(i => getNormalizedItemStatus(i) === 'Purchased');
+      const anyItemsPurchased = newItems.some(i => getNormalizedItemStatus(i) === 'Partial Purchased' || getNormalizedItemStatus(i) === 'Purchased');
+      const anyItemsHeld = newItems.some(i => getNormalizedItemStatus(i) === 'Held');
+      const calculatedPoStatus = po.isHeldByAdmin || anyItemsHeld ? 'Held' : (allItemsPurchased ? 'Completed' : (anyItemsPurchased ? 'Partial' : 'Pending'));
+
+      return {
+        ...po,
+        purchaseStatus: calculatedPoStatus,
+        items: newItems
+      };
+    });
 
     // 1. Immediately update local state & local storage
     const updatedPOs = updatePOsReleaseHold(pos);
@@ -682,11 +703,14 @@ export default function App() {
       if (!matched) return po;
 
       const totalItems = updatedItems.length;
-      const purchasedCount = updatedItems.filter(i => i.purchaseStatus === 'Purchased').length;
-      const partialCount = updatedItems.filter(i => i.purchaseStatus === 'Partial Purchased' || (i.purchasedQty > 0 && i.purchasedQty < (i.requestedQty || i.orderedQty || 0))).length;
+      const purchasedCount = updatedItems.filter(i => getNormalizedItemStatus(i) === 'Purchased').length;
+      const partialCount = updatedItems.filter(i => getNormalizedItemStatus(i) === 'Partial Purchased').length;
+      const heldCount = updatedItems.filter(i => getNormalizedItemStatus(i) === 'Held').length;
 
       let masterPurchaseStatus: MasterStatus = 'Pending';
-      if (purchasedCount === totalItems && totalItems > 0) {
+      if (po.isHeldByAdmin || heldCount > 0) {
+        masterPurchaseStatus = 'Held';
+      } else if (purchasedCount === totalItems && totalItems > 0) {
         masterPurchaseStatus = 'Completed';
       } else if (purchasedCount > 0 || partialCount > 0) {
         masterPurchaseStatus = 'Partial';
@@ -770,11 +794,14 @@ export default function App() {
         if (!matched) return po;
 
         const totalItems = updatedItems.length;
-        const purchasedCount = updatedItems.filter(i => i.purchaseStatus === 'Purchased').length;
-        const partialCount = updatedItems.filter(i => i.purchaseStatus === 'Partial Purchased' || (i.purchasedQty > 0 && i.purchasedQty < (i.requestedQty || i.orderedQty || 0))).length;
+        const purchasedCount = updatedItems.filter(i => getNormalizedItemStatus(i) === 'Purchased').length;
+        const partialCount = updatedItems.filter(i => getNormalizedItemStatus(i) === 'Partial Purchased').length;
+        const heldCount = updatedItems.filter(i => getNormalizedItemStatus(i) === 'Held').length;
 
         let masterPurchaseStatus: MasterStatus = 'Pending';
-        if (purchasedCount === totalItems && totalItems > 0) {
+        if (po.isHeldByAdmin || heldCount > 0) {
+          masterPurchaseStatus = 'Held';
+        } else if (purchasedCount === totalItems && totalItems > 0) {
           masterPurchaseStatus = 'Completed';
         } else if (purchasedCount > 0 || partialCount > 0) {
           masterPurchaseStatus = 'Partial';

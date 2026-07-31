@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { PurchaseOrder } from '../types';
+import { PurchaseOrder, getNormalizedItemStatus } from '../types';
 import { notifySinglePOReport } from '../services/telegramService';
 import { OfficialPdfInvoiceModal } from './OfficialPdfInvoiceModal';
 import { DeliveryChallanModal } from './dispatch/DeliveryChallanModal';
@@ -12,6 +12,8 @@ interface RunningPoListProps {
   pos: PurchaseOrder[];
   title?: string;
   className?: string;
+  allowDelete?: boolean;
+  allowStatusChange?: boolean;
   onDeletePO?: (poNumber: string) => void;
   onDeletePo?: (poNumber: string) => void;
   onClearAllPOs?: () => void;
@@ -25,6 +27,8 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
   pos, 
   title = "Purchase Orders Management (All & Active Orders)",
   className = "",
+  allowDelete = false,
+  allowStatusChange = false,
   onDeletePO,
   onDeletePo,
   onClearAllPOs,
@@ -102,7 +106,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
       if (runningPoStatusFilter === 'ACTIVE') {
         if (po.purchaseStatus === 'Completed') return false;
       } else if (runningPoStatusFilter === 'Held') {
-        if (!po.isHeldByAdmin && po.purchaseStatus !== 'Held' && !(po.items || []).some(i => i.purchaseStatus === 'Held')) return false;
+        if (!po.isHeldByAdmin && po.purchaseStatus !== 'Held' && !(po.items || []).some(i => getNormalizedItemStatus(i) === 'Held')) return false;
       } else if (runningPoStatusFilter !== 'ALL') {
         if (po.purchaseStatus !== runningPoStatusFilter) return false;
       }
@@ -560,7 +564,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
               <Printer className="w-3.5 h-3.5" />
               <span>PDF Export</span>
             </button>
-            {onClearAllPOs && pos.length > 0 && (
+            {allowDelete && onClearAllPOs && pos.length > 0 && (
               <button
                 type="button"
                 onClick={() => setShowClearAllModal(true)}
@@ -657,19 +661,21 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
 
             <div className="flex items-center gap-2 flex-wrap">
               {/* Change Status Dropdown */}
-              <div className="flex items-center gap-1">
-                <select
-                  value={bulkStatusSelectValue}
-                  onChange={(e) => handleBulkStatusChange(e.target.value)}
-                  className="px-2.5 py-1 bg-slate-800 text-slate-100 border border-slate-700 rounded-lg text-xs font-bold outline-none focus:border-blue-500 cursor-pointer"
-                >
-                  <option value="">Change Status...</option>
-                  <option value="Pending">Set Pending</option>
-                  <option value="Partial">Set Partial</option>
-                  <option value="Completed">Set Completed</option>
-                  <option value="Held">Set Hold</option>
-                </select>
-              </div>
+              {allowStatusChange && (
+                <div className="flex items-center gap-1">
+                  <select
+                    value={bulkStatusSelectValue}
+                    onChange={(e) => handleBulkStatusChange(e.target.value)}
+                    className="px-2.5 py-1 bg-slate-800 text-slate-100 border border-slate-700 rounded-lg text-xs font-bold outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    <option value="">Change Status...</option>
+                    <option value="Pending">Set Pending</option>
+                    <option value="Partial">Set Partial</option>
+                    <option value="Completed">Set Completed</option>
+                    <option value="Held">Set Hold</option>
+                  </select>
+                </div>
+              )}
 
               {/* Export Options */}
               <button
@@ -699,15 +705,17 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
               </button>
 
               {/* Bulk Delete */}
-              <button
-                type="button"
-                onClick={handleBulkDelete}
-                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 transition cursor-pointer"
-                title="Delete selected POs"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete ({selectedPOs.length})</span>
-              </button>
+              {allowDelete && (
+                <button
+                  type="button"
+                  onClick={handleBulkDelete}
+                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 transition cursor-pointer"
+                  title="Delete selected POs"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete ({selectedPOs.length})</span>
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -845,7 +853,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                             <Eye className="w-3 h-3" />
                             <span>Report</span>
                           </button>
-                          {(onDeletePO || onDeletePo) && (
+                          {allowDelete && (onDeletePO || onDeletePo) && (
                             <button
                               type="button"
                               onClick={(e) => {

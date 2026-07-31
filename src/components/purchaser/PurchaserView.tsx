@@ -697,7 +697,7 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
       </div>
 
       {/* RUNNING PO LIST (ACTIVE ORDERS) */}
-      <RunningPoList pos={pos} />
+      <RunningPoList pos={pos} allowDelete={false} allowStatusChange={false} />
 
       {/* COMPACT EXPANDABLE FILTER PANEL - Default Collapsed */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
