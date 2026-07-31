@@ -21,7 +21,7 @@ export async function postApi<T = any>(action: string, payload: Record<string, a
     };
   }
 
-  const activeUser = getCurrentUser();
+  const activeUser = payload.user || getCurrentUser();
   const token = payload.token || payload.user?.token || activeUser?.token;
 
   try {
@@ -34,6 +34,7 @@ export async function postApi<T = any>(action: string, payload: Record<string, a
       body: JSON.stringify({
         action,
         token,
+        user: activeUser,
         ...payload,
         timestamp: new Date().toISOString()
       })
@@ -110,8 +111,8 @@ export async function apiUpdateUsers(users: User[], currentUser?: User): Promise
   return postApi('USERS', { subAction: 'UPDATE_USERS', users, user: currentUser });
 }
 
-export async function apiFetchPOs(): Promise<ApiResponse<{ pos: PurchaseOrder[] }>> {
-  return postApi<{ pos: PurchaseOrder[] }>('PO_LIST');
+export async function apiFetchPOs(user?: User): Promise<ApiResponse<{ pos: PurchaseOrder[] }>> {
+  return postApi<{ pos: PurchaseOrder[] }>('PO_LIST', { user });
 }
 
 export async function apiImportPOs(pos: PurchaseOrder[], user: User): Promise<ApiResponse<{ pos: PurchaseOrder[] }>> {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TelegramSettings } from './TelegramSettings';
 import { getGoogleAppsScriptTemplate } from '../../services/sheetsService';
+import { copyToClipboard } from '../../utils/clipboard';
 import { Database, Save, Copy, Check } from 'lucide-react';
 
 interface AdminSheetsSectionProps {
@@ -29,8 +30,8 @@ export const AdminSheetsSection: React.FC<AdminSheetsSectionProps> = ({
     }
   }, [sheetsConfig.webAppUrl, sheetsConfig.sheetId]);
 
-  const handleCopyScript = () => {
-    navigator.clipboard.writeText(getGoogleAppsScriptTemplate());
+  const handleCopyScript = async () => {
+    await copyToClipboard(getGoogleAppsScriptTemplate());
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 3000);
   };

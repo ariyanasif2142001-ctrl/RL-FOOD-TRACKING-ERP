@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, RefreshCw, Link as LinkIcon, Plus, Trash2, CheckCircle2, AlertCircle, FileSpreadsheet, Edit2, Search, Download, Copy, Check } from 'lucide-react';
 import { MasterSKUEntry } from '../types';
 import { getMasterSKUMappings, saveMasterSKUMappings, getMasterSKUSheetUrl, fetchAndSyncMasterSKUsFromUrl, extractSKUsFromWorkbook } from '../services/skuService';
+import { copyToClipboard } from '../utils/clipboard';
 import * as XLSX from 'xlsx';
 
 interface MasterSkuModalProps {
@@ -127,10 +128,10 @@ export const MasterSkuModal: React.FC<MasterSkuModalProps> = ({ isOpen, onClose,
     document.body.removeChild(link);
   };
 
-  const handleCopySKUs = () => {
+  const handleCopySKUs = async () => {
     if (mappings.length === 0) return;
     const textList = mappings.map(m => `${m.internalSKU}\t${m.customerItemName || m.internalItemName}\t${m.internalUnit}`).join('\n');
-    navigator.clipboard.writeText(textList);
+    await copyToClipboard(textList);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

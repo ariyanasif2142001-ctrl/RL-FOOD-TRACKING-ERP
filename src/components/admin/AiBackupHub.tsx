@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PurchaseOrder, AuditLog, POItem } from '../../types';
 import { sendTelegramMessage } from '../../services/telegramService';
 import { getMasterSKUMappings } from '../../services/skuService';
+import { copyToClipboard } from '../../utils/clipboard';
 import { 
   Bot, Sparkles, Database, Download, RefreshCw, Send, Copy, Check, 
   Clock, ShieldCheck, FileSpreadsheet, FileText, HelpCircle, MessageSquare, 
@@ -1060,8 +1061,8 @@ export const AiBackupHub: React.FC<AiBackupHubProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(queryResponse);
+                    onClick={async () => {
+                      await copyToClipboard(queryResponse);
                       setQueryCopied(true);
                       setTimeout(() => setQueryCopied(false), 2000);
                     }}
@@ -1118,8 +1119,8 @@ export const AiBackupHub: React.FC<AiBackupHubProps> = ({
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(summaryText);
+                    onClick={async () => {
+                      await copyToClipboard(summaryText);
                       setSummaryCopied(true);
                       setTimeout(() => setSummaryCopied(false), 2000);
                     }}

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { getGoogleAppsScriptTemplate } from '../../services/sheetsService';
+import { copyToClipboard } from '../../utils/clipboard';
 import { BookOpen, FileCode, Database, Cpu, ShieldAlert, CheckCircle2, Copy, Check, Terminal, ExternalLink, Layers } from 'lucide-react';
 
 export const SystemDocsGuide: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'deploy' | 'sheets' | 'triggers' | 'userguide' | 'adminguide' | 'architecture'>('deploy');
   const [copiedScript, setCopiedScript] = useState(false);
 
-  const handleCopyScript = () => {
-    navigator.clipboard.writeText(getGoogleAppsScriptTemplate());
+  const handleCopyScript = async () => {
+    await copyToClipboard(getGoogleAppsScriptTemplate());
     setCopiedScript(true);
     setTimeout(() => setCopiedScript(false), 3000);
   };
