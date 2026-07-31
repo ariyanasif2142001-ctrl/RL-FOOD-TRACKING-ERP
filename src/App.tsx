@@ -159,45 +159,18 @@ export default function App() {
           };
         }
 
-        if (localItem) {
-          const localNormStatus = getNormalizedItemStatus(localItem);
-          if (localNormStatus === 'Held') {
-            const hBy = localItem.holdBy || localItem.holdByName || item.holdBy || item.holdByName || 'Purchaser';
-            const hById = localItem.holdById || item.holdById || '';
-            const hName = localItem.holdByName || localItem.holdBy || item.holdByName || item.holdBy || 'Purchaser';
-            const hTime = localItem.holdStartTime || localItem.holdSince || item.holdStartTime || item.holdSince || new Date().toISOString();
-            return {
-              ...item,
-              purchaseStatus: 'Held' as const,
-              holdBy: hBy,
-              holdById: hById,
-              holdByName: hName,
-              holdStartTime: hTime,
-              holdSince: hTime,
-              holdExpireTime: ''
-            };
-          } else {
-            const purQtyLocal = localItem.purchasedQty || purQty;
-            const statusToSet = purQtyLocal > 0 ? ('Partial Purchased' as const) : ('Pending' as const);
-            return {
-              ...item,
-              purchaseStatus: statusToSet,
-              holdBy: '',
-              holdById: '',
-              holdByName: '',
-              holdStartTime: '',
-              holdSince: '',
-              holdExpireTime: ''
-            };
-          }
-        }
+        const fetchedNormStatus = getNormalizedItemStatus({
+          ...item,
+          isHeldByAdmin: po.isHeldByAdmin || po.purchaseStatus === 'Held'
+        });
+        const localNormStatus = localItem ? getNormalizedItemStatus(localItem) : undefined;
+        const isHeld = localNormStatus === 'Held' || fetchedNormStatus === 'Held' || po.isHeldByAdmin || po.purchaseStatus === 'Held';
 
-        const fetchedNormStatus = getNormalizedItemStatus(item);
-        if (fetchedNormStatus === 'Held') {
-          const hBy = item.holdBy || item.holdByName || 'Purchaser';
-          const hById = item.holdById || '';
-          const hName = item.holdByName || item.holdBy || 'Purchaser';
-          const hTime = item.holdStartTime || item.holdSince || new Date().toISOString();
+        if (isHeld) {
+          const hBy = localItem?.holdBy || localItem?.holdByName || item.holdBy || item.holdByName || po.holdByAdmin || 'Purchaser';
+          const hById = localItem?.holdById || item.holdById || '';
+          const hName = localItem?.holdByName || localItem?.holdBy || item.holdByName || item.holdBy || po.holdByAdmin || 'Purchaser';
+          const hTime = localItem?.holdStartTime || localItem?.holdSince || item.holdStartTime || item.holdSince || po.adminHoldAt || new Date().toISOString();
           return {
             ...item,
             purchaseStatus: 'Held' as const,
@@ -210,9 +183,11 @@ export default function App() {
           };
         }
 
+        const purQtyLocal = localItem ? (localItem.purchasedQty || purQty) : purQty;
+        const statusToSet = purQtyLocal > 0 ? ('Partial Purchased' as const) : ('Pending' as const);
         return {
           ...item,
-          purchaseStatus: purQty > 0 ? ('Partial Purchased' as const) : ('Pending' as const),
+          purchaseStatus: statusToSet,
           holdBy: '',
           holdById: '',
           holdByName: '',

@@ -31,6 +31,7 @@ export const getNormalizedItemStatus = (item: {
   holdStartTime?: string;
   holdSince?: string;
   holdExpireTime?: string;
+  isHeldByAdmin?: boolean;
 }): ItemPurchaseStatus => {
   const rawStatus = String(item.purchaseStatus || '').trim().toLowerCase();
   const reqQty = item.requestedQty || item.orderedQty || 0;
@@ -41,7 +42,7 @@ export const getNormalizedItemStatus = (item: {
     return 'Purchased';
   }
 
-  const isHeldStatus = rawStatus === 'held' || rawStatus === 'hold';
+  const isHeldStatus = rawStatus === 'held' || rawStatus === 'hold' || Boolean(item.isHeldByAdmin);
   const hasHoldUser = Boolean((item.holdBy && String(item.holdBy).trim() !== '') || (item.holdByName && String(item.holdByName).trim() !== '') || (item.holdById && String(item.holdById).trim() !== ''));
 
   if (isHeldStatus || hasHoldUser) {

@@ -431,18 +431,11 @@ function assemblePOs() {
     const item = normalizeItemRow(r);
     const activeHold = activeHoldsMap[String(item.id).trim()];
 
-    const isExplicitlyUnheldInPoItems = (item.purchaseStatus === 'Pending' || item.purchaseStatus === 'Partial Purchased' || item.purchaseStatus === 'Purchased') && (!item.holdBy || item.holdBy.trim() === '');
-
-    if (activeHold && !isExplicitlyUnheldInPoItems && item.purchaseStatus !== 'Purchased' && item.purchaseStatus !== 'Completed') {
+    if (activeHold && item.purchaseStatus !== 'Purchased' && item.purchaseStatus !== 'Completed') {
       item.purchaseStatus = 'Held';
-      item.holdBy = activeHold.holdBy || item.holdBy;
+      item.holdBy = activeHold.holdBy || item.holdBy || 'Purchaser';
       item.holdStartTime = activeHold.holdStartTime || item.holdStartTime;
       item.holdExpireTime = activeHold.holdExpireTime || item.holdExpireTime;
-    } else if (activeHold && isExplicitlyUnheldInPoItems) {
-      Database.updateRow(CONFIG.SHEETS.HOLD_ITEMS, "Item ID", item.id, {
-        "Status": "Released",
-        "Updated At": new Date().toISOString()
-      });
     }
 
     return item;

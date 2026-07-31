@@ -94,17 +94,20 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
   // All PO items for purchaser view mapped across all POs
   const allItems: POItem[] = pos.flatMap(po => {
     return (po.items || []).map(item => {
-      const normStatus = getNormalizedItemStatus(item);
-      const isHeld = normStatus === 'Held';
+      const normStatus = getNormalizedItemStatus({
+        ...item,
+        isHeldByAdmin: po.isHeldByAdmin || po.purchaseStatus === 'Held'
+      });
+      const isHeld = normStatus === 'Held' || po.isHeldByAdmin || po.purchaseStatus === 'Held';
 
       return {
         ...item,
-        purchaseStatus: normStatus,
-        holdBy: isHeld ? (item.holdBy || item.holdByName || 'Purchaser') : '',
+        purchaseStatus: isHeld ? ('Held' as const) : normStatus,
+        holdBy: isHeld ? (item.holdBy || item.holdByName || po.holdByAdmin || 'Purchaser') : '',
         holdById: isHeld ? (item.holdById || '') : '',
-        holdByName: isHeld ? (item.holdByName || item.holdBy || 'Purchaser') : '',
-        holdStartTime: isHeld ? (item.holdStartTime || item.holdSince || new Date().toISOString()) : '',
-        holdSince: isHeld ? (item.holdSince || item.holdStartTime || new Date().toISOString()) : '',
+        holdByName: isHeld ? (item.holdByName || item.holdBy || po.holdByAdmin || 'Purchaser') : '',
+        holdStartTime: isHeld ? (item.holdStartTime || item.holdSince || po.adminHoldAt || new Date().toISOString()) : '',
+        holdSince: isHeld ? (item.holdSince || item.holdStartTime || po.adminHoldAt || new Date().toISOString()) : '',
         holdExpireTime: '',
         poNumber: item.poNumber || po.poNumber,
         location: item.location || po.location || 'Central Warehouse',

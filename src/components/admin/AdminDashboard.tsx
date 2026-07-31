@@ -207,19 +207,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // METRICS CALCULATIONS
   const allItems = pos.flatMap(p => {
     return (p.items || []).map(i => {
-      const normStatus = getNormalizedItemStatus(i);
-      const isHeld = normStatus === 'Held';
+      const normStatus = getNormalizedItemStatus({
+        ...i,
+        isHeldByAdmin: p.isHeldByAdmin || p.purchaseStatus === 'Held'
+      });
+      const isHeld = normStatus === 'Held' || p.isHeldByAdmin || p.purchaseStatus === 'Held';
 
       return {
         ...i,
         poNumber: i.poNumber || p.poNumber,
         department: i.department || p.department || 'General',
-        purchaseStatus: normStatus,
-        holdBy: isHeld ? (i.holdBy || i.holdByName || 'Purchaser') : '',
+        purchaseStatus: isHeld ? ('Held' as const) : normStatus,
+        holdBy: isHeld ? (i.holdBy || i.holdByName || p.holdByAdmin || 'Purchaser') : '',
         holdById: isHeld ? (i.holdById || '') : '',
-        holdByName: isHeld ? (i.holdByName || i.holdBy || 'Purchaser') : '',
-        holdStartTime: isHeld ? (i.holdStartTime || i.holdSince || new Date().toISOString()) : '',
-        holdSince: isHeld ? (i.holdSince || i.holdStartTime || new Date().toISOString()) : '',
+        holdByName: isHeld ? (i.holdByName || i.holdBy || p.holdByAdmin || 'Purchaser') : '',
+        holdStartTime: isHeld ? (i.holdStartTime || i.holdSince || p.adminHoldAt || new Date().toISOString()) : '',
+        holdSince: isHeld ? (i.holdSince || i.holdStartTime || p.adminHoldAt || new Date().toISOString()) : '',
         holdExpireTime: ''
       };
     });
