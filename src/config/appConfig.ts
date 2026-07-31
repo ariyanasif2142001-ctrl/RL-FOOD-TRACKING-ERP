@@ -47,8 +47,8 @@ export interface AppConfig {
 export const DEFAULT_APP_CONFIG: AppConfig = {
   appName: 'RL Food Purchase Tracking System',
   appVersion: '1.0.0',
-  spreadsheetId: '',
-  webAppUrl: '',
+  spreadsheetId: '1AubdDXcs_u9ibqPja7PnlmA962X55Y2IwdT0l6coY0U',
+  webAppUrl: 'https://script.google.com/macros/s/AKfycbzxyZjG8FcoQG9Rlo1jxqBMvuu5vbQkhpTZgzc7TIvRtdhbA5kBjdVDuq6bPxxnwhpL3g/exec',
   sheetNames: {
     users: 'USERS',
     poMaster: 'PO_MASTER',
@@ -162,6 +162,8 @@ export function getAppConfig(): AppConfig {
   return {
     ...DEFAULT_APP_CONFIG,
     ...storedConfig,
+    spreadsheetId: storedConfig.spreadsheetId || DEFAULT_APP_CONFIG.spreadsheetId,
+    webAppUrl: storedConfig.webAppUrl || DEFAULT_APP_CONFIG.webAppUrl,
     telegramConfig: mergedTelegram as TelegramConfig
   };
 }

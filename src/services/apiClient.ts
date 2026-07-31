@@ -27,7 +27,7 @@ export async function postApi<T = any>(action: string, payload: Record<string, a
   try {
     const response = await fetch(url, {
       method: 'POST',
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(15000),
       headers: {
         'Content-Type': 'text/plain;charset=utf-8' // Standard CORS workaround for Apps Script Web App
       },
@@ -77,7 +77,7 @@ export async function getApi<T = unknown>(action: string, params: Record<string,
   const fullUrl = `${url}?${queryParams}`;
 
   try {
-    const response = await fetch(fullUrl, { method: 'GET', signal: AbortSignal.timeout(5000) });
+    const response = await fetch(fullUrl, { method: 'GET', signal: AbortSignal.timeout(15000) });
     if (!response.ok) {
       throw new Error(`HTTP Error: ${response.status}`);
     }
