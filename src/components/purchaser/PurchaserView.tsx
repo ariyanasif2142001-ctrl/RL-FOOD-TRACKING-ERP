@@ -103,9 +103,9 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
       return {
         ...item,
         purchaseStatus: isHeld ? ('Held' as const) : normStatus,
-        holdBy: isHeld ? (item.holdBy || item.holdByName || po.holdByAdmin || 'Purchaser') : '',
+        holdBy: isHeld ? (item.holdBy || item.holdByName || item.purchaserName || po.holdByAdmin || po.createdBy || 'Admin') : '',
         holdById: isHeld ? (item.holdById || '') : '',
-        holdByName: isHeld ? (item.holdByName || item.holdBy || po.holdByAdmin || 'Purchaser') : '',
+        holdByName: isHeld ? (item.holdByName || item.holdBy || item.purchaserName || po.holdByAdmin || po.createdBy || 'Admin') : '',
         holdStartTime: isHeld ? (item.holdStartTime || item.holdSince || po.adminHoldAt || new Date().toISOString()) : '',
         holdSince: isHeld ? (item.holdSince || item.holdStartTime || po.adminHoldAt || new Date().toISOString()) : '',
         holdExpireTime: '',
@@ -393,7 +393,7 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
             </span>
           </td>
           <td style="padding: 8px; font-size: 11px; color: #475569;">
-            ${st === 'Held' ? `🔒 Hold by: ${item.holdBy || 'Purchaser'}` : (item.notes || '-')}
+            ${st === 'Held' ? `🔒 Hold by: ${item.holdBy || item.holdByName || 'Admin'}` : (item.notes || '-')}
           </td>
         </tr>
       `;
@@ -997,7 +997,7 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
                         {item.purchaseStatus === 'Held' && (
                           <span className="text-[11px] font-mono font-bold text-purple-800 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 flex items-center gap-1">
                             <Lock className="w-3 h-3 text-purple-600 shrink-0" />
-                            <span>Held By: {item.holdBy || 'Purchaser'}</span>
+                            <span>Held By: {item.holdBy || item.holdByName || 'Admin'}</span>
                           </span>
                         )}
                       </div>

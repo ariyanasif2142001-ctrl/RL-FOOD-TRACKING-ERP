@@ -12,6 +12,7 @@ import {
 import { getCurrentUser } from './storage';
 import { notifyNewPOImported, notifyBulkPOImported } from './telegramService';
 import { matchPOItemToMasterSKU, getMasterSKUMappings } from './skuService';
+import { fetchPOsFromSupabase } from './apiClient';
 
 // Expected Excel Header Mapping
 const REQUIRED_HEADERS = [
@@ -567,9 +568,34 @@ export async function executePOImport(
   const currentUser = getCurrentUser() || { id: 'u1', name: 'Admin', role: 'admin' as const };
   const masterSKUMappings = getMasterSKUMappings();
 
+  // Always fetch current/fresh PO data from Supabase if available
+  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+  const isSupabaseConfigured = Boolean(supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co');
+
+  let basePOs: PurchaseOrder[] = [];
+  if (isSupabaseConfigured) {
+    const freshPOsFromDb = await fetchPOsFromSupabase();
+    if (freshPOsFromDb === null) {
+      return {
+        success: false,
+        totalPOsImported: 0,
+        totalPOsUpdated: 0,
+        totalItemsImported: 0,
+        totalItemsUpdated: 0,
+        timeTakenMs: 0,
+        warnings: ['Database connection error. Failed to load fresh records from Supabase for import.'],
+        timestamp: new Date().toISOString(),
+        updatedPOs: []
+      };
+    }
+    basePOs = freshPOsFromDb;
+  } else {
+    basePOs = existingPOs || [];
+  }
+
   // Map of existing POs by PO Number (case insensitive)
   const poMap = new Map<string, PurchaseOrder>();
-  existingPOs.forEach(po => poMap.set(po.poNumber.trim().toUpperCase(), JSON.parse(JSON.stringify(po))));
+  basePOs.forEach(po => poMap.set(po.poNumber.trim().toUpperCase(), JSON.parse(JSON.stringify(po))));
 
   // Group imported rows by PO Number
   const rowsByPO = new Map<string, RawPOImportRow[]>();
@@ -612,6 +638,8 @@ export async function executePOImport(
       existingPO.department = department;
       existingPO.location = location;
       existingPO.updatedAt = nowIso;
+      existingPO.isHeldByAdmin = false;
+      existingPO.holdByAdmin = '';
 
       const existingItemsMap = new Map<string, POItem>();
       existingPO.items.forEach(item => {
@@ -642,6 +670,18 @@ export async function executePOImport(
           existingItem.deliveryDate = deliveryDate;
           existingItem.orderDate = orderDate;
           existingItem.updatedDate = nowIso.split('T')[0];
+
+          // Reset hold fields when re-importing if no explicit hold info is in row
+          existingItem.holdBy = '';
+          existingItem.holdById = '';
+          existingItem.holdByName = '';
+          existingItem.holdStartTime = '';
+          existingItem.holdSince = '';
+          existingItem.holdExpireTime = '';
+          existingItem.isHeldByAdmin = false;
+          if (existingItem.purchaseStatus === 'Held') {
+            existingItem.purchaseStatus = 'Pending';
+          }
 
           const purchased = existingItem.purchasedQty || 0;
           existingItem.remainingQty = Math.max(0, qtyVal - purchased);
@@ -676,6 +716,12 @@ export async function executePOImport(
             purchasedQty: 0,
             remainingQty: qtyVal,
             purchaseStatus: 'Pending',
+            holdBy: '',
+            holdById: '',
+            holdByName: '',
+            holdStartTime: '',
+            holdSince: '',
+            holdExpireTime: '',
             createdDate: nowIso.split('T')[0],
             updatedDate: nowIso.split('T')[0]
           };
@@ -727,6 +773,12 @@ export async function executePOImport(
           purchasedQty: 0,
           remainingQty: qtyVal,
           purchaseStatus: 'Pending',
+          holdBy: '',
+          holdById: '',
+          holdByName: '',
+          holdStartTime: '',
+          holdSince: '',
+          holdExpireTime: '',
           createdDate: nowIso.split('T')[0],
           updatedDate: nowIso.split('T')[0]
         };
@@ -749,6 +801,8 @@ export async function executePOImport(
         purchaseStatus: 'Pending',
         receiveStatus: 'Pending',
         status: 'pending',
+        isHeldByAdmin: false,
+        holdByAdmin: '',
         items: itemsList,
         createdBy: currentUser.name,
         createdAt: nowIso,
@@ -781,13 +835,6 @@ export async function executePOImport(
       newPoNumbersSample
     );
   }
-
-  existingPOs.forEach(oldPo => {
-    const key = oldPo.poNumber.trim().toUpperCase();
-    if (!rowsByPO.has(key) && !updatedPOsList.some(p => p.poNumber.trim().toUpperCase() === key)) {
-      updatedPOsList.push(oldPo);
-    }
-  });
 
   const endTime = performance.now();
 

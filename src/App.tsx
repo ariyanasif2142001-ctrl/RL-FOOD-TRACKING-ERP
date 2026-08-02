@@ -1,19 +1,18 @@
-import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, PurchaseOrder, SheetsConfig, AuditLog, POItem, MasterStatus, getNormalizedItemStatus, ReceiveBatchLog } from './types';
 import { 
   getCurrentUser, saveCurrentUser, 
   getLocalUsers, saveLocalUsers, sanitizeAndMergeAdmins,
   getLocalPOs, saveLocalPOs, 
-  getLocalAuditLogs, saveLocalAuditLogs,
-  getDeletedPoNumbers, addDeletedPoNumber, removeDeletedPoNumber, clearDeletedPoNumbers
+  getLocalAuditLogs, saveLocalAuditLogs
 } from './services/storage';
 import { getAppConfig, saveAppConfig } from './config/appConfig';
 import { 
   apiFetchPOs, apiFetchUsers, apiFetchActivityLogs,
   apiLogin, apiUpdateUsers, apiImportPOs,
   apiHoldItem, apiReleaseHold, apiSavePurchase, apiReturnItem,
-  apiReceiveItem, apiDeletePO, apiClearAllPOs
+  apiReceiveItem, apiDeletePO, apiClearAllPOs, apiHoldPO, apiReleasePO
 } from './services/apiClient';
 import { Header } from './components/Header';
 import { CompanyLogo } from './components/CompanyLogo';
@@ -128,7 +127,7 @@ export default function App() {
     lastSyncedAt: new Date().toISOString()
   };
 
-  // Helper to merge fetched POs with local active holds so holds are never prematurely reset by backend syncs
+  // Helper to merge fetched POs with local state so holds, partial purchases, and full purchases are never prematurely reset by backend syncs
   const mergePreservedHolds = (fetchedPOs: PurchaseOrder[], currentPOs: PurchaseOrder[]): PurchaseOrder[] => {
     const localItemMap = new Map<string, POItem>();
     (currentPOs || []).forEach(po => {
@@ -142,14 +141,26 @@ export default function App() {
         const itemIdStr = String(item.id).trim();
         const localItem = localItemMap.get(itemIdStr);
 
-        const reqQty = item.requestedQty || item.orderedQty || 0;
-        const purQty = item.purchasedQty || 0;
-        const isPurchased = (purQty >= reqQty && reqQty > 0) || item.purchaseStatus === 'Purchased' || (item.purchaseStatus as string) === 'Completed';
+        const reqQty = item.requestedQty || item.orderedQty || localItem?.requestedQty || localItem?.orderedQty || 0;
+        const fetchedPurQty = item.purchasedQty || 0;
+        const localPurQty = localItem?.purchasedQty || 0;
 
-        if (isPurchased) {
+        // Take the highest purchased quantity between local and fetched
+        const effectivePurQty = Math.max(fetchedPurQty, localPurQty);
+
+        const isFullyPurchased = (effectivePurQty >= reqQty && reqQty > 0) || item.purchaseStatus === 'Purchased' || localItem?.purchaseStatus === 'Purchased';
+        const isPartiallyPurchased = !isFullyPurchased && (effectivePurQty > 0 || item.purchaseStatus === 'Partial Purchased' || localItem?.purchaseStatus === 'Partial Purchased');
+
+        if (isFullyPurchased) {
+          const finalPurQty = effectivePurQty >= reqQty ? effectivePurQty : (reqQty || effectivePurQty);
           return {
             ...item,
-            purchaseStatus: purQty >= reqQty ? ('Purchased' as const) : ('Partial Purchased' as const),
+            purchasedQty: finalPurQty,
+            remainingQty: 0,
+            purchaseStatus: 'Purchased' as const,
+            purchaserName: localItem?.purchaserName || item.purchaserName || '',
+            purchasedAt: localItem?.purchasedAt || item.purchasedAt || '',
+            notes: localItem?.notes || item.notes || '',
             holdBy: '',
             holdById: '',
             holdByName: '',
@@ -159,18 +170,38 @@ export default function App() {
           };
         }
 
-        const fetchedNormStatus = getNormalizedItemStatus({
-          ...item,
-          isHeldByAdmin: po.isHeldByAdmin || po.purchaseStatus === 'Held'
-        });
-        const localNormStatus = localItem ? getNormalizedItemStatus(localItem) : undefined;
-        const isHeld = localNormStatus === 'Held' || fetchedNormStatus === 'Held' || po.isHeldByAdmin || po.purchaseStatus === 'Held';
+        if (isPartiallyPurchased) {
+          const finalPurQty = effectivePurQty;
+          const remQty = Math.max(0, reqQty - finalPurQty);
+          return {
+            ...item,
+            purchasedQty: finalPurQty,
+            remainingQty: remQty,
+            purchaseStatus: 'Partial Purchased' as const,
+            purchaserName: localItem?.purchaserName || item.purchaserName || '',
+            purchasedAt: localItem?.purchasedAt || item.purchasedAt || '',
+            notes: localItem?.notes || item.notes || '',
+            holdBy: '',
+            holdById: '',
+            holdByName: '',
+            holdStartTime: '',
+            holdSince: '',
+            holdExpireTime: ''
+          };
+        }
 
-        if (isHeld) {
-          const hBy = localItem?.holdBy || localItem?.holdByName || item.holdBy || item.holdByName || po.holdByAdmin || 'Purchaser';
-          const hById = localItem?.holdById || item.holdById || '';
-          const hName = localItem?.holdByName || localItem?.holdBy || item.holdByName || item.holdBy || po.holdByAdmin || 'Purchaser';
-          const hTime = localItem?.holdStartTime || localItem?.holdSince || item.holdStartTime || item.holdSince || po.adminHoldAt || new Date().toISOString();
+        const localNorm = localItem ? getNormalizedItemStatus(localItem) : undefined;
+        const fetchedNorm = getNormalizedItemStatus(item);
+
+        const localIsHeld = localNorm === 'Held' && Boolean(localItem?.holdBy && localItem.holdBy.trim() !== '' && localItem.holdBy !== 'Admin');
+        const fetchedIsHeld = fetchedNorm === 'Held' && Boolean(item.holdBy && item.holdBy.trim() !== '' && item.holdBy !== 'Admin');
+
+        if (localIsHeld || fetchedIsHeld) {
+          const activeItem = localIsHeld ? localItem! : item;
+          const hBy = activeItem.holdBy!.trim();
+          const hById = activeItem.holdById || '';
+          const hName = activeItem.holdByName || activeItem.holdBy || hBy;
+          const hTime = activeItem.holdStartTime || activeItem.holdSince || new Date().toISOString();
           return {
             ...item,
             purchaseStatus: 'Held' as const,
@@ -183,11 +214,11 @@ export default function App() {
           };
         }
 
-        const purQtyLocal = localItem ? (localItem.purchasedQty || purQty) : purQty;
-        const statusToSet = purQtyLocal > 0 ? ('Partial Purchased' as const) : ('Pending' as const);
         return {
           ...item,
-          purchaseStatus: statusToSet,
+          purchasedQty: 0,
+          remainingQty: reqQty,
+          purchaseStatus: 'Pending' as const,
           holdBy: '',
           holdById: '',
           holdByName: '',
@@ -199,8 +230,7 @@ export default function App() {
 
       const allItemsPurchased = updatedItems.length > 0 && updatedItems.every(i => i.purchaseStatus === 'Purchased');
       const anyItemsPurchased = updatedItems.some(i => i.purchaseStatus === 'Partial Purchased' || i.purchaseStatus === 'Purchased');
-      const anyItemsHeld = updatedItems.some(i => getNormalizedItemStatus(i) === 'Held');
-      const calculatedPoStatus = po.isHeldByAdmin || anyItemsHeld ? 'Held' : (allItemsPurchased ? 'Completed' : (anyItemsPurchased ? 'Partial' : 'Pending'));
+      const calculatedPoStatus = po.isHeldByAdmin ? 'Held' : (allItemsPurchased ? 'Completed' : (anyItemsPurchased ? 'Partial' : 'Pending'));
 
       return {
         ...po,
@@ -243,9 +273,7 @@ export default function App() {
       let hasSuccess = false;
 
       if (poRes.success && poRes.data?.pos) {
-        const deletedSet = new Set(getDeletedPoNumbers());
-        const filteredFetchedPOs = poRes.data.pos.filter(p => p && p.poNumber && !deletedSet.has(p.poNumber.toUpperCase().trim()));
-        const mergedPOs = mergePreservedHolds(filteredFetchedPOs, localPOs);
+        const mergedPOs = mergePreservedHolds(poRes.data.pos, localPOs);
         setPOs(mergedPOs);
         saveLocalPOs(mergedPOs);
         hasSuccess = true;
@@ -474,6 +502,9 @@ export default function App() {
   // Purchaser Actions
   const handleHoldItem = async (itemId: string) => {
     if (!currentUser) return { success: false, message: 'User not logged in.' };
+    if (currentUser.role !== 'purchaser') {
+      return { success: false, message: 'Permission denied: Only purchasers are authorized to hold items.' };
+    }
 
     const existingItem = pos.flatMap(p => p.items || []).find(i => String(i.id).trim() === String(itemId).trim());
     if (existingItem) {
@@ -506,8 +537,7 @@ export default function App() {
 
       const allItemsPurchased = newItems.length > 0 && newItems.every(i => getNormalizedItemStatus(i) === 'Purchased');
       const anyItemsPurchased = newItems.some(i => getNormalizedItemStatus(i) === 'Partial Purchased' || getNormalizedItemStatus(i) === 'Purchased');
-      const anyItemsHeld = newItems.some(i => getNormalizedItemStatus(i) === 'Held');
-      const calculatedPoStatus = po.isHeldByAdmin || anyItemsHeld ? 'Held' : (allItemsPurchased ? 'Completed' : (anyItemsPurchased ? 'Partial' : 'Pending'));
+      const calculatedPoStatus: MasterStatus = (po.isHeldByAdmin ? 'Held' : (allItemsPurchased ? 'Completed' : (anyItemsPurchased ? 'Partial' : 'Pending'))) as MasterStatus;
 
       return {
         ...po,
@@ -555,9 +585,9 @@ export default function App() {
     const targetItem = pos.flatMap(p => p.items || []).find(i => String(i.id).trim() === String(itemId).trim());
     if (!targetItem) return { success: false, message: 'Item not found.' };
 
-    // Admin CANNOT release purchaser holds
-    if (currentUser.role === 'admin') {
-      return { success: false, message: 'Admin cannot release purchaser holds. Only the purchaser who placed the hold can unhold.' };
+    // Only purchaser can release holds
+    if (currentUser.role !== 'purchaser') {
+      return { success: false, message: 'Permission denied: Only purchasers are authorized to release item holds.' };
     }
 
     // Check ownership
@@ -590,8 +620,7 @@ export default function App() {
 
       const allItemsPurchased = newItems.length > 0 && newItems.every(i => getNormalizedItemStatus(i) === 'Purchased');
       const anyItemsPurchased = newItems.some(i => getNormalizedItemStatus(i) === 'Partial Purchased' || getNormalizedItemStatus(i) === 'Purchased');
-      const anyItemsHeld = newItems.some(i => getNormalizedItemStatus(i) === 'Held');
-      const calculatedPoStatus = po.isHeldByAdmin || anyItemsHeld ? 'Held' : (allItemsPurchased ? 'Completed' : (anyItemsPurchased ? 'Partial' : 'Pending'));
+      const calculatedPoStatus: MasterStatus = (po.isHeldByAdmin ? 'Held' : (allItemsPurchased ? 'Completed' : (anyItemsPurchased ? 'Partial' : 'Pending'))) as MasterStatus;
 
       return {
         ...po,
@@ -683,7 +712,7 @@ export default function App() {
       const heldCount = updatedItems.filter(i => getNormalizedItemStatus(i) === 'Held').length;
 
       let masterPurchaseStatus: MasterStatus = 'Pending';
-      if (po.isHeldByAdmin || heldCount > 0) {
+      if (po.isHeldByAdmin) {
         masterPurchaseStatus = 'Held';
       } else if (purchasedCount === totalItems && totalItems > 0) {
         masterPurchaseStatus = 'Completed';
@@ -774,7 +803,7 @@ export default function App() {
         const heldCount = updatedItems.filter(i => getNormalizedItemStatus(i) === 'Held').length;
 
         let masterPurchaseStatus: MasterStatus = 'Pending';
-        if (po.isHeldByAdmin || heldCount > 0) {
+        if (po.isHeldByAdmin) {
           masterPurchaseStatus = 'Held';
         } else if (purchasedCount === totalItems && totalItems > 0) {
           masterPurchaseStatus = 'Completed';
@@ -832,23 +861,45 @@ export default function App() {
 
     const purchased = targetItem.purchasedQty || 0;
     const existingReceived = targetItem.warehouseQty || 0;
+    const isQuickPass = receivedBatchQty === undefined;
+
+    // Idempotency check for Quick Pass: if already received, no-op
+    if (isQuickPass && existingReceived >= purchased && purchased > 0) {
+      return { success: true, message: `Item "${targetItem.itemName}" is already fully received (${existingReceived}/${purchased}).` };
+    }
+
     const remainingToReceive = Math.max(0, purchased - existingReceived);
 
-    const actualReceivedBatch = typeof receivedBatchQty === 'number' ? receivedBatchQty : (remainingToReceive || purchased || 1);
-    const actualPassedBatch = typeof passedBatchQty === 'number' ? passedBatchQty : actualReceivedBatch;
-    const actualDamagedBatch = typeof damagedBatchQty === 'number' ? damagedBatchQty : 0;
+    const actualReceivedBatch = isQuickPass ? remainingToReceive : (typeof receivedBatchQty === 'number' ? receivedBatchQty : remainingToReceive);
+    const actualPassedBatch = isQuickPass ? remainingToReceive : (typeof passedBatchQty === 'number' ? passedBatchQty : actualReceivedBatch);
+    const actualDamagedBatch = isQuickPass ? 0 : (typeof damagedBatchQty === 'number' ? damagedBatchQty : 0);
 
-    const newTotalReceived = existingReceived + actualReceivedBatch;
-    const newTotalPassed = (targetItem.passedQty || 0) + actualPassedBatch;
+    const newTotalPassed = isQuickPass ? purchased : ((targetItem.passedQty || existingReceived) + actualPassedBatch);
     const newTotalDamaged = (targetItem.damagedQty || 0) + actualDamagedBatch;
-    const backorderQty = Math.max(0, purchased - newTotalPassed);
+    const newTotalReceived = newTotalPassed;
+
+    // Damaged units during QC subtract from purchasedQty and return to remaining unpurchased balance
+    let newPurchasedQty = purchased;
+    let newRemainingQty = targetItem.remainingQty !== undefined ? targetItem.remainingQty : Math.max(0, (targetItem.requestedQty || targetItem.orderedQty || 0) - purchased);
+    let newPurchaseStatus = targetItem.purchaseStatus;
+
+    if (actualDamagedBatch > 0) {
+      newPurchasedQty = Math.max(0, purchased - actualDamagedBatch);
+      const originalReq = targetItem.requestedQty || targetItem.orderedQty || 0;
+      newRemainingQty = Math.max(0, originalReq - newPurchasedQty);
+      newPurchaseStatus = (newPurchasedQty >= originalReq && originalReq > 0)
+        ? 'Purchased'
+        : (newPurchasedQty > 0 ? 'Partial Purchased' : 'Pending');
+    }
+
+    const backorderQty = Math.max(0, newPurchasedQty - newTotalPassed);
 
     let qcStatus: 'Passed' | 'Partial Damaged' | 'Rejected' | 'Pending QC' = 'Passed';
     if (newTotalDamaged > 0) {
       qcStatus = newTotalPassed > 0 ? 'Partial Damaged' : 'Rejected';
     }
 
-    const shortageQty = Math.max(0, purchased - newTotalReceived);
+    const shortageQty = Math.max(0, newPurchasedQty - newTotalReceived);
 
     // Trigger Telegram Discrepancy Alert if Damaged Goods > 0 or Shortage exists
     if (actualDamagedBatch > 0 || shortageQty > 0) {
@@ -857,7 +908,7 @@ export default function App() {
         itemName: targetItem.itemName || 'Item',
         purchaserName: targetItem.purchaserName || targetItem.holdBy || 'Purchaser Team',
         orderedQty: targetItem.requestedQty || targetItem.orderedQty || 0,
-        purchasedQty: purchased,
+        purchasedQty: newPurchasedQty,
         receivedQty: actualReceivedBatch,
         passedQty: actualPassedBatch,
         damagedQty: actualDamagedBatch,
@@ -886,14 +937,16 @@ export default function App() {
       receivedBy: currentUser.name
     };
 
-    const updatePOsLocal = (poList: PurchaseOrder[]) => poList.map(po => ({
-      ...po,
-      items: (po.items || []).map(item => {
+    const updatePOsLocal = (poList: PurchaseOrder[]) => poList.map(po => {
+      const updatedItems = (po.items || []).map(item => {
         if (String(item.id).trim() === String(itemId).trim()) {
           const updatedLogs = [...(item.receiveLogs || []), batchLog];
           return {
             ...item,
-            warehouseQty: newTotalReceived,
+            purchasedQty: newPurchasedQty,
+            remainingQty: newRemainingQty,
+            purchaseStatus: newPurchaseStatus as any,
+            warehouseQty: newTotalPassed,
             passedQty: newTotalPassed,
             damagedQty: newTotalDamaged,
             backorderQty,
@@ -905,12 +958,34 @@ export default function App() {
           };
         }
         return item;
-      })
-    }));
+      });
+
+      if (po.items?.some(i => String(i.id).trim() === String(itemId).trim())) {
+        const activeItems = updatedItems.filter(i => (i.purchasedQty || 0) > 0);
+        let poRecStatus: MasterStatus = 'Pending';
+        if (activeItems.length > 0) {
+          const allComplete = activeItems.every(i => (i.warehouseQty || 0) >= (i.purchasedQty || 0));
+          const anyRec = activeItems.some(i => (i.warehouseQty || 0) > 0);
+          poRecStatus = allComplete ? 'Completed' : (anyRec ? 'Partial' : 'Pending');
+        }
+        return {
+          ...po,
+          receiveStatus: poRecStatus,
+          items: updatedItems
+        };
+      }
+
+      return po;
+    });
 
     setIsSyncing(true);
     try {
-      await apiReceiveItem(itemId, currentUser);
+      await apiReceiveItem(itemId, currentUser, {
+        receivedQty: actualReceivedBatch,
+        passedQty: actualPassedBatch,
+        damagedQty: actualDamagedBatch,
+        qcNotes
+      });
     } catch {
       // ignore server errors and proceed with local update
     } finally {
@@ -933,29 +1008,26 @@ export default function App() {
   // Admin Actions
   const handleImportPOs = async (newPOs: PurchaseOrder[]) => {
     if (!currentUser) return;
-    newPOs.forEach(p => {
-      if (p && p.poNumber) removeDeletedPoNumber(p.poNumber);
-    });
 
     setIsSyncing(true);
     const res = await apiImportPOs(newPOs, currentUser);
     setIsSyncing(false);
 
     if (res.success && res.data?.pos) {
-      const deletedSet = new Set(getDeletedPoNumbers());
-      const filtered = res.data.pos.filter(p => p && p.poNumber && !deletedSet.has(p.poNumber.toUpperCase().trim()));
       showToast(res.message, true);
-      setPOs(filtered);
-      saveLocalPOs(filtered);
+      setPOs(res.data.pos);
+      saveLocalPOs(res.data.pos);
       return;
     }
 
     // Local Fallback: Merge imported POs
     const poMap = new Map<string, PurchaseOrder>();
-    pos.forEach(p => poMap.set(p.poNumber.toUpperCase(), p));
+    pos.forEach(p => {
+      poMap.set(p.poNumber.toUpperCase().trim(), p);
+    });
 
-    newPOs.forEach(p => {
-      poMap.set(p.poNumber.toUpperCase(), p);
+    (newPOs || []).forEach(p => {
+      poMap.set(p.poNumber.toUpperCase().trim(), p);
     });
 
     const merged = Array.from(poMap.values());
@@ -1006,31 +1078,158 @@ export default function App() {
   };
 
   const handleDeletePO = async (poNumber: string) => {
-    addDeletedPoNumber(poNumber);
     setIsSyncing(true);
     const res = await apiDeletePO(poNumber, currentUser || undefined);
     setIsSyncing(false);
 
     if (res.success && res.data?.pos) {
-      const deletedSet = new Set(getDeletedPoNumbers());
-      const filteredPOs = res.data.pos.filter(p => p && p.poNumber && !deletedSet.has(p.poNumber.toUpperCase().trim()));
-      setPOs(filteredPOs);
-      saveLocalPOs(filteredPOs);
+      setPOs(res.data.pos);
+      saveLocalPOs(res.data.pos);
       addAuditLog('Delete PO', `Deleted PO ${poNumber}`);
-      showToast(`Purchase Order ${poNumber} deleted from Google Sheets`, true);
+      showToast(`Purchase Order ${poNumber} deleted`, true);
       return;
     }
 
     // Local Fallback
-    const updated = pos.filter(p => p.poNumber.toUpperCase() !== poNumber.toUpperCase());
+    const updated = pos.filter(p => p.poNumber.toUpperCase().trim() !== poNumber.toUpperCase().trim());
     setPOs(updated);
     saveLocalPOs(updated);
     addAuditLog('Delete PO', `Deleted PO ${poNumber}`);
     showToast(`Purchase Order ${poNumber} deleted`, true);
   };
 
+  const handleHoldPO = async (poNumber: string) => {
+    if (!currentUser) return;
+    setIsSyncing(true);
+    const res = await apiHoldPO(poNumber, currentUser);
+    setIsSyncing(false);
+
+    if (res.success && res.data?.pos) {
+      setPOs(res.data.pos);
+      saveLocalPOs(res.data.pos);
+      addAuditLog('Hold PO', `Placed hold on PO ${poNumber}`);
+      showToast(`Purchase Order ${poNumber} placed on hold`, true);
+      return;
+    }
+
+    const updatedPOs = pos.map(po => {
+      if (po.poNumber.trim().toUpperCase() === poNumber.trim().toUpperCase()) {
+        const updatedItems = (po.items || []).map(item => {
+          const reqQty = Number(item.requestedQty || item.orderedQty || 0);
+          const purQty = Number(item.purchasedQty || 0);
+          const remQty = Math.max(0, reqQty - purQty);
+
+          // Rules 3 & 5: If item is fully purchased (remQty === 0 or status === 'Purchased'), leave completely untouched!
+          if (remQty === 0 || (purQty >= reqQty && reqQty > 0) || item.purchaseStatus === 'Purchased') {
+            return item;
+          }
+
+          // If item is ALREADY held by an individual purchaser, preserve purchaser's hold_by info
+          const existingHoldBy = (item.holdBy || item.holdByName || '').trim().toLowerCase();
+          const adminHoldName = (po.holdByAdmin || currentUser.name || 'Admin').trim().toLowerCase();
+          if (item.purchaseStatus === 'Held' && existingHoldBy && existingHoldBy !== 'admin' && existingHoldBy !== adminHoldName && existingHoldBy !== currentUser.name.trim().toLowerCase()) {
+            return item;
+          }
+
+          // Rule 4: Mark remaining/balance quantity as Held, keep purchased_qty untouched
+          return {
+            ...item,
+            purchaseStatus: 'Held' as const,
+            holdBy: currentUser.name,
+            holdById: currentUser.id,
+            holdByName: currentUser.name,
+            holdStartTime: new Date().toISOString(),
+            holdSince: new Date().toISOString()
+          };
+        });
+
+        return {
+          ...po,
+          isHeldByAdmin: true,
+          holdByAdmin: currentUser.name,
+          adminHoldAt: new Date().toISOString(),
+          purchaseStatus: 'Held' as const,
+          items: updatedItems
+        };
+      }
+      return po;
+    });
+
+    setPOs(updatedPOs);
+    saveLocalPOs(updatedPOs);
+    addAuditLog('Hold PO', `Placed hold on PO ${poNumber}`);
+    showToast(`Purchase Order ${poNumber} placed on hold`, true);
+  };
+
+  const handleReleasePO = async (poNumber: string) => {
+    if (!currentUser) return;
+    setIsSyncing(true);
+    const res = await apiReleasePO(poNumber, currentUser);
+    setIsSyncing(false);
+
+    if (res.success && res.data?.pos) {
+      setPOs(res.data.pos);
+      saveLocalPOs(res.data.pos);
+      addAuditLog('Release PO', `Released hold on PO ${poNumber}`);
+      showToast(`Purchase Order ${poNumber} hold released`, true);
+      return;
+    }
+
+    const updatedPOs = pos.map(po => {
+      if (po.poNumber.trim().toUpperCase() === poNumber.trim().toUpperCase()) {
+        const adminHoldName = (po.holdByAdmin || currentUser.name || 'Admin').trim().toLowerCase();
+
+        const updatedItems = (po.items || []).map(item => {
+          if (item.purchaseStatus === 'Held') {
+            const itemHoldBy = (item.holdBy || item.holdByName || '').trim().toLowerCase();
+            const isHeldByAdminHold = !itemHoldBy || itemHoldBy === 'admin' || itemHoldBy === adminHoldName || itemHoldBy === currentUser.name.trim().toLowerCase();
+
+            // ONLY release items held BY the admin's PO-level hold action — leave purchaser's individual item hold untouched!
+            if (!isHeldByAdminHold) {
+              return item;
+            }
+
+            const reqQty = Number(item.requestedQty || item.orderedQty || 0);
+            const purQty = Number(item.purchasedQty || 0);
+            const status = (purQty >= reqQty && reqQty > 0)
+              ? 'Purchased'
+              : (purQty > 0 ? ('Partial Purchased' as const) : ('Pending' as const));
+            return {
+              ...item,
+              purchaseStatus: status as any,
+              holdBy: '',
+              holdById: '',
+              holdByName: '',
+              holdStartTime: '',
+              holdSince: ''
+            };
+          }
+          return item;
+        });
+
+        const allPurchased = updatedItems.every(i => i.purchaseStatus === 'Purchased');
+        const anyPurchased = updatedItems.some(i => i.purchaseStatus === 'Partial Purchased' || i.purchaseStatus === 'Purchased' || (i.purchasedQty || 0) > 0);
+        const masterStatus = allPurchased ? 'Completed' : (anyPurchased ? 'Partial' : 'Pending');
+
+        return {
+          ...po,
+          isHeldByAdmin: false,
+          holdByAdmin: '',
+          adminHoldAt: '',
+          purchaseStatus: masterStatus as any,
+          items: updatedItems
+        };
+      }
+      return po;
+    });
+
+    setPOs(updatedPOs);
+    saveLocalPOs(updatedPOs);
+    addAuditLog('Release PO', `Released hold on PO ${poNumber}`);
+    showToast(`Purchase Order ${poNumber} hold released`, true);
+  };
+
   const handleClearAllPOs = async () => {
-    clearDeletedPoNumbers();
     setIsSyncing(true);
     const res = await apiClearAllPOs(currentUser || undefined);
     setIsSyncing(false);
@@ -1039,7 +1238,7 @@ export default function App() {
       setPOs([]);
       saveLocalPOs([]);
       addAuditLog('Clear POs', 'Cleared all Purchase Orders');
-      showToast('All Purchase Orders cleared from Google Sheets', true);
+      showToast('All Purchase Orders cleared', true);
       return;
     }
 
@@ -1144,6 +1343,17 @@ export default function App() {
     }
     showToast('Profile photo updated successfully', true);
   };
+
+  // Derive normalized PO list for WarehouseView so items show completed receive when warehouseQty >= purchasedQty
+  const warehousePos = useMemo(() => {
+    return pos.map(po => ({
+      ...po,
+      items: (po.items || []).map(item => ({
+        ...item,
+        requestedQty: (item.purchasedQty && item.purchasedQty > 0) ? item.purchasedQty : (item.requestedQty || item.orderedQty || 0)
+      }))
+    }));
+  }, [pos]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased flex flex-col">
@@ -1316,6 +1526,8 @@ export default function App() {
                       onSync={() => loadMasterData(true)}
                       onDeletePO={handleDeletePO}
                       onClearAllPOs={handleClearAllPOs}
+                      onHoldPO={handleHoldPO}
+                      onReleasePO={handleReleasePO}
                       onShowToast={showToast}
                       isSyncing={isSyncing}
                       currentUser={currentUser}
@@ -1339,7 +1551,7 @@ export default function App() {
 
                   {currentUser.role === 'warehouse' && (
                     <WarehouseView
-                      pos={pos}
+                      pos={warehousePos}
                       currentUser={currentUser}
                       onReceiveComplete={handleReceiveComplete}
                     />

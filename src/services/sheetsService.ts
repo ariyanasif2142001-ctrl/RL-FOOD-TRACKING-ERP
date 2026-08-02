@@ -373,7 +373,7 @@ function normalizeItemRow(i) {
   let holdExpireStr = i["Hold Expire Time"] ? String(i["Hold Expire Time"]).trim() : undefined;
 
   const isPurchasedItem = (reqNum > 0 && purNum >= reqNum) || purchaseStatus.toLowerCase() === 'purchased' || purchaseStatus.toLowerCase() === 'completed';
-  if ((holdByStr || holdStartStr || purchaseStatus.toLowerCase() === 'held' || purchaseStatus.toLowerCase() === 'hold') && !isPurchasedItem) {
+  if (holdByStr && holdByStr.trim() !== '' && !isPurchasedItem) {
     purchaseStatus = 'Held';
   }
 
@@ -431,9 +431,9 @@ function assemblePOs() {
     const item = normalizeItemRow(r);
     const activeHold = activeHoldsMap[String(item.id).trim()];
 
-    if (activeHold && item.purchaseStatus !== 'Purchased' && item.purchaseStatus !== 'Completed') {
+    if (activeHold && activeHold.holdBy && activeHold.holdBy.trim() !== '' && item.purchaseStatus !== 'Purchased' && item.purchaseStatus !== 'Completed') {
       item.purchaseStatus = 'Held';
-      item.holdBy = activeHold.holdBy || item.holdBy || 'Purchaser';
+      item.holdBy = activeHold.holdBy || item.holdBy || '';
       item.holdStartTime = activeHold.holdStartTime || item.holdStartTime;
       item.holdExpireTime = activeHold.holdExpireTime || item.holdExpireTime;
     }
@@ -475,10 +475,9 @@ function assemblePOs() {
 
     const isHeldByAdmin = m ? (String(m["Is Held By Admin"] || "").toUpperCase() === "TRUE") : false;
     const holdByAdminName = m ? String(m["Hold By Admin"] || "") : "";
-    const anyHeld = poItems.some(i => i.purchaseStatus === 'Held' || Boolean(i.holdBy && String(i.holdBy).trim() !== ''));
     const allPurchased = poItems.length > 0 && poItems.every(i => i.purchaseStatus === 'Purchased' || (i.remainingQty === 0 && i.purchasedQty > 0));
     const anyPurchased = poItems.some(i => i.purchasedQty > 0 || i.purchaseStatus === 'Partial Purchased' || i.purchaseStatus === 'Purchased');
-    const purchaseStatus = isHeldByAdmin || anyHeld ? 'Held' : (allPurchased ? 'Completed' : (anyPurchased ? 'Partial' : 'Pending'));
+    const purchaseStatus = isHeldByAdmin ? 'Held' : (allPurchased ? 'Completed' : (anyPurchased ? 'Partial' : 'Pending'));
 
     posList.push({
       id: poNumber,
@@ -930,6 +929,10 @@ function doPost(e) {
         const poNumber = String(payload.poNumber || "").trim();
         const user = payload.user || { name: "Admin", role: "admin" };
 
+        if (String(user.role || '').toLowerCase() !== 'purchaser') {
+          return createJsonResponse(false, "Permission denied: Only purchasers are authorized to hold purchase orders.", null);
+        }
+
         const masterRow = Database.findRow(CONFIG.SHEETS.PO_MASTER, "PO Number", poNumber);
         if (!masterRow) {
           return createJsonResponse(false, "Purchase Order not found.", null);
@@ -942,9 +945,9 @@ function doPost(e) {
           "Updated At": new Date().toISOString()
         });
 
-        logActivity(user.name, user.role, "Admin Hold PO", "Placed admin hold on PO " + poNumber);
+        logActivity(user.name, user.role, "Hold PO", "Placed hold on PO " + poNumber);
         const pos = assemblePOs();
-        return createJsonResponse(true, "Purchase Order placed on Admin Hold.", { pos });
+        return createJsonResponse(true, "Purchase Order placed on Hold.", { pos });
       });
     }
 
@@ -956,10 +959,16 @@ function doPost(e) {
         const poNumber = String(payload.poNumber || "").trim();
         const user = payload.user || { name: "Admin", role: "admin" };
 
+        if (String(user.role || '').toLowerCase() !== 'admin') {
+          return createJsonResponse(false, "Permission denied: Only admins are authorized to release PO-level holds.", null);
+        }
+
         const masterRow = Database.findRow(CONFIG.SHEETS.PO_MASTER, "PO Number", poNumber);
         if (!masterRow) {
           return createJsonResponse(false, "Purchase Order not found.", null);
         }
+
+        const adminHoldName = String(masterRow["Hold By Admin"] || user.name || "Admin").trim().toLowerCase();
 
         Database.updateRow(CONFIG.SHEETS.PO_MASTER, "PO Number", poNumber, {
           "Is Held By Admin": "FALSE",
@@ -967,28 +976,38 @@ function doPost(e) {
           "Updated At": new Date().toISOString()
         });
 
-        // Release items of this PO
+        // Release items of this PO held by admin PO hold action
         const items = Database.getAllRows(CONFIG.SHEETS.PO_ITEMS).filter(i => String(i["PO Number"]) === poNumber);
         const nowIso = new Date().toISOString();
 
         items.forEach(item => {
-          const itemIdStr = String(item["Item ID"]);
-          const purQty = Number(item["Purchased Qty"] || 0);
-          const reqQty = Number(item["Requested Qty"] || 0);
-          const status = purQty >= reqQty ? "Purchased" : (purQty > 0 ? "Partial Purchased" : "Pending");
+          if (String(item["Purchase Status"]) === "Held") {
+            const itemHoldBy = String(item["Hold By"] || "").trim().toLowerCase();
+            const isHeldByAdmin = !itemHoldBy || itemHoldBy === "admin" || itemHoldBy === adminHoldName || itemHoldBy === String(user.name || "").trim().toLowerCase();
 
-          Database.updateRow(CONFIG.SHEETS.PO_ITEMS, "Item ID", itemIdStr, {
-            "Purchase Status": status,
-            "Hold By": "",
-            "Hold Start Time": "",
-            "Hold Expire Time": "",
-            "Updated Date": nowIso
-          });
+            // ONLY release items held BY admin PO hold action — leave purchaser's individual item hold untouched!
+            if (!isHeldByAdmin) {
+              return;
+            }
+
+            const itemIdStr = String(item["Item ID"]);
+            const purQty = Number(item["Purchased Qty"] || 0);
+            const reqQty = Number(item["Requested Qty"] || 0);
+            const status = purQty >= reqQty ? "Purchased" : (purQty > 0 ? "Partial Purchased" : "Pending");
+
+            Database.updateRow(CONFIG.SHEETS.PO_ITEMS, "Item ID", itemIdStr, {
+              "Purchase Status": status,
+              "Hold By": "",
+              "Hold Start Time": "",
+              "Hold Expire Time": "",
+              "Updated Date": nowIso
+            });
+          }
         });
 
-        logActivity(user.name, user.role, "Admin Release PO", "Released admin hold on PO " + poNumber);
+        logActivity(user.name, user.role, "Release PO", "Released hold on PO " + poNumber);
         const pos = assemblePOs();
-        return createJsonResponse(true, "Purchase Order released from Admin Hold.", { pos });
+        return createJsonResponse(true, "Purchase Order released from Hold.", { pos });
       });
     }
 
@@ -998,7 +1017,12 @@ function doPost(e) {
       if (!auth.valid) return createJsonResponse(false, auth.message, null);
       return withLock(() => {
         const itemId = payload.itemId;
-        const user = payload.user;
+        const user = payload.user || {};
+
+        if (String(user.role || '').toLowerCase() !== 'purchaser') {
+          return createJsonResponse(false, "Permission denied: Only purchasers are authorized to hold items.", null);
+        }
+
         const itemRow = Database.findRow(CONFIG.SHEETS.PO_ITEMS, "Item ID", itemId);
 
         if (!itemRow) {
@@ -1056,15 +1080,15 @@ function doPost(e) {
       if (!auth.valid) return createJsonResponse(false, auth.message, null);
       return withLock(() => {
         const itemId = payload.itemId;
-        const user = payload.user;
+        const user = payload.user || {};
+
+        if (String(user.role || '').toLowerCase() !== 'purchaser') {
+          return createJsonResponse(false, "Permission denied: Only purchasers are authorized to release item holds.", null);
+        }
 
         const itemRow = Database.findRow(CONFIG.SHEETS.PO_ITEMS, "Item ID", itemId);
         if (!itemRow) {
           return createJsonResponse(false, "Item not found.", null);
-        }
-
-        if (user.role === 'admin') {
-          return createJsonResponse(false, "Admin cannot release purchaser holds. Only the purchaser who placed the hold can unhold.", null);
         }
 
         const currentHoldBy = String(itemRow["Hold By"] || "").trim();
@@ -1241,11 +1265,28 @@ function doPost(e) {
           return createJsonResponse(false, "Item has not been purchased yet.", null);
         }
 
-        const recQty = purchasedQty; // Received Qty automatically equals Purchased Qty
+        const batchData = payload.batchData;
+        const isQuickPass = batchData === undefined || batchData.receivedQty === undefined;
+        const recQty = isQuickPass ? purchasedQty : Number(batchData.receivedQty);
+        const passedQty = isQuickPass ? purchasedQty : Number(batchData.passedQty ?? recQty);
+        const newlyDamagedQty = isQuickPass ? 0 : Number(batchData.damagedQty ?? 0);
+        const totalDamagedQty = Number(itemRow["Damaged Qty"] || 0) + newlyDamagedQty;
+
+        const newPurchasedQty = newlyDamagedQty > 0 ? Math.max(0, purchasedQty - newlyDamagedQty) : purchasedQty;
+        const newRemainingQty = Math.max(0, reqQty - newPurchasedQty);
+        const newPurchaseStatus = (newPurchasedQty >= reqQty && reqQty > 0) ? "Purchased" : (newPurchasedQty > 0 ? "Partial Purchased" : "Pending");
+
+        const existingWarehouseQty = Number(itemRow["Warehouse Qty"] || 0);
+        const effectiveWarehouseQty = isQuickPass ? purchasedQty : Math.min(newPurchasedQty, existingWarehouseQty + passedQty);
         const now = new Date().toISOString();
 
         Database.updateRow(CONFIG.SHEETS.PO_ITEMS, "Item ID", itemId, {
-          "Warehouse Qty": recQty,
+          "Warehouse Qty": effectiveWarehouseQty,
+          "Passed Qty": effectiveWarehouseQty,
+          "Damaged Qty": totalDamagedQty,
+          "Purchased Qty": newPurchasedQty,
+          "Remaining Qty": newRemainingQty,
+          "Purchase Status": newPurchaseStatus,
           "Warehouse Verified By": user.name,
           "Warehouse Verified At": now,
           "Updated Date": now
@@ -1253,29 +1294,37 @@ function doPost(e) {
 
         // Upsert RECEIVE_SUMMARY
         const recSummary = Database.findRow(CONFIG.SHEETS.RECEIVE_SUMMARY, "Item Name", itemRow["Item Name"]);
-        const isCompleted = recQty >= reqQty;
-        const recStatus = isCompleted ? "Completed" : "Partial";
+        const isCompleted = effectiveWarehouseQty >= newPurchasedQty && newPurchasedQty > 0;
+        const recStatus = isCompleted ? "Completed" : (effectiveWarehouseQty > 0 ? "Partial" : "Pending");
 
         if (recSummary) {
           Database.updateRow(CONFIG.SHEETS.RECEIVE_SUMMARY, "Item Name", itemRow["Item Name"], {
-            "Received Qty": recQty,
-            "Remaining Qty": Math.max(0, reqQty - recQty),
+            "Received Qty": effectiveWarehouseQty,
+            "Remaining Qty": Math.max(0, newPurchasedQty - effectiveWarehouseQty),
             "Receive Status": recStatus,
             "Verified By": user.name,
             "Verified At": now
           });
         } else {
           Database.insert(CONFIG.SHEETS.RECEIVE_SUMMARY, [
-            itemRow["PO Number"], itemRow["Item Name"], reqQty, purchasedQty, recQty, Math.max(0, reqQty - recQty), recStatus, user.name, now
+            itemRow["PO Number"], itemRow["Item Name"], reqQty, newPurchasedQty, effectiveWarehouseQty, Math.max(0, newPurchasedQty - effectiveWarehouseQty), recStatus, user.name, now
           ]);
         }
 
         // Update Master PO Receive Status
         const poNumber = String(itemRow["PO Number"]);
         const poItems = Database.getAllRows(CONFIG.SHEETS.PO_ITEMS).filter(i => String(i["PO Number"]) === poNumber);
-        const allRec = poItems.every(i => Number(i["Warehouse Qty"]) > 0 && Number(i["Warehouse Qty"]) >= Number(i["Requested Qty"]));
-        const anyRec = poItems.some(i => Number(i["Warehouse Qty"]) > 0);
-        const masterRecStatus = allRec ? "Completed" : anyRec ? "Partial" : "Pending";
+        const activeItems = poItems.filter(i => Number(i["Purchased Qty"] || 0) > 0);
+        let masterRecStatus = "Pending";
+        if (activeItems.length > 0) {
+          const allRec = activeItems.every(i => {
+            const pur = Number(i["Purchased Qty"] || 0);
+            const w = Number(i["Warehouse Qty"] || 0);
+            return w >= pur;
+          });
+          const anyRec = activeItems.some(i => Number(i["Warehouse Qty"] || 0) > 0);
+          masterRecStatus = allRec ? "Completed" : anyRec ? "Partial" : "Pending";
+        }
 
         Database.updateRow(CONFIG.SHEETS.PO_MASTER, "PO Number", poNumber, {
           "Receive Status": masterRecStatus,

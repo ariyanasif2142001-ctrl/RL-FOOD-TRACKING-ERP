@@ -110,6 +110,7 @@ export interface POItem {
   purchasedQty: number;
   remainingQty: number; // Ordered Qty - Purchased Qty
   purchaseStatus: ItemPurchaseStatus;
+  isHeldByAdmin?: boolean;
   holdBy?: string;
   holdReason?: string;
   holdById?: string;

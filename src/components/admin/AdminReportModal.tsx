@@ -182,7 +182,7 @@ export const AdminReportModal: React.FC<AdminReportModalProps> = ({
                       </td>
                       <td className="p-2.5 text-slate-600 font-semibold">
                         {item.purchaseStatus === 'Held' ? (
-                          <span className="text-purple-700 font-bold">🔒 {item.holdBy || 'Purchaser'}</span>
+                          <span className="text-purple-700 font-bold">🔒 {item.holdBy || item.holdByName || 'Admin'}</span>
                         ) : (
                           item.notes || '-'
                         )}

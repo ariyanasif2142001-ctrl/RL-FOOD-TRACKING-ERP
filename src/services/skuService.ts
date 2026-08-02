@@ -187,11 +187,13 @@ export function normalizeDownloadUrl(url: string): string {
 
   // Handle Dropbox URL
   if (cleanUrl.includes('dropbox.com')) {
-    cleanUrl = cleanUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com');
-    cleanUrl = cleanUrl.replace('dl=0', 'raw=1');
-    if (!cleanUrl.includes('raw=1') && !cleanUrl.includes('dl=1')) {
-      cleanUrl += cleanUrl.includes('?') ? '&raw=1' : '?raw=1';
+    if (cleanUrl.includes('dl=0')) {
+      cleanUrl = cleanUrl.replace('dl=0', 'dl=1');
     }
+    if (!cleanUrl.includes('dl=1') && !cleanUrl.includes('raw=1')) {
+      cleanUrl += cleanUrl.includes('?') ? '&dl=1' : '?dl=1';
+    }
+    cleanUrl = cleanUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com');
     return cleanUrl;
   }
 
@@ -343,6 +345,23 @@ export async function fetchAndSyncMasterSKUsFromUrl(rawUrl: string, preferredShe
     const blob = await response.blob();
     const arrayBuffer = await blob.arrayBuffer();
 
+    // Check header text to detect HTML preview or error pages before passing to XLSX.read
+    const textDecoder = new TextDecoder('utf-8');
+    const headerSnippet = textDecoder.decode(arrayBuffer.slice(0, 1024)).trim().toLowerCase();
+
+    if (
+      headerSnippet.startsWith('<!doctype html') ||
+      headerSnippet.startsWith('<html') ||
+      (headerSnippet.includes('<head>') && !headerSnippet.includes('<table')) ||
+      (headerSnippet.startsWith('{') && headerSnippet.includes('"error"'))
+    ) {
+      return {
+        success: false,
+        count: 0,
+        message: 'The URL returned an HTML web page or error instead of an Excel/CSV file. Please ensure you are using a direct share link (e.g., Dropbox link with dl=1).'
+      };
+    }
+
     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
     const { targetSheetName, availableSheets, entries } = extractSKUsFromWorkbook(workbook, preferredSheetName);
 
@@ -360,8 +379,12 @@ export async function fetchAndSyncMasterSKUsFromUrl(rawUrl: string, preferredShe
       return { success: false, count: 0, message: `No valid SKU mappings found in sheet '${targetSheetName}'.` };
     }
   } catch (err: unknown) {
-    console.error('Master SKU Sync error:', err);
-    return { success: false, count: 0, message: `Failed to fetch sheet: ${(err as Error)?.message || 'Network error'}` };
+    const rawMsg = (err as Error)?.message || 'Network error';
+    const cleanMsg = rawMsg.includes('could not find <table>')
+      ? 'The sheet URL returned an HTML web page without tabular data. Please verify the link or upload sku_file.xlsx directly.'
+      : rawMsg;
+    console.warn('Master SKU Sync notice:', cleanMsg);
+    return { success: false, count: 0, message: `Failed to fetch sheet: ${cleanMsg}` };
   }
 }
 

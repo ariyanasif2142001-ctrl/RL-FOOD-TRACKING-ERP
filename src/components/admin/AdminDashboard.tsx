@@ -42,6 +42,8 @@ interface AdminDashboardProps {
   onSync: () => void;
   onDeletePO?: (poNumber: string) => void;
   onClearAllPOs?: () => void;
+  onHoldPO?: (poNumber: string) => void;
+  onReleasePO?: (poNumber: string) => void;
   onShowToast?: (msg: string, isSuccess?: boolean) => void;
   isSyncing: boolean;
   currentUser: User;
@@ -62,6 +64,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSync,
   onDeletePO,
   onClearAllPOs,
+  onHoldPO,
+  onReleasePO,
   onShowToast,
   isSyncing,
   currentUser,
@@ -218,9 +222,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         poNumber: i.poNumber || p.poNumber,
         department: i.department || p.department || 'General',
         purchaseStatus: isHeld ? ('Held' as const) : normStatus,
-        holdBy: isHeld ? (i.holdBy || i.holdByName || p.holdByAdmin || 'Purchaser') : '',
+        holdBy: isHeld ? (i.holdBy || i.holdByName || i.purchaserName || p.holdByAdmin || p.createdBy || 'Admin') : '',
         holdById: isHeld ? (i.holdById || '') : '',
-        holdByName: isHeld ? (i.holdByName || i.holdBy || p.holdByAdmin || 'Purchaser') : '',
+        holdByName: isHeld ? (i.holdByName || i.holdBy || i.purchaserName || p.holdByAdmin || p.createdBy || 'Admin') : '',
         holdStartTime: isHeld ? (i.holdStartTime || i.holdSince || p.adminHoldAt || new Date().toISOString()) : '',
         holdSince: isHeld ? (i.holdSince || i.holdStartTime || p.adminHoldAt || new Date().toISOString()) : '',
         holdExpireTime: ''
@@ -252,7 +256,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const uniqueHoldPurchasers = React.useMemo(() => {
     const set = new Set<string>();
     heldItemsList.forEach(i => {
-      const p = i.holdBy || 'Purchaser';
+      const p = i.holdBy || i.holdByName || 'Admin';
       set.add(p);
     });
     return Array.from(set).sort();
@@ -260,7 +264,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const displayHeldItems = React.useMemo(() => {
     if (holdPurchaserFilter === 'ALL') return heldItemsList;
-    return heldItemsList.filter(i => (i.holdBy || 'Purchaser') === holdPurchaserFilter);
+    return heldItemsList.filter(i => (i.holdBy || i.holdByName || 'Admin') === holdPurchaserFilter);
   }, [heldItemsList, holdPurchaserFilter]);
 
   // Department & Location Summaries
@@ -569,8 +573,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       type = 'item';
       filteredItems = allItems.filter(i => {
         if (getNormalizedItemStatus(i) !== 'Held') return false;
-        if (reportPurchaserFilter !== 'ALL' && (i.holdBy || 'Purchaser') !== reportPurchaserFilter) return false;
-        if (q && !i.itemName.toLowerCase().includes(q) && !i.poNumber.toLowerCase().includes(q) && !(i.holdBy || '').toLowerCase().includes(q)) return false;
+        if (reportPurchaserFilter !== 'ALL' && (i.holdBy || i.holdByName || 'Admin') !== reportPurchaserFilter) return false;
+        if (q && !i.itemName.toLowerCase().includes(q) && !i.poNumber.toLowerCase().includes(q) && !(i.holdBy || i.holdByName || '').toLowerCase().includes(q)) return false;
         return true;
       });
     } else if (selectedReport === 'partial_items') {
@@ -616,7 +620,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         `"${(i.department || '').replace(/"/g, '""')}"`,
         `"${i.requestedQty || i.orderedQty || 0} ${i.unit || 'pcs'}"`,
         `"${i.purchaseStatus || 'Pending'}"`,
-        `"${(i.purchaseStatus === 'Held' ? `Hold: ${i.holdBy || 'Purchaser'}` : i.notes || '').replace(/"/g, '""')}"`
+        `"${(i.purchaseStatus === 'Held' ? `Hold: ${i.holdBy || i.holdByName || 'Admin'}` : i.notes || '').replace(/"/g, '""')}"`
       ]);
       const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
       const link = document.createElement("a");
@@ -979,7 +983,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <RunningPoList
                 pos={filteredRunningPOs}
                 allowDelete={true}
-                allowStatusChange={true}
+                allowStatusChange={false}
+                onHoldPO={onHoldPO}
+                onReleasePO={onReleasePO}
                 onSelectPo={(po) => setSelectedPoForDetail(po)}
                 onDeletePO={(poNumber) => {
                   if (onDeletePO) onDeletePO(poNumber);
@@ -1028,7 +1034,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {/* Held Items List */}
                 <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                   {displayHeldItems.map((item, idx) => {
-                    const avatarUrl = getUserAvatar(item.holdBy || 'Purchaser');
+                    const holderName = item.holdBy || item.holdByName || 'Admin';
+                    const avatarUrl = getUserAvatar(holderName);
 
                     return (
                       <div key={idx} className="p-2.5 bg-purple-50/40 border border-purple-200/80 rounded-xl space-y-1.5 text-xs hover:bg-purple-50 transition">
@@ -1044,8 +1051,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                         <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 border-t border-purple-100">
                           <div className="flex items-center gap-1.5">
-                            <img src={avatarUrl} alt={item.holdBy || 'Purchaser'} className="w-4 h-4 rounded-full object-cover border border-purple-300 shrink-0" />
-                            <span className="font-bold text-purple-900">{item.holdBy || 'Purchaser'}</span>
+                            <img src={avatarUrl} alt={holderName} className="w-4 h-4 rounded-full object-cover border border-purple-300 shrink-0" />
+                            <span className="font-bold text-purple-900">{holderName}</span>
                           </div>
                           <span className="font-bold text-slate-800">{item.requestedQty || item.orderedQty || 0} {item.unit || 'pcs'}</span>
                         </div>

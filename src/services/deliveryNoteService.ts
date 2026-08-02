@@ -1,46 +1,202 @@
-import { DeliveryNoteRecord, DeliveryNoteItem } from '../types';
+import { DeliveryNoteRecord } from '../types';
+import { supabase } from './supabaseClient';
 
 const STORAGE_KEY = 'dispatch_delivery_notes_v2';
 
-export const getDeliveryNotes = (): DeliveryNoteRecord[] => {
+// Helper to safely parse local storage cache
+const loadLocalCache = (): DeliveryNoteRecord[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     return JSON.parse(raw);
   } catch (err) {
-    console.error('Error loading delivery notes:', err);
+    console.error('Error loading local delivery notes cache:', err);
     return [];
   }
 };
 
-export const saveDeliveryNotes = (notes: DeliveryNoteRecord[]): void => {
+// In-memory cache synced with localStorage and Supabase
+let deliveryNotesCache: DeliveryNoteRecord[] = loadLocalCache();
+
+// Dispatch local window event so UI components immediately update
+const notifyUpdate = (notes: DeliveryNoteRecord[]) => {
+  deliveryNotesCache = notes;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-    // Dispatch custom event so listeners update in real time across tabs/components
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('delivery_notes_updated', { detail: notes }));
-    }, 0);
   } catch (err) {
-    console.error('Error saving delivery notes:', err);
+    console.error('Error saving delivery notes cache:', err);
   }
+  setTimeout(() => {
+    window.dispatchEvent(new CustomEvent('delivery_notes_updated', { detail: notes }));
+  }, 0);
+};
+
+// Map Supabase DB row to DeliveryNoteRecord object
+const mapRowToDeliveryNote = (row: any): DeliveryNoteRecord => ({
+  id: String(row.id),
+  challanNumber: row.challan_number || row.challanNumber || '',
+  poId: row.po_id || row.poId || '',
+  poNumber: row.po_number || row.poNumber || '',
+  customerName: row.customer_name || row.customerName || '',
+  deliveryDate: row.delivery_date || row.deliveryDate || '',
+  dispatchOfficer: row.dispatch_officer || row.dispatchOfficer || '',
+  recipientName: row.recipient_name || row.recipientName || undefined,
+  notes: row.notes || undefined,
+  createdDate: row.created_date || row.createdDate || new Date().toISOString(),
+  status: row.status || 'Delivered',
+  deliveryConfirmedAt: row.delivery_confirmed_at || row.deliveryConfirmedAt || undefined,
+  deliveryConfirmedBy: row.delivery_confirmed_by || row.deliveryConfirmedBy || undefined,
+  invoiceNumber: row.invoice_number || row.invoiceNumber || undefined,
+  invoicedAt: row.invoiced_at || row.invoicedAt || undefined,
+  items: Array.isArray(row.items) ? row.items : (typeof row.items === 'string' ? JSON.parse(row.items) : []),
+  companyName: row.company_name || row.companyName || undefined,
+  companySubtext: row.company_subtext || row.companySubtext || undefined
+});
+
+// Map DeliveryNoteRecord object to Supabase DB row
+const mapDeliveryNoteToRow = (note: DeliveryNoteRecord) => ({
+  id: note.id,
+  challan_number: note.challanNumber,
+  po_id: note.poId,
+  po_number: note.poNumber,
+  customer_name: note.customerName,
+  delivery_date: note.deliveryDate,
+  dispatch_officer: note.dispatchOfficer,
+  recipient_name: note.recipientName || null,
+  notes: note.notes || null,
+  created_date: note.createdDate,
+  status: note.status,
+  delivery_confirmed_at: note.deliveryConfirmedAt || null,
+  delivery_confirmed_by: note.deliveryConfirmedBy || null,
+  invoice_number: note.invoiceNumber || null,
+  invoiced_at: note.invoicedAt || null,
+  items: note.items || [],
+  company_name: note.companyName || null,
+  company_subtext: note.companySubtext || null,
+  updated_at: new Date().toISOString()
+});
+
+/**
+ * Fetch all delivery notes directly from Supabase DB, falling back to local cache if unavailable.
+ */
+export const fetchDeliveryNotesFromSupabase = async (): Promise<DeliveryNoteRecord[]> => {
+  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+  if (!supabaseUrl || supabaseUrl === 'https://placeholder.supabase.co') {
+    return deliveryNotesCache;
+  }
+
+  try {
+    const { data: rows, error } = await supabase
+      .from('delivery_notes')
+      .select('*')
+      .order('created_date', { ascending: false });
+
+    if (error) {
+      console.warn('[Supabase DeliveryNotes Fetch Notice]', error.message);
+      return deliveryNotesCache;
+    }
+
+    if (rows) {
+      const fetchedNotes = rows.map(mapRowToDeliveryNote);
+      notifyUpdate(fetchedNotes);
+      return fetchedNotes;
+    }
+  } catch (err) {
+    console.error('Failed to load delivery notes from Supabase:', err);
+  }
+
+  return deliveryNotesCache;
+};
+
+/**
+ * Async save single delivery note to Supabase DB.
+ */
+const saveDeliveryNoteToSupabase = async (note: DeliveryNoteRecord) => {
+  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+  if (!supabaseUrl || supabaseUrl === 'https://placeholder.supabase.co') {
+    return;
+  }
+
+  try {
+    const row = mapDeliveryNoteToRow(note);
+    const { error } = await supabase.from('delivery_notes').upsert(row, { onConflict: 'id' });
+    if (error) {
+      console.warn('[Supabase DeliveryNote Upsert Error]', error.message);
+    }
+  } catch (err) {
+    console.error('Error saving delivery note to Supabase:', err);
+  }
+};
+
+/**
+ * Async delete single delivery note from Supabase DB.
+ */
+const deleteDeliveryNoteFromSupabase = async (id: string) => {
+  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+  if (!supabaseUrl || supabaseUrl === 'https://placeholder.supabase.co') {
+    return;
+  }
+
+  try {
+    const { error } = await supabase.from('delivery_notes').delete().eq('id', id);
+    if (error) {
+      console.warn('[Supabase DeliveryNote Delete Error]', error.message);
+    }
+  } catch (err) {
+    console.error('Error deleting delivery note from Supabase:', err);
+  }
+};
+
+// Initialize Realtime subscription for delivery_notes table in Supabase
+if (typeof window !== 'undefined') {
+  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+  if (supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co') {
+    // Initial fetch from Supabase on load
+    fetchDeliveryNotesFromSupabase();
+
+    // Enable Realtime sync across tabs/users
+    try {
+      supabase
+        .channel('public:delivery_notes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_notes' }, async () => {
+          await fetchDeliveryNotesFromSupabase();
+        })
+        .subscribe();
+    } catch (rtErr) {
+      console.warn('Realtime subscription error on delivery_notes:', rtErr);
+    }
+  }
+}
+
+export const getDeliveryNotes = (): DeliveryNoteRecord[] => {
+  return deliveryNotesCache;
+};
+
+export const saveDeliveryNotes = (notes: DeliveryNoteRecord[]): void => {
+  notifyUpdate(notes);
+  notes.forEach(note => saveDeliveryNoteToSupabase(note));
 };
 
 export const addDeliveryNote = (note: DeliveryNoteRecord): void => {
   const current = getDeliveryNotes();
-  // Ensure no duplicate ID
   const filtered = current.filter(n => n.id !== note.id);
-  saveDeliveryNotes([note, ...filtered]);
+  const updated = [note, ...filtered];
+  notifyUpdate(updated);
+  saveDeliveryNoteToSupabase(note);
 };
 
 export const updateDeliveryNote = (updatedNote: DeliveryNoteRecord): void => {
   const current = getDeliveryNotes();
   const next = current.map(n => n.id === updatedNote.id ? updatedNote : n);
-  saveDeliveryNotes(next);
+  notifyUpdate(next);
+  saveDeliveryNoteToSupabase(updatedNote);
 };
 
 export const deleteDeliveryNote = (id: string): void => {
   const current = getDeliveryNotes();
-  saveDeliveryNotes(current.filter(n => n.id !== id));
+  const next = current.filter(n => n.id !== id);
+  notifyUpdate(next);
+  deleteDeliveryNoteFromSupabase(id);
 };
 
 export const markDeliveryNoteInvoiced = (id: string, invoiceNumber?: string): DeliveryNoteRecord | null => {
@@ -57,7 +213,8 @@ export const markDeliveryNoteInvoiced = (id: string, invoiceNumber?: string): De
   };
 
   const next = current.map(n => n.id === id ? updated : n);
-  saveDeliveryNotes(next);
+  notifyUpdate(next);
+  saveDeliveryNoteToSupabase(updated);
   return updated;
 };
 
@@ -122,7 +279,8 @@ export const confirmDeliveryStatus = (
   };
 
   const next = current.map(n => n.id === deliveryNoteId ? updatedRecord : n);
-  saveDeliveryNotes(next);
+  notifyUpdate(next);
+  saveDeliveryNoteToSupabase(updatedRecord);
   return updatedRecord;
 };
 

@@ -5,7 +5,7 @@ import { OfficialPdfInvoiceModal } from './OfficialPdfInvoiceModal';
 import { DeliveryChallanModal } from './dispatch/DeliveryChallanModal';
 import { printOfficialRLDeliveryNote } from '../services/officialPdfService';
 import { 
-  Layers, FileSpreadsheet, Printer, Search, Eye, X, Lock, CheckCircle2, AlertCircle, Send, Trash2
+  Layers, FileSpreadsheet, Printer, Search, Eye, X, Lock, Unlock, CheckCircle2, AlertCircle, Send, Trash2
 } from 'lucide-react';
 
 interface RunningPoListProps {
@@ -18,6 +18,8 @@ interface RunningPoListProps {
   onDeletePo?: (poNumber: string) => void;
   onClearAllPOs?: () => void;
   onSelectPo?: (po: PurchaseOrder) => void;
+  onHoldPO?: (poNumber: string) => void;
+  onReleasePO?: (poNumber: string) => void;
   onUpdatePoStatus?: (poNumber: string, status: string) => void;
   onBulkUpdatePoStatus?: (poNumbers: string[], status: string) => void;
   onBulkDeletePOs?: (poNumbers: string[]) => void;
@@ -33,6 +35,8 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
   onDeletePo,
   onClearAllPOs,
   onSelectPo,
+  onHoldPO,
+  onReleasePO,
   onUpdatePoStatus,
   onBulkUpdatePoStatus,
   onBulkDeletePOs
@@ -660,21 +664,35 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Change Status Dropdown */}
-              {allowStatusChange && (
-                <div className="flex items-center gap-1">
-                  <select
-                    value={bulkStatusSelectValue}
-                    onChange={(e) => handleBulkStatusChange(e.target.value)}
-                    className="px-2.5 py-1 bg-slate-800 text-slate-100 border border-slate-700 rounded-lg text-xs font-bold outline-none focus:border-blue-500 cursor-pointer"
-                  >
-                    <option value="">Change Status...</option>
-                    <option value="Pending">Set Pending</option>
-                    <option value="Partial">Set Partial</option>
-                    <option value="Completed">Set Completed</option>
-                    <option value="Held">Set Hold</option>
-                  </select>
-                </div>
+              {/* Hold / Release Selected POs Action */}
+              {onHoldPO && selectedPOs.some(p => !p.isHeldByAdmin && p.purchaseStatus !== 'Held') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    selectedPOs.filter(p => !p.isHeldByAdmin && p.purchaseStatus !== 'Held').forEach(po => onHoldPO(po.poNumber));
+                    setSelectedPoNumbers(new Set());
+                  }}
+                  className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 transition cursor-pointer"
+                  title="Hold selected POs"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Hold Selected</span>
+                </button>
+              )}
+
+              {onReleasePO && selectedPOs.some(p => p.isHeldByAdmin || p.purchaseStatus === 'Held') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    selectedPOs.filter(p => p.isHeldByAdmin || p.purchaseStatus === 'Held').forEach(po => onReleasePO(po.poNumber));
+                    setSelectedPoNumbers(new Set());
+                  }}
+                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 transition cursor-pointer"
+                  title="Release selected PO holds"
+                >
+                  <Unlock className="w-3.5 h-3.5" />
+                  <span>Release Hold Selected</span>
+                </button>
               )}
 
               {/* Export Options */}
@@ -853,6 +871,37 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                             <Eye className="w-3 h-3" />
                             <span>Report</span>
                           </button>
+                          {(po.isHeldByAdmin || po.purchaseStatus === 'Held' || (po.items || []).some(i => i.purchaseStatus === 'Held')) ? (
+                            onReleasePO && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onReleasePO(po.poNumber);
+                                }}
+                                className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                                title="Release PO Hold"
+                              >
+                                <Unlock className="w-3 h-3" />
+                                <span>Release Hold</span>
+                              </button>
+                            )
+                          ) : (
+                            onHoldPO && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onHoldPO(po.poNumber);
+                                }}
+                                className="px-2 py-0.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                                title="Hold PO"
+                              >
+                                <Lock className="w-3 h-3" />
+                                <span>Hold</span>
+                              </button>
+                            )
+                          )}
                           {allowDelete && (onDeletePO || onDeletePo) && (
                             <button
                               type="button"
@@ -1025,7 +1074,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                             </td>
                             <td className="p-2.5 text-slate-500 text-[11px]">
                               {item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' ? (
-                                <span className="text-purple-700 font-bold">🔒 Hold: {item.holdBy || 'Purchaser'}</span>
+                                <span className="text-purple-700 font-bold">🔒 Hold: {item.holdBy || item.holdByName || 'Admin'}</span>
                               ) : (
                                 item.notes || '-'
                               )}

@@ -216,7 +216,7 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
                         </td>
                         <td className="p-2.5 text-slate-500 text-[11px]">
                           {item.purchaseStatus === 'Held' ? (
-                            <span className="text-purple-700 font-bold">🔒 Hold: {item.holdBy || 'Purchaser'}</span>
+                            <span className="text-purple-700 font-bold">🔒 Hold: {item.holdBy || item.holdByName || 'Admin'}</span>
                           ) : (
                             item.notes || '-'
                           )}

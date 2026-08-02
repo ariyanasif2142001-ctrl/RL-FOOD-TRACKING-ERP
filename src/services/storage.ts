@@ -524,60 +524,20 @@ export function saveLocalUsers(users: User[]) {
   localStorage.setItem(KEY_LOCAL_USERS, JSON.stringify(users));
 }
 
-export const KEY_DELETED_POS = 'rl_deleted_po_numbers';
-
-export function getDeletedPoNumbers(): string[] {
-  const raw = localStorage.getItem(KEY_DELETED_POS);
-  if (raw) {
-    try {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return arr.map(s => String(s).toUpperCase().trim());
-    } catch {
-      // fallback
-    }
-  }
-  return [];
-}
-
-export function addDeletedPoNumber(poNumber: string) {
-  if (!poNumber) return;
-  const current = getDeletedPoNumbers();
-  const normalized = poNumber.toUpperCase().trim();
-  if (!current.includes(normalized)) {
-    current.push(normalized);
-    localStorage.setItem(KEY_DELETED_POS, JSON.stringify(current));
-  }
-}
-
-export function removeDeletedPoNumber(poNumber: string) {
-  if (!poNumber) return;
-  const current = getDeletedPoNumbers();
-  const normalized = poNumber.toUpperCase().trim();
-  const updated = current.filter(p => p !== normalized);
-  localStorage.setItem(KEY_DELETED_POS, JSON.stringify(updated));
-}
-
-export function clearDeletedPoNumbers() {
-  localStorage.removeItem(KEY_DELETED_POS);
-}
-
 export function getLocalPOs(): PurchaseOrder[] {
   const raw = localStorage.getItem(KEY_LOCAL_POS);
   if (raw) {
     try {
-      const parsed: PurchaseOrder[] = JSON.parse(raw);
-      const deletedSet = new Set(getDeletedPoNumbers());
-      return parsed.filter(p => !deletedSet.has(p.poNumber.toUpperCase().trim()));
+      return JSON.parse(raw);
     } catch {
       // fallback
     }
   }
-  const deletedSet = new Set(getDeletedPoNumbers());
-  return INITIAL_POS.filter(p => !deletedSet.has(p.poNumber.toUpperCase().trim()));
+  return INITIAL_POS;
 }
 
 export function saveLocalPOs(pos: PurchaseOrder[]) {
-  localStorage.setItem(KEY_LOCAL_POS, JSON.stringify(pos));
+  localStorage.setItem(KEY_LOCAL_POS, JSON.stringify(pos || []));
 }
 
 export function getLocalAuditLogs(): AuditLog[] {
