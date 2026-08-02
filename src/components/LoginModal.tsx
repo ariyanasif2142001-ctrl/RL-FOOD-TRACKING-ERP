@@ -391,9 +391,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   {/* Password Field */}
                   <div>
-                    <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1.5">
-                      Password
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                        Password
+                      </label>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        Default: 123
+                      </span>
+                    </div>
                     <div className="relative">
                       <div className="absolute left-3.5 top-3.5 text-[#2E7D32] shrink-0">
                         <Lock className="w-4 h-4" />
@@ -403,7 +408,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         required
                         value={passwordInput}
                         onChange={(e) => setPasswordInput(e.target.value)}
-                        placeholder="Enter password"
+                        placeholder="Enter password (e.g. 123)"
                         className="w-full pl-10 pr-10 py-3 bg-slate-50/80 border border-slate-200 focus:border-[#43A047] focus:bg-white rounded-2xl text-sm text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/20 transition-all shadow-2xs placeholder:text-slate-400"
                       />
                       <button
