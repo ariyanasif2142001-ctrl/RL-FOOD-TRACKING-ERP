@@ -1,17 +1,8 @@
 import React, { useState } from 'react';
-import { getGoogleAppsScriptTemplate } from '../../services/sheetsService';
-import { copyToClipboard } from '../../utils/clipboard';
-import { BookOpen, FileCode, Database, Cpu, ShieldAlert, CheckCircle2, Copy, Check, Terminal, ExternalLink, Layers } from 'lucide-react';
+import { BookOpen, Database, ShieldAlert, Layers } from 'lucide-react';
 
 export const SystemDocsGuide: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'deploy' | 'sheets' | 'triggers' | 'userguide' | 'adminguide' | 'architecture'>('deploy');
-  const [copiedScript, setCopiedScript] = useState(false);
-
-  const handleCopyScript = async () => {
-    await copyToClipboard(getGoogleAppsScriptTemplate());
-    setCopiedScript(true);
-    setTimeout(() => setCopiedScript(false), 3000);
-  };
+  const [activeTab, setActiveTab] = useState<'database' | 'userguide' | 'adminguide' | 'architecture'>('userguide');
 
   return (
     <div className="space-y-6">
@@ -24,41 +15,11 @@ export const SystemDocsGuide: React.FC = () => {
         </div>
         <h2 className="text-xl sm:text-2xl font-black">Production Deployment & Operations Manual</h2>
         <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-3xl leading-relaxed">
-          Complete production setup guide for Google Sheets Database, Google Apps Script Web App Deployment, Time-Driven Triggers, Role Workflow Guides, and Architecture Specifications.
+          Complete production setup guide for Supabase ERP Database, Role Workflow Guides, and Architecture Specifications.
         </p>
 
         {/* Navigation Bar */}
         <div className="flex flex-wrap gap-2 mt-6 pt-6 border-t border-slate-800">
-          <button
-            onClick={() => setActiveTab('deploy')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-              activeTab === 'deploy' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            <FileCode className="w-3.5 h-3.5" />
-            <span>Apps Script Deployment</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('sheets')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-              activeTab === 'sheets' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            <Database className="w-3.5 h-3.5" />
-            <span>Google Sheets Schema</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('triggers')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-              activeTab === 'triggers' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            <Cpu className="w-3.5 h-3.5" />
-            <span>Required Triggers</span>
-          </button>
-
           <button
             onClick={() => setActiveTab('userguide')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
@@ -80,6 +41,16 @@ export const SystemDocsGuide: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('database')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+              activeTab === 'database' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            <Database className="w-3.5 h-3.5" />
+            <span>Database Schema</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('architecture')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
               activeTab === 'architecture' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -91,66 +62,12 @@ export const SystemDocsGuide: React.FC = () => {
         </div>
       </div>
 
-      {/* TAB 1: Apps Script Deployment */}
-      {activeTab === 'deploy' && (
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Google Apps Script Web App Deployment Instructions</h3>
-              <p className="text-xs text-slate-500">Deploy the backend API directly to your company Google Sheet</p>
-            </div>
-
-            <button
-              onClick={handleCopyScript}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-2 shrink-0"
-            >
-              {copiedScript ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
-              <span>{copiedScript ? 'Copied Apps Script!' : 'Copy Backend Code.gs'}</span>
-            </button>
-          </div>
-
-          <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-              <span className="font-bold text-slate-900 text-sm">Step 1: Open Google Sheets</span>
-              <p>Create a new blank Google Sheet or open your existing RL Food Purchase spreadsheet.</p>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-              <span className="font-bold text-slate-900 text-sm">Step 2: Open Extensions -&gt; Apps Script</span>
-              <p>In the top menu bar of Google Sheets, click <strong>Extensions</strong>, then select <strong>Apps Script</strong>.</p>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-              <span className="font-bold text-slate-900 text-sm">Step 3: Paste Production Code.gs</span>
-              <p>Delete all existing text in `Code.gs`, click "Copy Backend Code.gs" above, paste it into the editor, and click the <strong>Save</strong> disk icon.</p>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-              <span className="font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded text-sm">Step 4: Deploy as Web App (CRITICAL)</span>
-              <ol className="list-decimal pl-5 space-y-1.5 mt-2">
-                <li>Click the blue <strong>Deploy</strong> button in the top right -&gt; select <strong>New deployment</strong>.</li>
-                <li>Click the gear icon next to "Select type" -&gt; choose <strong>Web app</strong>.</li>
-                <li>Description: <code>RL Food Purchase Backend v1.0.0</code></li>
-                <li>Execute as: <strong>Me (your email address)</strong></li>
-                <li>Who has access: <strong className="text-rose-600">Anyone</strong> (Mandatory for frontend CORS communication).</li>
-                <li>Click <strong>Deploy</strong>, grant Google Account permissions if prompted, and copy the generated <strong>Web App URL</strong>.</li>
-              </ol>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-              <span className="font-bold text-slate-900 text-sm">Step 5: Connect RL FoodTrack Frontend</span>
-              <p>Navigate to <strong>Admin Dashboard -&gt; Google Sheets Integration</strong> tab in this app, paste the Web App URL, and click <strong>Save & Connect</strong>.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: Google Sheets Schema */}
-      {activeTab === 'sheets' && (
+      {/* TAB 1: Database Schema */}
+      {activeTab === 'database' && (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Google Sheets Database Structure</h3>
-            <p className="text-xs text-slate-500">All 5 sheets and header columns are automatically generated by Apps Script upon initial request.</p>
+            <h3 className="text-base font-bold text-slate-900">Supabase Relational Database Structure</h3>
+            <p className="text-xs text-slate-500">Core database tables powering real-time synchronization, holds, purchases, and receiving.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
@@ -197,30 +114,7 @@ export const SystemDocsGuide: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 3: Required Triggers */}
-      {activeTab === 'triggers' && (
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">Required Apps Script Time-Driven Triggers</h3>
-            <p className="text-xs text-slate-500">Automatic background cron jobs for item hold auto-releasing</p>
-          </div>
-
-          <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
-              <span className="font-bold text-amber-900 text-sm">Automated 10-Minute Hold Release Timer Trigger</span>
-              <p>In Apps Script, click the <strong>Triggers (Clock icon)</strong> on the left menu -&gt; click <strong>Add Trigger</strong>:</p>
-              <ul className="list-disc pl-5 space-y-1 mt-2 text-amber-900">
-                <li>Choose function to run: <code>autoReleaseExpiredHoldsCron</code></li>
-                <li>Select event source: <strong>Time-driven</strong></li>
-                <li>Select type of time based trigger: <strong>Minutes timer</strong></li>
-                <li>Select minute interval: <strong>Every minute</strong></li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: User Guide */}
+      {/* TAB 2: User Guide */}
       {activeTab === 'userguide' && (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
           <div>
@@ -244,7 +138,7 @@ export const SystemDocsGuide: React.FC = () => {
               <ol className="list-decimal pl-5 space-y-1">
                 <li>Log in with Warehouse credentials to view incoming purchased items.</li>
                 <li>Inspect physical delivery against purchased quantity.</li>
-                <li>Click <strong>Confirm Receive</strong> to verify goods and log receive verification to Google Sheets.</li>
+                <li>Click <strong>Confirm Receive</strong> to verify goods and log receive verification in the system database.</li>
               </ol>
             </div>
 
@@ -259,7 +153,7 @@ export const SystemDocsGuide: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 5: Admin Guide */}
+      {/* TAB 3: Admin Guide */}
       {activeTab === 'adminguide' && (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
           <div>
@@ -280,13 +174,13 @@ export const SystemDocsGuide: React.FC = () => {
 
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
               <h4 className="font-bold text-slate-900 text-sm">3. Audit Activity Trail</h4>
-              <p>Every transaction (Login, Hold, Purchase, Receive, Import, Roster Change) is logged in real-time in the ACTIVITY_LOG sheet and displayed under Audit Activity Log.</p>
+              <p>Every transaction (Login, Hold, Purchase, Receive, Import, Roster Change) is logged in real-time in the system database and displayed under Audit Activity Log.</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 6: Architecture */}
+      {/* TAB 4: Architecture */}
       {activeTab === 'architecture' && (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
           <div>
@@ -311,12 +205,11 @@ export const SystemDocsGuide: React.FC = () => {
 │   │   ├── Header.tsx                  # Global App Header & Live Connection Indicator
 │   │   └── LoginModal.tsx              # System Authentication Dialog
 │   ├── config/
-│   │   └── appConfig.ts                # Application Configuration & WebApp Storage
+│   │   └── appConfig.ts                # Application Configuration
 │   ├── services/
-│   │   ├── apiClient.ts                # Google Apps Script Web App Client
+│   │   ├── apiClient.ts                # Supabase REST API & Data Sync Client
 │   │   ├── poImportService.ts          # Excel Parser, Validation & Duplicate Merger
-│   │   ├── sheetsService.ts            # Production Code.gs Template Generator
-│   │   └── storage.ts                  # Client Storage Bridge
+│   │   └── storage.ts                  # Client Storage & Local Fallback
 │   ├── App.tsx                         # Main Application Shell & Action Handlers
 │   ├── main.tsx                        # React Entry Point
 │   ├── types.ts                        # Global TypeScript Interfaces

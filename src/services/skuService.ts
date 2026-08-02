@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { MasterSKUEntry, POItem, PurchaseOrder } from '../types';
+import { supabase } from './supabaseClient';
 
 const STORAGE_KEY_MASTER_SKU = 'rl_master_sku_mappings';
 const STORAGE_KEY_SKU_URL = 'rl_master_sku_sheet_url';
@@ -129,10 +130,122 @@ export const INITIAL_MASTER_SKUS: MasterSKUEntry[] = [
   }
 ];
 
-export function getMasterSKUMappings(): MasterSKUEntry[] {
-  if (cachedMasterSKUMappings && cachedMasterSKUMappings.length > 0) {
-    return cachedMasterSKUMappings;
+export const mapRowToMasterSKU = (row: any): MasterSKUEntry => ({
+  id: String(row.id),
+  customerItemName: row.customer_item_name || row.customerItemName || '',
+  customerItemCode: row.customer_item_code || row.customerItemCode || undefined,
+  internalSKU: row.internal_sku || row.internalSKU || '',
+  internalItemName: row.internal_item_name || row.internalItemName || '',
+  internalUnit: row.internal_unit || row.internalUnit || 'PCS',
+  category: row.category || undefined,
+  brand: row.brand || undefined,
+  slNo: row.sl_no || row.slNo || undefined,
+  costPrice: row.cost_price !== null && row.cost_price !== undefined ? row.cost_price : row.costPrice,
+  sellingPrice: row.selling_price !== null && row.selling_price !== undefined ? row.selling_price : row.sellingPrice,
+  assignedTo: row.assigned_to || row.assignedTo || undefined,
+  sheetName: row.sheet_name || row.sheetName || undefined,
+  lastUpdated: row.last_updated || row.lastUpdated || undefined
+});
+
+export const mapMasterSKUToRow = (entry: MasterSKUEntry) => ({
+  id: entry.id,
+  customer_item_name: entry.customerItemName,
+  customer_item_code: entry.customerItemCode || null,
+  internal_sku: entry.internalSKU,
+  internal_item_name: entry.internalItemName,
+  internal_unit: entry.internalUnit || 'PCS',
+  category: entry.category || null,
+  brand: entry.brand || null,
+  sl_no: entry.slNo ? String(entry.slNo) : null,
+  cost_price: entry.costPrice !== undefined && entry.costPrice !== '' ? Number(entry.costPrice) : null,
+  selling_price: entry.sellingPrice !== undefined && entry.sellingPrice !== '' ? Number(entry.sellingPrice) : null,
+  assigned_to: entry.assignedTo || null,
+  sheet_name: entry.sheetName || null,
+  last_updated: entry.lastUpdated || new Date().toISOString()
+});
+
+/**
+ * Fetches all Master SKU mappings from Supabase DB, updating local cache.
+ */
+export async function fetchMasterSKUsFromSupabase(): Promise<MasterSKUEntry[]> {
+  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+  if (!supabaseUrl || supabaseUrl === 'https://placeholder.supabase.co') {
+    return cachedMasterSKUMappings || getLocalMasterSKUMappings();
   }
+
+  try {
+    const { data: rows, error } = await supabase
+      .from('master_skus')
+      .select('*')
+      .order('internal_sku', { ascending: true });
+
+    if (error) {
+      console.warn('[Supabase Master SKUs Fetch Notice]', error.message);
+      return cachedMasterSKUMappings || getLocalMasterSKUMappings();
+    }
+
+    if (rows && rows.length > 0) {
+      const fetched = rows.map(mapRowToMasterSKU);
+      cachedMasterSKUMappings = fetched;
+      saveToIndexedDB(fetched);
+      try {
+        localStorage.setItem(STORAGE_KEY_MASTER_SKU, JSON.stringify(fetched.slice(0, 300)));
+      } catch (_) {}
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('master_sku_updated', { detail: { count: fetched.length } }));
+      }
+      return fetched;
+    }
+  } catch (err) {
+    console.error('Failed to load Master SKUs from Supabase:', err);
+  }
+
+  return cachedMasterSKUMappings || getLocalMasterSKUMappings();
+}
+
+/**
+ * Async batch upsert Master SKU entries into Supabase DB.
+ */
+export async function saveMasterSKUsToSupabase(mappings: MasterSKUEntry[]): Promise<void> {
+  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+  if (!supabaseUrl || supabaseUrl === 'https://placeholder.supabase.co' || !mappings || mappings.length === 0) {
+    return;
+  }
+
+  try {
+    const rows = mappings.map(mapMasterSKUToRow);
+    const chunkSize = 200;
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      const chunk = rows.slice(i, i + chunkSize);
+      const { error } = await supabase.from('master_skus').upsert(chunk, { onConflict: 'id' });
+      if (error) {
+        console.warn('[Supabase Master SKU Batch Upsert Notice]', error.message);
+      }
+    }
+  } catch (err) {
+    console.error('Error saving Master SKUs to Supabase:', err);
+  }
+}
+
+// Initialize Realtime subscription for master_skus table in Supabase
+if (typeof window !== 'undefined') {
+  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+  if (supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co') {
+    fetchMasterSKUsFromSupabase();
+    try {
+      supabase
+        .channel('public:master_skus')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'master_skus' }, async () => {
+          await fetchMasterSKUsFromSupabase();
+        })
+        .subscribe();
+    } catch (rtErr) {
+      console.warn('Realtime subscription error on master_skus:', rtErr);
+    }
+  }
+}
+
+function getLocalMasterSKUMappings(): MasterSKUEntry[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY_MASTER_SKU) || sessionStorage.getItem(STORAGE_KEY_MASTER_SKU);
     if (!data) {
@@ -146,6 +259,13 @@ export function getMasterSKUMappings(): MasterSKUEntry[] {
     cachedMasterSKUMappings = INITIAL_MASTER_SKUS;
     return INITIAL_MASTER_SKUS;
   }
+}
+
+export function getMasterSKUMappings(): MasterSKUEntry[] {
+  if (cachedMasterSKUMappings && cachedMasterSKUMappings.length > 0) {
+    return cachedMasterSKUMappings;
+  }
+  return getLocalMasterSKUMappings();
 }
 
 export function saveMasterSKUMappings(mappings: MasterSKUEntry[]): void {
@@ -165,226 +285,11 @@ export function saveMasterSKUMappings(mappings: MasterSKUEntry[]): void {
     }
   }
 
+  // Asynchronously save to Supabase
+  saveMasterSKUsToSupabase(mappings);
+
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('master_sku_updated', { detail: { count: mappings.length } }));
-  }
-}
-
-export function getMasterSKUSheetUrl(): string {
-  return localStorage.getItem(STORAGE_KEY_SKU_URL) || '';
-}
-
-export function saveMasterSKUSheetUrl(url: string): void {
-  localStorage.setItem(STORAGE_KEY_SKU_URL, url.trim());
-}
-
-/**
- * Normalizes Dropbox or Google Sheets URLs into direct download links
- */
-export function normalizeDownloadUrl(url: string): string {
-  let cleanUrl = url.trim();
-  if (!cleanUrl) return '';
-
-  // Handle Dropbox URL
-  if (cleanUrl.includes('dropbox.com')) {
-    if (cleanUrl.includes('dl=0')) {
-      cleanUrl = cleanUrl.replace('dl=0', 'dl=1');
-    }
-    if (!cleanUrl.includes('dl=1') && !cleanUrl.includes('raw=1')) {
-      cleanUrl += cleanUrl.includes('?') ? '&dl=1' : '?dl=1';
-    }
-    cleanUrl = cleanUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com');
-    return cleanUrl;
-  }
-
-  // Handle Google Sheets URL
-  if (cleanUrl.includes('docs.google.com/spreadsheets')) {
-    if (!cleanUrl.includes('output=csv') && !cleanUrl.includes('/pub')) {
-      // Convert standard sheet view URL to CSV export URL
-      const matches = cleanUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
-      if (matches && matches[1]) {
-        const sheetId = matches[1];
-        const gidMatch = cleanUrl.match(/gid=([0-9]+)/);
-        const gid = gidMatch ? gidMatch[1] : '0';
-        return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
-      }
-    }
-  }
-
-  return cleanUrl;
-}
-
-/**
- * Parses an Excel workbook specifically looking for the "MASTAR DATA" sheet or user's target sheet.
- * Extracts: SL NO | New Desc | Unit | Fixed By Date | SKU NAME | NAME | cost price | Fix Selling price 2026
- */
-export function extractSKUsFromWorkbook(workbook: XLSX.WorkBook, preferredSheetName?: string): { targetSheetName: string; availableSheets: string[]; entries: MasterSKUEntry[] } {
-  const availableSheets = workbook.SheetNames || [];
-  if (availableSheets.length === 0) {
-    throw new Error('Workbook contains no sheets.');
-  }
-
-  let targetSheetName = preferredSheetName;
-  if (!targetSheetName || !availableSheets.includes(targetSheetName)) {
-    // Priority order to auto-detect the Master SKU sheet
-    targetSheetName =
-      availableSheets.find(s => s.toUpperCase().trim() === 'MASTAR DATA' || s.toUpperCase().trim() === 'MASTAR_DATA') ||
-      availableSheets.find(s => s.toUpperCase().includes('MASTAR')) ||
-      availableSheets.find(s => s.toUpperCase().trim() === 'MASTER DATA' || s.toUpperCase().trim() === 'MASTER_DATA') ||
-      availableSheets.find(s => s.toUpperCase().includes('MASTER')) ||
-      availableSheets.find(s => s.toUpperCase().includes('SKU')) ||
-      availableSheets[0];
-  }
-
-  const worksheet = workbook.Sheets[targetSheetName];
-  if (!worksheet) {
-    throw new Error(`Sheet '${targetSheetName}' not found in workbook.`);
-  }
-
-  const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false }) as (string | number)[][];
-  if (!matrix || matrix.length < 2) {
-    throw new Error(`No data rows found in sheet '${targetSheetName}'.`);
-  }
-
-  const headers = (matrix[0] || []).map(h => String(h || '').trim().toUpperCase());
-
-  // Column detection based on user's exact MASTAR DATA sheet layout:
-  // SL NO | New Desc | Unit | Fixed By Date | SKU NAME | NAME | cost price | Fix Selling price 2026 | COST UPDATED DATE
-  let colDesc = headers.findIndex(h => h.includes('NEW DESC') || h.includes('NEW_DESC') || h.includes('DESCRIPTION') || h === 'ITEM NAME' || h.includes('CUSTOMER ITEM') || h === 'ITEM');
-  let colSKU = headers.findIndex(h => h.includes('SKU NAME') || h.includes('SKU_NAME') || h === 'SKU' || h.includes('INTERNAL SKU') || h.includes('ITEM CODE'));
-  let colUnit = headers.findIndex(h => h.includes('UNIT') || h.includes('UOM'));
-  let colSLNo = headers.findIndex(h => h.includes('SL NO') || h.includes('SL_NO') || h === 'SL');
-  let colAssignedTo = headers.findIndex(h => h === 'NAME' || h.includes('ASSIGNED') || h.includes('FIXED BY'));
-  let colCostPrice = headers.findIndex(h => h.includes('COST PRICE') || h.includes('COST'));
-  let colSellingPrice = headers.findIndex(h => h.includes('SELLING PRICE') || h.includes('FIX SELLING'));
-  let colCategory = headers.findIndex(h => h.includes('CATEGORY') || h.includes('DEPT'));
-
-  // Positional fallbacks matching MASTAR DATA columns
-  if (colDesc === -1) colDesc = 1; // Col B: New Desc
-  if (colUnit === -1) colUnit = 2; // Col C: Unit
-  if (colSKU === -1) colSKU = 4; // Col E: SKU NAME (e.g. LP005167)
-  if (colSLNo === -1) colSLNo = 0; // Col A: SL NO (e.g. 5167)
-
-  const entries: MasterSKUEntry[] = [];
-  const today = new Date().toISOString().split('T')[0];
-
-  for (let i = 1; i < matrix.length; i++) {
-    const row = matrix[i];
-    if (!row || row.length === 0) continue;
-
-    const descVal = String(row[colDesc] || '').trim();
-    const skuVal = colSKU !== -1 ? String(row[colSKU] || '').trim() : '';
-    const unitVal = colUnit !== -1 ? String(row[colUnit] || '').trim() : 'PCS';
-    const slNoVal = colSLNo !== -1 ? String(row[colSLNo] || '').trim() : '';
-    const assignedVal = colAssignedTo !== -1 ? String(row[colAssignedTo] || '').trim() : '';
-    const costPriceVal = colCostPrice !== -1 ? String(row[colCostPrice] || '').trim() : '';
-    const sellingPriceVal = colSellingPrice !== -1 ? String(row[colSellingPrice] || '').trim() : '';
-    const categoryVal = colCategory !== -1 ? String(row[colCategory] || '').trim() : 'General';
-
-    if (descVal || skuVal) {
-      entries.push({
-        id: `sku-${targetSheetName.toLowerCase().replace(/\s+/g, '')}-${i}-${Date.now()}`,
-        customerItemName: descVal,
-        customerItemCode: slNoVal ? `SL-${slNoVal}` : undefined,
-        internalSKU: skuVal || (slNoVal ? `LP00${slNoVal}` : `SKU-${i}`),
-        internalItemName: descVal,
-        internalUnit: (unitVal || 'PCS').toUpperCase(),
-        category: categoryVal || 'General',
-        slNo: slNoVal,
-        costPrice: costPriceVal,
-        sellingPrice: sellingPriceVal,
-        assignedTo: assignedVal,
-        sheetName: targetSheetName,
-        lastUpdated: today
-      });
-    }
-  }
-
-  return { targetSheetName, availableSheets, entries };
-}
-
-/**
- * Syncs Master SKU mappings from a URL (Dropbox direct link or Google Sheet CSV export)
- */
-export async function fetchAndSyncMasterSKUsFromUrl(rawUrl: string, preferredSheetName?: string): Promise<{ success: boolean; count: number; message: string; availableSheets?: string[]; targetSheetName?: string }> {
-  try {
-    const directUrl = normalizeDownloadUrl(rawUrl);
-    if (!directUrl) {
-      return { success: false, count: 0, message: 'Please enter a valid Dropbox or Google Sheets URL.' };
-    }
-
-    // Append unique cache buster query parameter to guarantee fetching latest Excel version from Dropbox
-    const separator = directUrl.includes('?') ? '&' : '?';
-    const cacheBusterUrl = `${directUrl}${separator}_cb=${Date.now()}`;
-
-    // Use server proxy directly for cross-origin sheet URLs (Dropbox/Google Sheets) to bypass browser CORS constraints cleanly
-    let response: Response;
-    const proxyUrl = `/api/proxy-sheet?url=${encodeURIComponent(directUrl)}`;
-
-    try {
-      response = await fetch(proxyUrl, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store',
-          'Pragma': 'no-cache'
-        }
-      });
-
-      if (!response.ok) {
-        // Fallback to direct client fetch if proxy endpoint is unavailable
-        response = await fetch(cacheBusterUrl);
-      }
-    } catch (proxyErr) {
-      response = await fetch(cacheBusterUrl);
-    }
-
-    if (!response || !response.ok) {
-      throw new Error(`Failed to download sheet file (HTTP ${response?.status || 'Unknown'})`);
-    }
-
-    const blob = await response.blob();
-    const arrayBuffer = await blob.arrayBuffer();
-
-    // Check header text to detect HTML preview or error pages before passing to XLSX.read
-    const textDecoder = new TextDecoder('utf-8');
-    const headerSnippet = textDecoder.decode(arrayBuffer.slice(0, 1024)).trim().toLowerCase();
-
-    if (
-      headerSnippet.startsWith('<!doctype html') ||
-      headerSnippet.startsWith('<html') ||
-      (headerSnippet.includes('<head>') && !headerSnippet.includes('<table')) ||
-      (headerSnippet.startsWith('{') && headerSnippet.includes('"error"'))
-    ) {
-      return {
-        success: false,
-        count: 0,
-        message: 'The URL returned an HTML web page or error instead of an Excel/CSV file. Please ensure you are using a direct share link (e.g., Dropbox link with dl=1).'
-      };
-    }
-
-    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-    const { targetSheetName, availableSheets, entries } = extractSKUsFromWorkbook(workbook, preferredSheetName);
-
-    if (entries.length > 0) {
-      saveMasterSKUMappings(entries);
-      saveMasterSKUSheetUrl(rawUrl);
-      return {
-        success: true,
-        count: entries.length,
-        targetSheetName,
-        availableSheets,
-        message: `Successfully synced ${entries.length} Master SKU entries from sheet '${targetSheetName}'!`
-      };
-    } else {
-      return { success: false, count: 0, message: `No valid SKU mappings found in sheet '${targetSheetName}'.` };
-    }
-  } catch (err: unknown) {
-    const rawMsg = (err as Error)?.message || 'Network error';
-    const cleanMsg = rawMsg.includes('could not find <table>')
-      ? 'The sheet URL returned an HTML web page without tabular data. Please verify the link or upload sku_file.xlsx directly.'
-      : rawMsg;
-    console.warn('Master SKU Sync notice:', cleanMsg);
-    return { success: false, count: 0, message: `Failed to fetch sheet: ${cleanMsg}` };
   }
 }
 
@@ -426,7 +331,6 @@ export function matchPOItemToMasterSKU(item: Partial<POItem>, mappings?: MasterS
       internalItemCode: match.internalSKU,
       sku: match.internalSKU,
       unitPrice: parsedPrice !== undefined && !isNaN(parsedPrice) ? parsedPrice : item.unitPrice,
-      // Default displayed name/unit to Internal SKU values if present
       itemName: match.internalItemName || item.itemName,
       unit: match.internalUnit || item.unit
     };
@@ -515,7 +419,6 @@ export function savePoItemSkuMapping(
 
     localStorage.setItem(STORAGE_KEY_SAVED_PO_SKUS, JSON.stringify(map));
 
-    // Update local POs if they exist in localStorage
     const localPosRaw = localStorage.getItem('rl_food_local_pos');
     if (localPosRaw) {
       const pos = JSON.parse(localPosRaw);
@@ -550,7 +453,6 @@ export function savePoItemSkuMapping(
       }
     }
 
-    // Trigger update event
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('po_sku_mapping_updated', { detail: { poNumber, poItemId, poItemName, skuData } }));
     }, 0);
@@ -558,4 +460,3 @@ export function savePoItemSkuMapping(
     console.error('Failed to save PO Item SKU mapping:', err);
   }
 }
-

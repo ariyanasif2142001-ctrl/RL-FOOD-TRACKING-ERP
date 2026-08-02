@@ -31,15 +31,6 @@ export interface TelegramConfig {
 export interface AppConfig {
   appName: string;
   appVersion: string;
-  spreadsheetId: string;
-  webAppUrl: string;
-  sheetNames: {
-    users: string;
-    poMaster: string;
-    poItems: string;
-    receiveSummary: string;
-    activityLog: string;
-  };
   holdTimeMs: number;
   telegramConfig?: TelegramConfig;
 }
@@ -47,15 +38,6 @@ export interface AppConfig {
 export const DEFAULT_APP_CONFIG: AppConfig = {
   appName: 'RL Food Purchase Tracking System',
   appVersion: '1.0.0',
-  spreadsheetId: '1AubdDXcs_u9ibqPja7PnlmA962X55Y2IwdT0l6coY0U',
-  webAppUrl: 'https://script.google.com/macros/s/AKfycbzxyZjG8FcoQG9Rlo1jxqBMvuu5vbQkhpTZgzc7TIvRtdhbA5kBjdVDuq6bPxxnwhpL3g/exec',
-  sheetNames: {
-    users: 'USERS',
-    poMaster: 'PO_MASTER',
-    poItems: 'PO_ITEMS',
-    receiveSummary: 'RECEIVE_SUMMARY',
-    activityLog: 'ACTIVITY_LOG'
-  },
   holdTimeMs: 5 * 60 * 60 * 1000, // 5 hours
   telegramConfig: {
     enabled: true,
@@ -89,8 +71,6 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
 };
 
 const CONFIG_STORAGE_KEY = 'rl_food_app_config';
-const GLOBAL_URL_KEY = 'rl_global_webapp_url';
-const SHARED_APP_CONFIG_KEY = 'rl_shared_app_config';
 
 export function getAppConfig(): AppConfig {
   let storedConfig: Partial<AppConfig> = {};
@@ -103,34 +83,6 @@ export function getAppConfig(): AppConfig {
     } catch {
       // fallback
     }
-  }
-
-  // 2. Try shared app config
-  if (!storedConfig.webAppUrl) {
-    const shared = localStorage.getItem(SHARED_APP_CONFIG_KEY);
-    if (shared) {
-      try {
-        const parsedShared = JSON.parse(shared);
-        if (parsedShared.webAppUrl) {
-          storedConfig.webAppUrl = parsedShared.webAppUrl;
-        }
-      } catch {
-        // fallback
-      }
-    }
-  }
-
-  // 3. Fallback to global webAppUrl string
-  if (!storedConfig.webAppUrl) {
-    const globalUrl = localStorage.getItem(GLOBAL_URL_KEY) || sessionStorage.getItem(GLOBAL_URL_KEY);
-    if (globalUrl) {
-      storedConfig.webAppUrl = globalUrl;
-    }
-  }
-
-  // Sanitize stored webAppUrl (must be Google Apps Script endpoint, not netlify site)
-  if (storedConfig.webAppUrl && storedConfig.webAppUrl.includes('netlify.app')) {
-    storedConfig.webAppUrl = '';
   }
 
   const mergedTelegram = {
@@ -162,8 +114,6 @@ export function getAppConfig(): AppConfig {
   return {
     ...DEFAULT_APP_CONFIG,
     ...storedConfig,
-    spreadsheetId: storedConfig.spreadsheetId || DEFAULT_APP_CONFIG.spreadsheetId,
-    webAppUrl: storedConfig.webAppUrl || DEFAULT_APP_CONFIG.webAppUrl,
     telegramConfig: mergedTelegram as TelegramConfig
   };
 }
@@ -174,15 +124,6 @@ export function saveAppConfig(config: Partial<AppConfig>): AppConfig {
 
   // Save to primary storage
   localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
-
-  // Save webAppUrl globally if provided
-  if (updated.webAppUrl) {
-    localStorage.setItem(GLOBAL_URL_KEY, updated.webAppUrl);
-    localStorage.setItem(SHARED_APP_CONFIG_KEY, JSON.stringify(updated));
-    try {
-      sessionStorage.setItem(GLOBAL_URL_KEY, updated.webAppUrl);
-    } catch {}
-  }
 
   // Broadcast to other tabs & windows
   if (typeof BroadcastChannel !== 'undefined') {

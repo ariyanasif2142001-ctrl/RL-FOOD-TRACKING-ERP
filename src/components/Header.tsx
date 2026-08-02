@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, SheetsConfig } from '../types';
+import { User } from '../types';
 import { RefreshCw, UserCheck, Shield, ShoppingBag, Warehouse, Truck, LogOut, Crown, Camera, Upload, X, Check, Smartphone, Download, Share, PlusSquare, ExternalLink, Search, Command, ChevronDown, User as UserIcon, Mail, Sparkles, Key, Users, Database, Send, CheckCircle2, BookOpen, FileSpreadsheet, Settings, Bell } from 'lucide-react';
 import { CompanyLogo } from './CompanyLogo';
 import { getNotificationPermission, requestNotificationPermission, sendBrowserNotification } from '../services/notificationService';
@@ -9,11 +9,10 @@ interface HeaderProps {
   onOpenLogin: () => void;
   onSync: () => void;
   isSyncing: boolean;
-  sheetsConfig: SheetsConfig;
+  sheetsConfig?: any;
   onUpdateUserAvatar?: (userId: string, avatarUrl: string) => void;
   onOpenCommandPalette?: () => void;
-  onSelectAdminTab?: (tab: 'dashboard' | 'import' | 'users' | 'sheets' | 'telegram' | 'tests' | 'docs' | 'logs') => void;
-  onOpenMasterSkuModal?: () => void;
+  onSelectAdminTab?: (tab: 'dashboard' | 'import' | 'users' | 'telegram' | 'tests' | 'docs' | 'logs') => void;
   usersCount?: number;
 }
 
@@ -26,7 +25,6 @@ export const Header: React.FC<HeaderProps> = ({
   onUpdateUserAvatar,
   onOpenCommandPalette,
   onSelectAdminTab,
-  onOpenMasterSkuModal,
   usersCount = 0
 }) => {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
@@ -94,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const getRoleBadge = (user: User) => {
-    const isSuper = user.isSuperAdmin || user.name === 'RL TAKMIL' || user.name === 'RL MUSTAQ' || user.id === 'u-takmil' || user.id === 'u-mustaq' || (user.role as string) === 'superadmin';
+    const isSuper = user.isSuperAdmin || user.name === 'RL TAKMIL' || user.name === 'RL MUSTAQ' || user.id === 'u-takmil' || user.id === 'u-mustaq' || (user.role as string) === 'superadmin' || user.role === 'super_admin';
     if (isSuper) {
       return {
         label: 'Super Admin',
@@ -157,11 +155,11 @@ export const Header: React.FC<HeaderProps> = ({
             disabled={isSyncing}
             id="btn-sheets-sync"
             className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] sm:text-xs font-bold transition hover:bg-emerald-900 active:scale-95 disabled:opacity-50"
-            title="Synchronize with Google Sheets Database"
+            title="Synchronize with Database"
           >
             <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSyncing ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
             <span className="hidden md:inline">
-              {sheetsConfig.webAppUrl ? 'Google Sheets Synced' : 'Local Master Engine'}
+              {(import.meta as any).env?.VITE_SUPABASE_URL && (import.meta as any).env?.VITE_SUPABASE_URL !== 'https://placeholder.supabase.co' ? 'Supabase Engine Active' : 'Local Master Engine'}
             </span>
             <span className="inline md:hidden text-[10px]">Sync</span>
             <RefreshCw className={`w-3 h-3 shrink-0 ${isSyncing ? 'animate-spin text-emerald-300' : 'text-emerald-400'}`} />
@@ -308,7 +306,7 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     <div>
                       <span className="block font-bold text-xs">Sync Master Database</span>
-                      <span className="block text-[10px] text-slate-400 font-normal">Refresh Google Sheets Data</span>
+                      <span className="block text-[10px] text-slate-400 font-normal">Refresh Database Data</span>
                     </div>
                   </button>
                 </div>
@@ -339,40 +337,6 @@ export const Header: React.FC<HeaderProps> = ({
                         {usersCount > 0 && <span className="px-1.5 py-0.2 bg-blue-900/60 text-blue-300 rounded text-[9.5px] font-extrabold">{usersCount}</span>}
                       </div>
                       <span className="block text-[10px] text-slate-400 font-normal">Manage permissions & staff roles</span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsProfileMenuOpen(false);
-                      if (onOpenMasterSkuModal) onOpenMasterSkuModal();
-                    }}
-                    className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition flex items-center gap-2.5"
-                  >
-                    <div className="p-1 rounded-lg bg-indigo-950 text-indigo-400 border border-indigo-800/80 shrink-0">
-                      <FileSpreadsheet className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-bold text-xs">Master SKU Mapping</span>
-                      <span className="block text-[10px] text-slate-400 font-normal">Excel / Dropbox SKU rules</span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsProfileMenuOpen(false);
-                      if (onSelectAdminTab) onSelectAdminTab('sheets');
-                    }}
-                    className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition flex items-center gap-2.5"
-                  >
-                    <div className="p-1 rounded-lg bg-teal-950 text-teal-400 border border-teal-800/80 shrink-0">
-                      <Database className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-bold text-xs">Google Sheets Config</span>
-                      <span className="block text-[10px] text-slate-400 font-normal">Sync URLs & Apps Script setup</span>
                     </div>
                   </button>
 

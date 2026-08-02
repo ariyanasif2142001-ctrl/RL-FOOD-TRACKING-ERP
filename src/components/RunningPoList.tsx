@@ -3,7 +3,7 @@ import { PurchaseOrder, getNormalizedItemStatus } from '../types';
 import { notifySinglePOReport } from '../services/telegramService';
 import { OfficialPdfInvoiceModal } from './OfficialPdfInvoiceModal';
 import { DeliveryChallanModal } from './dispatch/DeliveryChallanModal';
-import { printOfficialRLDeliveryNote } from '../services/officialPdfService';
+import { printPurchaseOrderReport } from '../services/officialPdfService';
 import { 
   Layers, FileSpreadsheet, Printer, Search, Eye, X, Lock, Unlock, CheckCircle2, AlertCircle, Send, Trash2
 } from 'lucide-react';
@@ -522,13 +522,9 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
     printWindow.document.close();
   };
 
-  // Export single PO details to printable official RADIANT LIGHTNING Delivery Note / PDF
+  // Export single PO details to printable Purchase Order Report PDF
   const handlePrintPoReport = (po: PurchaseOrder) => {
-    printOfficialRLDeliveryNote(po, {
-      recipientName: 'CPPA Authorized Receiver',
-      companyName: 'C P P A',
-      companySubtext: 'الشؤون الخاصة لسمو ولي العهد'
-    });
+    printPurchaseOrderReport(po);
   };
 
   return (

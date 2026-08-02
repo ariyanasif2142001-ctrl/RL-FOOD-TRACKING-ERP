@@ -89,6 +89,8 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
     onUpdateUsers(updated);
   };
 
+  const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.isSuperAdmin || currentUser?.name === 'RL TAKMIL' || currentUser?.name === 'RL MUSTAQ';
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-4 shadow-2xs">
@@ -100,15 +102,23 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">Manage user credentials, profile photos, phone contacts, and active status.</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsAddUserOpen(true)}
-            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer self-start sm:self-auto"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Add New User</span>
-          </button>
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setIsAddUserOpen(true)}
+              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer self-start sm:self-auto"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Add New User</span>
+            </button>
+          )}
         </div>
+
+        {!isSuperAdmin && (
+          <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-lg text-xs font-semibold">
+            ℹ️ User management actions (adding, editing, deactivating, or deleting users) are restricted to Super Admin accounts.
+          </div>
+        )}
 
         {/* Users Roster Table */}
         <div className="overflow-x-auto border border-slate-200 rounded-xl">
@@ -135,17 +145,19 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                             {u.name.slice(0, 2).toUpperCase()}
                           </div>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingUserForAvatar(u);
-                            setEditAvatarUrlInput(u.avatar || '');
-                          }}
-                          className="absolute -bottom-1 -right-1 p-1 bg-slate-900 text-white rounded-full opacity-0 group-hover:opacity-100 transition shadow-xs cursor-pointer"
-                          title="Change Profile Photo"
-                        >
-                          <ImageIcon className="w-3 h-3" />
-                        </button>
+                        {isSuperAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingUserForAvatar(u);
+                              setEditAvatarUrlInput(u.avatar || '');
+                            }}
+                            className="absolute -bottom-1 -right-1 p-1 bg-slate-900 text-white rounded-full opacity-0 group-hover:opacity-100 transition shadow-xs cursor-pointer"
+                            title="Change Profile Photo"
+                          >
+                            <ImageIcon className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                       <div>
                         <p className="font-bold text-slate-900">{u.name}</p>
@@ -155,12 +167,13 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                   </td>
                   <td className="p-3">
                     <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${
+                      u.role === 'super_admin' ? 'bg-gradient-to-r from-amber-600 to-purple-800 text-amber-100 border border-amber-500/80 shadow-xs' :
                       u.role === 'admin' ? 'bg-purple-100 text-purple-900 border border-purple-200' :
                       u.role === 'purchaser' ? 'bg-amber-100 text-amber-900 border border-amber-200' :
                       u.role === 'warehouse' ? 'bg-blue-100 text-blue-900 border border-blue-200' :
                       'bg-emerald-100 text-emerald-900 border border-emerald-200'
                     }`}>
-                      {u.role}
+                      {u.role === 'super_admin' ? 'SUPER ADMIN' : u.role}
                     </span>
                   </td>
                   <td className="p-3 text-slate-600">
@@ -170,10 +183,14 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                   <td className="p-3">
                     <button
                       type="button"
-                      onClick={() => handleToggleUser(u.id)}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                      onClick={() => isSuperAdmin && handleToggleUser(u.id)}
+                      disabled={!isSuperAdmin}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                        !isSuperAdmin ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
+                      } ${
                         u.active ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
                       }`}
+                      title={!isSuperAdmin ? "Requires Super Admin permission" : undefined}
                     >
                       {u.active ? 'Active' : 'Disabled'}
                     </button>
@@ -181,10 +198,10 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                   <td className="p-3 text-right">
                     <button
                       type="button"
-                      onClick={() => setUserToDelete(u)}
-                      disabled={currentUser?.id === u.id}
+                      onClick={() => isSuperAdmin && setUserToDelete(u)}
+                      disabled={!isSuperAdmin || currentUser?.id === u.id}
                       className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition disabled:opacity-30 cursor-pointer"
-                      title={currentUser?.id === u.id ? "Cannot delete your own active account" : "Delete User"}
+                      title={!isSuperAdmin ? "Requires Super Admin permission" : (currentUser?.id === u.id ? "Cannot delete your own active account" : "Delete User")}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -246,6 +263,7 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                     <option value="warehouse">Warehouse Manager</option>
                     <option value="dispatch">Dispatch / Delivery</option>
                     <option value="admin">Administrator</option>
+                    <option value="super_admin">Super Admin</option>
                   </select>
                 </div>
               </div>

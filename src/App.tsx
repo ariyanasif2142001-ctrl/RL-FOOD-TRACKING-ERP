@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, PurchaseOrder, SheetsConfig, AuditLog, POItem, MasterStatus, getNormalizedItemStatus, ReceiveBatchLog } from './types';
+import { User, PurchaseOrder, AuditLog, POItem, MasterStatus, getNormalizedItemStatus, ReceiveBatchLog } from './types';
 import { 
   getCurrentUser, saveCurrentUser, 
   getLocalUsers, saveLocalUsers, sanitizeAndMergeAdmins,
@@ -19,7 +19,7 @@ import { CompanyLogo } from './components/CompanyLogo';
 import { LoginModal } from './components/LoginModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { notifyItemHold, notifyItemPurchased, notifyWarehouseReceived, notifyPODispatched, notifyActivityLog, processTelegramUpdates, notifyDailySummaryReport, notifyPendingPurchasesReport, notifyHoldItemsReport, notifyDiscrepancyAlert } from './services/telegramService';
-import { fetchAndSyncMasterSKUsFromUrl, getMasterSKUSheetUrl, reMatchPOsWithMasterSKU } from './services/skuService';
+import { reMatchPOsWithMasterSKU } from './services/skuService';
 import { getNotificationPermission, requestNotificationPermission, sendBrowserNotification } from './services/notificationService';
 import { RefreshCw, AlertCircle, Database, CheckCircle, Loader2, Sparkles, X, Bell } from 'lucide-react';
 
@@ -86,7 +86,6 @@ export default function App() {
   const [isNoticeDismissed, setIsNoticeDismissed] = useState<boolean>(false);
   const [isLoginOpen, setIsLoginOpen] = useState<boolean>(!currentUser);
   const [adminActiveTab, setAdminActiveTab] = useState<'dashboard' | 'import' | 'users' | 'sheets' | 'telegram' | 'tests' | 'docs' | 'logs'>('dashboard');
-  const [isMasterSkuOpen, setIsMasterSkuOpen] = useState<boolean>(false);
 
   const [toast, setToast] = useState<{ message: string; success: boolean } | null>(null);
 
@@ -117,14 +116,6 @@ export default function App() {
     setTimeout(() => {
       setToast(null);
     }, 4000);
-  };
-
-  // Convert AppConfig to SheetsConfig for legacy UI compatibility
-  const sheetsConfig: SheetsConfig = {
-    sheetId: appConfig.spreadsheetId,
-    webAppUrl: appConfig.webAppUrl,
-    autoSync: true,
-    lastSyncedAt: new Date().toISOString()
   };
 
   // Helper to merge fetched POs with local state so holds, partial purchases, and full purchases are never prematurely reset by backend syncs
@@ -253,13 +244,17 @@ export default function App() {
     const localPOs = getLocalPOs();
     const localLogs = getLocalAuditLogs();
 
-    if (!appConfig.webAppUrl || appConfig.webAppUrl.trim() === '') {
+    const hasSheetsUrl = Boolean(appConfig.webAppUrl && appConfig.webAppUrl.trim() !== '');
+    const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+    const hasSupabase = Boolean(supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co');
+
+    if (!hasSheetsUrl && !hasSupabase) {
       setPOs(localPOs);
       setUsers(localUsers);
       setAuditLogs(localLogs);
       setIsLoading(false);
       setIsSyncing(false);
-      setApiError('Google Apps Script Web App URL is not set. Operating on local memory. Please configure Web App URL in Sheets Config to sync live.');
+      setApiError('Google Apps Script Web App URL or Supabase credentials are not configured. Operating on local memory.');
       return;
     }
 
@@ -316,34 +311,8 @@ export default function App() {
     loadMasterData();
   }, [loadMasterData]);
 
-  // Auto-sync Master SKU Dropbox/Excel sheet on app load and periodically in the background
+  // Listen for Master SKU & Delivery Note updates
   useEffect(() => {
-    const syncSkuSheet = async () => {
-      if (document.hidden) return;
-      const savedUrl = getMasterSKUSheetUrl();
-      if (savedUrl && savedUrl.trim()) {
-        try {
-          await fetchAndSyncMasterSKUsFromUrl(savedUrl);
-        } catch (err) {
-          console.warn('[Master SKU AutoSync] Background sync notice:', err);
-        }
-      }
-    };
-
-    // Initial sync on app boot
-    syncSkuSheet();
-
-    // Periodic auto-sync every 2.5 minutes (150,000 ms) instead of 30 seconds to prevent Google Sheets quota exhaustion
-    const skuInterval = setInterval(syncSkuSheet, 150000);
-
-    // Sync immediately when browser tab becomes active/visible again
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        syncSkuSheet();
-      }
-    };
-
-    // Listen for Master SKU updates to re-match active PO items automatically
     const handleSkuUpdated = () => {
       setPOs(prevPOs => {
         const updated = reMatchPOsWithMasterSKU(prevPOs);
@@ -352,13 +321,16 @@ export default function App() {
       });
     };
 
+    const handleDeliveryNotesUpdated = () => {
+      loadMasterData();
+    };
+
     window.addEventListener('master_sku_updated', handleSkuUpdated);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('delivery_notes_updated', handleDeliveryNotesUpdated);
 
     return () => {
-      clearInterval(skuInterval);
       window.removeEventListener('master_sku_updated', handleSkuUpdated);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('delivery_notes_updated', handleDeliveryNotesUpdated);
     };
   }, []);
 
@@ -1047,20 +1019,10 @@ export default function App() {
     saveLocalUsers(updatedUsers);
 
     if (res.success) {
-      showToast('Users updated successfully in Google Sheets', true);
+      showToast('Users updated successfully', true);
     } else {
       showToast('Users updated in Local Database', true);
     }
-  };
-
-  const handleSaveSheetsConfig = (newConfig: SheetsConfig) => {
-    const updated = saveAppConfig({
-      spreadsheetId: newConfig.sheetId,
-      webAppUrl: newConfig.webAppUrl
-    });
-    setAppConfigState(updated);
-    showToast('Saved Google Sheets Configuration', true);
-    loadMasterData(true);
   };
 
   // Dispatch Action
@@ -1365,11 +1327,9 @@ export default function App() {
           onOpenLogin={() => setIsLoginOpen(true)}
           onSync={() => loadMasterData(true)}
           isSyncing={isSyncing}
-          sheetsConfig={sheetsConfig}
           onUpdateUserAvatar={handleUpdateUserAvatar}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
           onSelectAdminTab={(tab) => setAdminActiveTab(tab)}
-          onOpenMasterSkuModal={() => setIsMasterSkuOpen(true)}
           usersCount={users.length}
         />
       ) : (
@@ -1422,7 +1382,7 @@ export default function App() {
               <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
               <span>Retry Connection</span>
             </button>
-            {currentUser?.role === 'admin' && (
+            {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
               <span className="text-[11px] text-amber-700 font-semibold underline">
                 Go to Admin Dashboard -&gt; Sheets Config
               </span>
@@ -1514,15 +1474,13 @@ export default function App() {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {currentUser.role === 'admin' && (
+                  {(currentUser.role === 'admin' || currentUser.role === 'super_admin') && (
                     <AdminDashboard
                       pos={pos}
                       users={users}
-                      sheetsConfig={sheetsConfig}
                       auditLogs={auditLogs}
                       onImportPOs={handleImportPOs}
                       onUpdateUsers={handleUpdateUsers}
-                      onSaveSheetsConfig={handleSaveSheetsConfig}
                       onSync={() => loadMasterData(true)}
                       onDeletePO={handleDeletePO}
                       onClearAllPOs={handleClearAllPOs}
@@ -1533,8 +1491,6 @@ export default function App() {
                       currentUser={currentUser}
                       externalActiveTab={adminActiveTab}
                       onSelectAdminTab={setAdminActiveTab}
-                      isExternalMasterSkuOpen={isMasterSkuOpen}
-                      onCloseExternalMasterSkuModal={() => setIsMasterSkuOpen(false)}
                     />
                   )}
 

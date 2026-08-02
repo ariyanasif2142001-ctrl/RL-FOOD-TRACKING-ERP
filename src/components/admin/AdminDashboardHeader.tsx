@@ -2,9 +2,8 @@ import React from 'react';
 import { LayoutDashboard, FileSpreadsheet, Crown, RefreshCw } from 'lucide-react';
 
 interface AdminDashboardHeaderProps {
-  activeTab: 'dashboard' | 'import' | 'users' | 'sheets' | 'telegram' | 'tests' | 'docs' | 'logs';
-  setActiveTab: (tab: 'dashboard' | 'import' | 'users' | 'sheets' | 'telegram' | 'tests' | 'docs' | 'logs') => void;
-  setIsMasterSkuModalOpen: (open: boolean) => void;
+  activeTab: 'dashboard' | 'import' | 'users' | 'telegram' | 'tests' | 'docs' | 'logs';
+  setActiveTab: (tab: 'dashboard' | 'import' | 'users' | 'telegram' | 'tests' | 'docs' | 'logs') => void;
   setIsCustomAlertModalOpen: (open: boolean) => void;
   isSendingTelegramSummary: boolean;
   isSendingCustomAlert: boolean;
@@ -17,7 +16,6 @@ interface AdminDashboardHeaderProps {
 export const AdminDashboardHeader: React.FC<AdminDashboardHeaderProps> = ({
   activeTab,
   setActiveTab,
-  setIsMasterSkuModalOpen,
   setIsCustomAlertModalOpen,
   isSendingTelegramSummary,
   isSendingCustomAlert,
@@ -33,19 +31,8 @@ export const AdminDashboardHeader: React.FC<AdminDashboardHeaderProps> = ({
         <div className="flex flex-wrap items-center gap-3">
           <div>
             <h1 className="text-sm sm:text-base font-bold leading-tight">Admin Dashboard</h1>
-            <p className="text-[10px] sm:text-[11px] text-slate-400">Master Operations & Master Google Sheets Database</p>
+            <p className="text-[10px] sm:text-[11px] text-slate-400">Master Operations & Supabase ERP Database</p>
           </div>
-
-          {/* Master SKU Mapping Button on Line 1 Left Side */}
-          <button
-            type="button"
-            onClick={() => setIsMasterSkuModalOpen(true)}
-            className="px-2.5 sm:px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
-            title="Manage Master SKU Mappings & Dropbox Auto-Sync URL"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-200" />
-            <span>Master SKU Mapping</span>
-          </button>
         </div>
 
         {/* Navigation Tab Buttons */}
@@ -82,7 +69,6 @@ export const AdminDashboardHeader: React.FC<AdminDashboardHeaderProps> = ({
               <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-lg text-[11px] font-extrabold flex items-center gap-1.5">
                 <Crown className="w-3 h-3 text-amber-400" />
                 {activeTab === 'users' && `Users (${usersCount})`}
-                {activeTab === 'sheets' && 'Google Sheets Config'}
                 {activeTab === 'telegram' && 'Telegram Bot Alerts'}
                 {activeTab === 'tests' && 'System Diagnostics'}
                 {activeTab === 'docs' && 'Setup & Guides'}
@@ -101,85 +87,86 @@ export const AdminDashboardHeader: React.FC<AdminDashboardHeaderProps> = ({
         </div>
       </div>
 
-      {/* Line 2: Master Operations & Telegram Report Action Buttons (Left to Right, Direct Buttons) */}
-      <div className="flex flex-wrap items-center justify-start gap-1.5 sm:gap-2 pt-1 border-t border-slate-800/80">
+      {/* Line 2: Quick-Action Buttons (Restrained Palette, Smooth Hover/Press Effects, Continuous Pulse for Alert) */}
+      <div className="flex flex-wrap items-center justify-start gap-2 pt-1 border-t border-slate-800/80">
+        {/* Custom Alert (Danger/Red Tint) */}
         <button
           type="button"
           onClick={() => setIsCustomAlertModalOpen(true)}
           disabled={isSendingTelegramSummary || isSendingCustomAlert}
-          className="px-2.5 sm:px-3 py-1.5 bg-rose-900/80 hover:bg-rose-800 text-rose-100 border border-rose-600/60 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-50"
+          className="px-3 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-500/30 hover:border-rose-400/50 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all duration-150 ease-in-out hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
           title="Send custom broadcast message or urgent alert to Telegram group"
         >
-          <span className="text-sm leading-none">📢</span>
+          <span className="text-sm leading-none animate-pulse">📢</span>
           <span>Custom Alert</span>
         </button>
 
+        {/* Sync Master (Operational / Neutral) */}
         <button
           type="button"
           onClick={onSync}
           disabled={isSyncing}
-          className="px-2.5 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+          className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700/90 text-slate-200 border border-slate-700/60 hover:border-slate-600 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all duration-150 ease-in-out hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
         >
-          <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isSyncing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 text-slate-300 ${isSyncing ? 'animate-spin' : ''}`} />
           <span>{isSyncing ? 'Syncing...' : 'Sync Master'}</span>
         </button>
 
-        <div className="h-4 w-px bg-slate-700/80 hidden sm:block mx-0.5" />
-
-        {/* Direct 5 Telegram Report Buttons */}
+        {/* Reporting Group (Blue Tint) */}
         <button
           type="button"
           onClick={() => handleSendTelegramReport('master')}
           disabled={isSendingTelegramSummary}
-          className="px-2.5 sm:px-3 py-1.5 bg-blue-900/60 hover:bg-blue-800 text-blue-100 border border-blue-700/60 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-50"
+          className="px-3 py-1.5 bg-blue-500/15 hover:bg-blue-500/25 text-blue-200 border border-blue-500/30 hover:border-blue-400/50 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all duration-150 ease-in-out hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
           title="Send Daily Master Summary to Telegram"
         >
           <span className="text-sm leading-none">📊</span>
-          <span>1. Daily Summary</span>
+          <span>Daily Summary</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleSendTelegramReport('pending')}
           disabled={isSendingTelegramSummary}
-          className="px-2.5 sm:px-3 py-1.5 bg-amber-950/60 hover:bg-amber-900/80 text-amber-100 border border-amber-700/60 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-50"
+          className="px-3 py-1.5 bg-blue-500/15 hover:bg-blue-500/25 text-blue-200 border border-blue-500/30 hover:border-blue-400/50 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all duration-150 ease-in-out hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
           title="Send Urgent Pending Purchases to Telegram"
         >
           <span className="text-sm leading-none">🛒</span>
-          <span>2. Urgent Pending</span>
+          <span>Urgent Pending</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleSendTelegramReport('hold')}
           disabled={isSendingTelegramSummary}
-          className="px-2.5 sm:px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-100 border border-rose-700/60 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-50"
+          className="px-3 py-1.5 bg-blue-500/15 hover:bg-blue-500/25 text-blue-200 border border-blue-500/30 hover:border-blue-400/50 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all duration-150 ease-in-out hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
           title="Send On-Hold Items Digest to Telegram"
         >
           <span className="text-sm leading-none">⏸️</span>
-          <span>3. On-Hold Digest</span>
+          <span>On-Hold Digest</span>
         </button>
 
+        {/* Operational / Neutral Group */}
         <button
           type="button"
           onClick={() => handleSendTelegramReport('transit')}
           disabled={isSendingTelegramSummary}
-          className="px-2.5 sm:px-3 py-1.5 bg-sky-950/60 hover:bg-sky-900/80 text-sky-100 border border-sky-700/60 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-50"
+          className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700/90 text-slate-200 border border-slate-700/60 hover:border-slate-600 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all duration-150 ease-in-out hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
           title="Send In-Transit Goods Report to Telegram"
         >
           <span className="text-sm leading-none">🚚</span>
-          <span>4. In-Transit Goods</span>
+          <span>In-Transit Goods</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleSendTelegramReport('warehouse')}
           disabled={isSendingTelegramSummary}
-          className="px-2.5 sm:px-3 py-1.5 bg-purple-950/60 hover:bg-purple-900/80 text-purple-100 border border-purple-700/60 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-50"
+          className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700/90 text-slate-200 border border-slate-700/60 hover:border-slate-600 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all duration-150 ease-in-out hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
           title="Send Warehouse Staging Stock to Telegram"
         >
           <span className="text-sm leading-none">🏬</span>
-          <span>5. Warehouse Staging</span>
+          <span>Warehouse Staging</span>
         </button>
       </div>
     </div>

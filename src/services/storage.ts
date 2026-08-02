@@ -1,9 +1,8 @@
-import { User, PurchaseOrder, SheetsConfig, AuditLog } from '../types';
-import { getAppConfig } from '../config/appConfig';
+import { User, PurchaseOrder, AuditLog } from '../types';
 
 /**
  * Storage Helper - Memory, LocalStorage & Session bridge.
- * Serves as cache & fallback mode when Google Apps Script URL is unconfigured or unreachable.
+ * Serves as local cache & offline fallback for the Supabase backend.
  */
 
 export const INITIAL_USERS: User[] = [
@@ -12,7 +11,7 @@ export const INITIAL_USERS: User[] = [
     name: 'RL TAKMIL',
     email: 'takmil@rlfood.com',
     username: 'RL TAKMIL',
-    role: 'admin',
+    role: 'super_admin',
     isSuperAdmin: true,
     active: true,
     status: 'Active',
@@ -23,7 +22,7 @@ export const INITIAL_USERS: User[] = [
     name: 'RL MUSTAQ',
     email: 'mustaq@rlfood.com',
     username: 'RL MUSTAQ',
-    role: 'admin',
+    role: 'super_admin',
     isSuperAdmin: true,
     active: true,
     status: 'Active',
@@ -468,8 +467,9 @@ export function getCurrentUser(): User | null {
     try {
       const parsed = JSON.parse(data);
       if (parsed && parsed.name) {
-        if (parsed.name === 'RL TAKMIL' || parsed.name === 'RL MUSTAQ' || parsed.id === 'u-takmil' || parsed.id === 'u-mustaq' || (parsed as { role?: string }).role === 'superadmin') {
+        if (parsed.name === 'RL TAKMIL' || parsed.name === 'RL MUSTAQ' || parsed.id === 'u-takmil' || parsed.id === 'u-mustaq' || (parsed as { role?: string }).role === 'superadmin' || parsed.role === 'super_admin') {
           parsed.isSuperAdmin = true;
+          parsed.role = 'super_admin';
         }
         const allowedAdmins = ['RL TAKMIL', 'RL MUSTAQ', 'RL POLASH', 'RL MURSHID', 'RL SAMIR', 'RL NISAM'];
         if (parsed.role === 'admin' && !allowedAdmins.includes(parsed.name)) {
@@ -556,17 +556,4 @@ export function saveLocalAuditLogs(logs: AuditLog[]) {
   localStorage.setItem(KEY_LOCAL_LOGS, JSON.stringify(logs));
 }
 
-export function getSheetsConfig(): SheetsConfig {
-  const cfg = getAppConfig();
-  return {
-    sheetId: cfg.spreadsheetId,
-    webAppUrl: cfg.webAppUrl,
-    autoSync: true,
-    lastSyncedAt: new Date().toISOString()
-  };
-}
-
-export function saveSheetsConfig(config: SheetsConfig) {
-  // App config saved via appConfig.ts
-}
 

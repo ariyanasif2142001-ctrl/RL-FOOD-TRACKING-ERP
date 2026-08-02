@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'purchaser' | 'warehouse' | 'dispatch';
+export type UserRole = 'admin' | 'purchaser' | 'warehouse' | 'dispatch' | 'super_admin';
 
 export interface User {
   id: string;
@@ -221,12 +221,6 @@ export interface ReceiveSummaryRow {
   receiveDate?: string;
 }
 
-export interface SheetsConfig {
-  sheetId: string;
-  webAppUrl: string;
-  autoSync: boolean;
-  lastSyncedAt?: string;
-}
 
 export interface AuditLog {
   id: string;

@@ -343,10 +343,10 @@ export const SystemTestsRunner: React.FC<SystemTestsRunnerProps> = ({
       }
     );
 
-    // 11. Google Sheets Sync Test
+    // 11. Database Sync Test
     await executeTest(
       't11',
-      'Google Sheets API Endpoint Schema Check',
+      'Database Sync Endpoint Schema Check',
       'Database Sync',
       'Verifies API response envelope format { success, message, data, timestamp }',
       async () => {
@@ -360,7 +360,7 @@ export const SystemTestsRunner: React.FC<SystemTestsRunnerProps> = ({
         if (typeof mockEnvelope.success !== 'boolean' || !mockEnvelope.timestamp) {
           return { passed: false, details: 'API envelope structure mismatch' };
         }
-        return { passed: true, details: 'API response schema adheres to Google Apps Script contract' };
+        return { passed: true, details: 'API response schema adheres to system contract' };
       }
     );
 
@@ -439,7 +439,7 @@ export const SystemTestsRunner: React.FC<SystemTestsRunnerProps> = ({
             </div>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight">System Test & Logic Verification Suite</h2>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Automatically verifies all 14 core business logic modules: Authentication, Permissions, PO Import, Duplicate Merging, Purchaser Holds, Auto Hold Release, Purchases, Warehouse Receives, KPI Calculations, and Sheets API schemas.
+              Automatically verifies all 14 core business logic modules: Authentication, Permissions, PO Import, Duplicate Merging, Purchaser Holds, Auto Hold Release, Purchases, Warehouse Receives, KPI Calculations, and Database API schemas.
             </p>
           </div>
 
@@ -548,7 +548,7 @@ export const SystemTestsRunner: React.FC<SystemTestsRunnerProps> = ({
           </div>
           <h3 className="text-base font-bold text-slate-900">System Verification Panel Ready</h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            Click "Execute All 14 System Tests" above to automatically run diagnostic tests on all business rules, permissions, holds, purchases, and Google Sheets schema validation.
+            Click "Execute All 14 System Tests" above to automatically run diagnostic tests on all business rules, permissions, holds, purchases, and Database schema validation.
           </p>
         </div>
       )}

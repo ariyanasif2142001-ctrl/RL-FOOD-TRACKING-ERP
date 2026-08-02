@@ -9,7 +9,7 @@ interface AdminPoDetailModalProps {
   sendingPoNumber: string | null;
   handlePrintPoReport: (po: PurchaseOrder) => void;
   handleExportSinglePoExcel: (po: PurchaseOrder) => void;
-  setPdfModalPo: (po: PurchaseOrder | null) => void;
+  setPdfModalPo?: (po: PurchaseOrder | null) => void;
 }
 
 export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
@@ -237,15 +237,6 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
             Created: {selectedPoForDetail.orderDate || selectedPoForDetail.createdAt || 'N/A'}
           </span>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPdfModalPo(selectedPoForDetail)}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-xs"
-              title="Official RADIANT LIGHTNING Delivery Note & Digital Signature Generator"
-            >
-              <span>✍️</span>
-              <span>Official PDF Invoice</span>
-            </button>
             <button
               type="button"
               onClick={() => handlePrintPoReport(selectedPoForDetail)}

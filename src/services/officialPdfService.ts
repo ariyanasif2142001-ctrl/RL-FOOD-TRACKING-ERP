@@ -979,6 +979,285 @@ export function printOfficialDeliveryChallanNoPrice(po: PurchaseOrder, options?:
   printWin.document.close();
 }
 
+export function generatePurchaseOrderReportHtml(po: PurchaseOrder): string {
+  const items = po.items || [];
+  const totalItems = items.length;
+  const purchasedCount = items.filter(i => (i.purchasedQty || 0) > 0 || i.purchaseStatus === 'Purchased').length;
+  const receivedCount = items.filter(i => (i.warehouseQty || i.passedQty || 0) > 0).length;
+  const progressPct = totalItems > 0 ? Math.round((receivedCount / totalItems) * 100) : 0;
+  const printDate = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+
+  const rowsHtml = items.map((item, idx) => {
+    const req = item.requestedQty || item.orderedQty || 0;
+    const pur = item.purchasedQty || 0;
+    const rec = item.warehouseQty || item.passedQty || 0;
+    const rem = Math.max(0, req - rec);
+
+    const purchaseStatus = item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' ? 'Hold' : (item.purchaseStatus || 'Pending');
+    const receiveStatus = rec >= req && req > 0 ? 'Ready/Received' : rec > 0 ? 'Partial Rec' : 'Pending Rec';
+    const notes = item.purchaseStatus === 'Held' ? `Hold: ${item.holdBy || item.holdByName || 'Admin'}` : (item.notes || '-');
+
+    return `
+      <tr>
+        <td style="text-align: center; font-weight: bold; font-family: monospace;">${item.slNumber || idx + 1}</td>
+        <td style="font-weight: bold; color: #0f172a;">${escapeHtml(item.itemName)}</td>
+        <td style="color: #475569;">${escapeHtml(item.brand || 'N/A')}</td>
+        <td style="text-align: center; font-weight: bold;">${req} ${escapeHtml(item.unit || 'pcs')}</td>
+        <td style="text-align: center; font-weight: bold; color: #1d4ed8;">${pur} ${escapeHtml(item.unit || 'pcs')}</td>
+        <td style="text-align: center; font-weight: bold; color: #047857;">${rec} ${escapeHtml(item.unit || 'pcs')}</td>
+        <td style="text-align: center; font-weight: bold; color: #b45309;">${rem} ${escapeHtml(item.unit || 'pcs')}</td>
+        <td style="text-align: center;">
+          <span class="status-badge ${purchaseStatus === 'Purchased' ? 'badge-green' : purchaseStatus === 'Hold' ? 'badge-purple' : 'badge-amber'}">
+            ${escapeHtml(purchaseStatus)}
+          </span>
+        </td>
+        <td style="text-align: center;">
+          <span class="status-badge ${rec >= req && req > 0 ? 'badge-purple' : rec > 0 ? 'badge-blue' : 'badge-slate'}">
+            ${escapeHtml(receiveStatus)}
+          </span>
+        </td>
+        <td style="color: #64748b; font-size: 10px;">${escapeHtml(notes)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Purchase Order Report - ${escapeHtml(po.poNumber)}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      margin: 0;
+      padding: 16px;
+      font-size: 11px;
+      line-height: 1.4;
+      background: #fff;
+    }
+    .header {
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 900;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 0;
+    }
+    .subtitle {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 2px;
+      font-weight: 600;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .meta-item label {
+      display: block;
+      font-size: 9px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .meta-item div {
+      font-weight: 700;
+      font-size: 12px;
+      color: #0f172a;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat-card {
+      border: 1px solid #cbd5e1;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+      background: #f1f5f9;
+    }
+    .stat-card .label {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #475569;
+    }
+    .stat-card .val {
+      font-size: 18px;
+      font-weight: 900;
+      color: #0f172a;
+      margin-top: 2px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    th {
+      background: #0f172a;
+      color: #fff;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 8px 6px;
+      border: 1px solid #0f172a;
+    }
+    td {
+      padding: 8px 6px;
+      border: 1px solid #e2e8f0;
+      font-size: 11px;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .badge-amber { background: #fef3c7; color: #92400e; }
+    .badge-purple { background: #f3e8ff; color: #6b21a8; }
+    .badge-slate { background: #f1f5f9; color: #475569; }
+    .footer {
+      margin-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      color: #94a3b8;
+      font-size: 10px;
+    }
+    @media print {
+      body { padding: 0; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1 class="title">Purchase Order Report</h1>
+      <div class="subtitle">Purchase Order Breakdown & Inventory Status</div>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-size: 14px; font-weight: 900; font-family: monospace; color: #0f172a;">PO #${escapeHtml(po.poNumber)}</div>
+      <div style="font-size: 10px; color: #64748b;">Printed: ${printDate}</div>
+    </div>
+  </div>
+
+  <div class="meta-grid">
+    <div class="meta-item">
+      <label>Department</label>
+      <div>${escapeHtml(po.department || 'General')}</div>
+    </div>
+    <div class="meta-item">
+      <label>Location</label>
+      <div>${escapeHtml(po.location || 'Central Warehouse')}</div>
+    </div>
+    <div class="meta-item">
+      <label>Order Date</label>
+      <div>${escapeHtml(po.orderDate || po.createdAt || 'N/A')}</div>
+    </div>
+    <div class="meta-item">
+      <label>Delivery Date</label>
+      <div>${escapeHtml(po.deliveryDate || 'N/A')}</div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card" style="background: #eff6ff; border-color: #bfdbfe;">
+      <div class="label" style="color: #1e40af;">Total Items</div>
+      <div class="val" style="color: #1e3a8a;">${totalItems}</div>
+    </div>
+    <div class="stat-card" style="background: #f0fdf4; border-color: #bbf7d0;">
+      <div class="label" style="color: #166534;">Purchased Items</div>
+      <div class="val" style="color: #14532d;">${purchasedCount}</div>
+    </div>
+    <div class="stat-card" style="background: #faf5ff; border-color: #e9d5ff;">
+      <div class="label" style="color: #6b21a8;">Warehouse Received</div>
+      <div class="val" style="color: #581c87;">${receivedCount}</div>
+    </div>
+    <div class="stat-card" style="background: #fffbeb; border-color: #fde68a;">
+      <div class="label" style="color: #92400e;">Progress</div>
+      <div class="val" style="color: #78350f;">${progressPct}%</div>
+    </div>
+  </div>
+
+  <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #0f172a; margin-bottom: 8px;">Line Items Breakdown</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 35px;">SL</th>
+        <th>Item Name</th>
+        <th>Brand</th>
+        <th>Requested Qty</th>
+        <th>Purchased Qty</th>
+        <th>Received Qty</th>
+        <th>Remaining Qty</th>
+        <th>Purchase Status</th>
+        <th>Receive Status</th>
+        <th>Notes / Hold</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <div>RADIANT LIGHTNING Procurement & Inventory System</div>
+    <div>Report Generated on ${printDate}</div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+    };
+  </script>
+</body>
+</html>`;
+}
+
+export function printPurchaseOrderReport(po: PurchaseOrder) {
+  const printWin = window.open('', '_blank', 'width=1000,height=850');
+  if (!printWin) {
+    alert("Please allow popups to open and print the Purchase Order Report.");
+    return;
+  }
+  const html = generatePurchaseOrderReportHtml(po);
+  printWin.document.open();
+  printWin.document.write(html);
+  printWin.document.close();
+}
+
 function escapeHtml(str?: string): string {
   if (!str) return '';
   return str

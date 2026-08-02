@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { PurchaseOrder, User, SheetsConfig, AuditLog, getNormalizedItemStatus } from '../../types';
+import { PurchaseOrder, User, AuditLog, getNormalizedItemStatus } from '../../types';
 import { SystemTestsRunner } from './SystemTestsRunner';
 import { SystemDocsGuide } from './SystemDocsGuide';
 import { TelegramSettings } from './TelegramSettings';
@@ -14,15 +14,13 @@ import {
 } from '../../services/telegramService';
 import { RunningPoList } from '../RunningPoList';
 import { OfficialPdfInvoiceModal } from '../OfficialPdfInvoiceModal';
-import { MasterSkuModal } from '../MasterSkuModal';
 import { DiscrepancyAlertHub } from '../DiscrepancyAlertHub';
-import { DispatchKanbanPipeline } from '../DispatchKanbanPipeline';
-import { AiBackupHub } from './AiBackupHub';
-import { printOfficialRLDeliveryNote } from '../../services/officialPdfService';
+import { AdminPoSlider } from './AdminPoSlider';
+import { FruitOrbitStats } from './FruitOrbitStats';
+import { printPurchaseOrderReport } from '../../services/officialPdfService';
 import { AdminDashboardHeader } from './AdminDashboardHeader';
 import { AdminPoImportSection } from './AdminPoImportSection';
 import { AdminUsersSection } from './AdminUsersSection';
-import { AdminSheetsSection } from './AdminSheetsSection';
 import { AdminAuditLogsSection } from './AdminAuditLogsSection';
 import { AdminReportModal } from './AdminReportModal';
 import { AdminPoDetailModal } from './AdminPoDetailModal';
@@ -34,11 +32,11 @@ import {
 interface AdminDashboardProps {
   pos: PurchaseOrder[];
   users: User[];
-  sheetsConfig: SheetsConfig;
+  sheetsConfig?: any;
   auditLogs: AuditLog[];
   onImportPOs: (newPOs: PurchaseOrder[]) => void;
   onUpdateUsers: (users: User[]) => void;
-  onSaveSheetsConfig: (config: SheetsConfig) => void;
+  onSaveSheetsConfig?: (config: any) => void;
   onSync: () => void;
   onDeletePO?: (poNumber: string) => void;
   onClearAllPOs?: () => void;
@@ -47,10 +45,8 @@ interface AdminDashboardProps {
   onShowToast?: (msg: string, isSuccess?: boolean) => void;
   isSyncing: boolean;
   currentUser: User;
-  externalActiveTab?: 'dashboard' | 'import' | 'users' | 'sheets' | 'telegram' | 'tests' | 'docs' | 'logs';
-  onSelectAdminTab?: (tab: 'dashboard' | 'import' | 'users' | 'sheets' | 'telegram' | 'tests' | 'docs' | 'logs') => void;
-  isExternalMasterSkuOpen?: boolean;
-  onCloseExternalMasterSkuModal?: () => void;
+  externalActiveTab?: 'dashboard' | 'import' | 'users' | 'telegram' | 'tests' | 'docs' | 'logs';
+  onSelectAdminTab?: (tab: 'dashboard' | 'import' | 'users' | 'telegram' | 'tests' | 'docs' | 'logs') => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -70,15 +66,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   isSyncing,
   currentUser,
   externalActiveTab,
-  onSelectAdminTab,
-  isExternalMasterSkuOpen,
-  onCloseExternalMasterSkuModal
+  onSelectAdminTab
 }) => {
-  const [internalActiveTab, setInternalActiveTab] = useState<'dashboard' | 'import' | 'users' | 'sheets' | 'telegram' | 'tests' | 'docs' | 'logs'>('dashboard');
+  const [internalActiveTab, setInternalActiveTab] = useState<'dashboard' | 'import' | 'users' | 'telegram' | 'tests' | 'docs' | 'logs'>('dashboard');
   
   const activeTab = externalActiveTab || internalActiveTab;
 
-  const setActiveTab = (tab: 'dashboard' | 'import' | 'users' | 'sheets' | 'telegram' | 'tests' | 'docs' | 'logs') => {
+  const setActiveTab = (tab: 'dashboard' | 'import' | 'users' | 'telegram' | 'tests' | 'docs' | 'logs') => {
     setInternalActiveTab(tab);
     if (onSelectAdminTab) onSelectAdminTab(tab);
   };
@@ -205,7 +199,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [poToDelete, setPoToDelete] = useState<string | null>(null);
   const [isClearAllOpen, setIsClearAllOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
-  const [isMasterSkuModalOpen, setIsMasterSkuModalOpen] = useState(false);
   const [pdfModalPo, setPdfModalPo] = useState<PurchaseOrder | null>(null);
 
   // METRICS CALCULATIONS
@@ -633,7 +626,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handlePrintPoReport = (po: PurchaseOrder) => {
-    printOfficialRLDeliveryNote(po);
+    printPurchaseOrderReport(po);
   };
 
   const handleExportSinglePoExcel = (po: PurchaseOrder) => {
@@ -689,7 +682,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <AdminDashboardHeader
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        setIsMasterSkuModalOpen={setIsMasterSkuModalOpen}
         setIsCustomAlertModalOpen={setIsCustomAlertModalOpen}
         isSendingTelegramSummary={isSendingTelegramSummary}
         isSendingCustomAlert={isSendingCustomAlert}
@@ -703,126 +695,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {activeTab === 'dashboard' && (
         <div className="space-y-4">
           
-          {/* Smart Discrepancy Alerts & Visual Dispatch Kanban Pipeline */}
+          {/* Smart Discrepancy Alerts & PO Slider */}
           <DiscrepancyAlertHub pos={pos} />
-          <DispatchKanbanPipeline pos={pos} />
+          <AdminPoSlider pos={pos} />
 
-          {/* EXACTLY 8 COMPACT KPI CARDS */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-            
-            {/* 1. Total PO */}
-            <button
-              type="button"
-              onClick={() => { setSelectedReport('total_po'); setReportSearchQuery(''); }}
-              className="bg-white p-3 rounded-xl border border-slate-200 text-left transition-all hover:scale-[1.02] hover:shadow-md hover:border-slate-400 hover:ring-2 hover:ring-slate-400/20 active:scale-95 group cursor-pointer"
-              title="Click to view Total PO Report"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Total PO</p>
-                <span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-700">📊</span>
-              </div>
-              <p className="text-xl font-black text-slate-900 mt-1">{totalPO}</p>
-            </button>
-
-            {/* 2. Pending PO */}
-            <button
-              type="button"
-              onClick={() => { setSelectedReport('pending_po'); setReportSearchQuery(''); }}
-              className="bg-white p-3 rounded-xl border border-amber-200 text-left transition-all hover:scale-[1.02] hover:shadow-md hover:border-amber-400 hover:ring-2 hover:ring-amber-400/20 active:scale-95 group cursor-pointer"
-              title="Click to view Pending PO Report"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase text-amber-700 tracking-wider">Pending PO</p>
-                <span className="text-[9px] font-bold text-amber-500 group-hover:text-amber-800">⏳</span>
-              </div>
-              <p className="text-xl font-black text-amber-800 mt-1">{pendingPO}</p>
-            </button>
-
-            {/* 3. Partial PO */}
-            <button
-              type="button"
-              onClick={() => { setSelectedReport('partial_po'); setReportSearchQuery(''); }}
-              className="bg-white p-3 rounded-xl border border-blue-200 text-left transition-all hover:scale-[1.02] hover:shadow-md hover:border-blue-400 hover:ring-2 hover:ring-blue-400/20 active:scale-95 group cursor-pointer"
-              title="Click to view Partial PO Report"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase text-blue-700 tracking-wider">Partial PO</p>
-                <span className="text-[9px] font-bold text-blue-500 group-hover:text-blue-800">🔄</span>
-              </div>
-              <p className="text-xl font-black text-blue-800 mt-1">{partialPO}</p>
-            </button>
-
-            {/* 4. Completed PO */}
-            <button
-              type="button"
-              onClick={() => { setSelectedReport('completed_po'); setReportSearchQuery(''); }}
-              className="bg-white p-3 rounded-xl border border-emerald-200 text-left transition-all hover:scale-[1.02] hover:shadow-md hover:border-emerald-400 hover:ring-2 hover:ring-emerald-400/20 active:scale-95 group cursor-pointer"
-              title="Click to view Completed PO Report"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase text-emerald-700 tracking-wider">Completed PO</p>
-                <span className="text-[9px] font-bold text-emerald-500 group-hover:text-emerald-800">✅</span>
-              </div>
-              <p className="text-xl font-black text-emerald-800 mt-1">{completedPO}</p>
-            </button>
-
-            {/* 5. Pending Items */}
-            <button
-              type="button"
-              onClick={() => { setSelectedReport('pending_items'); setReportSearchQuery(''); }}
-              className="bg-white p-3 rounded-xl border border-amber-200 text-left transition-all hover:scale-[1.02] hover:shadow-md hover:border-amber-400 hover:ring-2 hover:ring-amber-400/20 active:scale-95 group cursor-pointer"
-              title="Click to view Pending Items Report"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase text-amber-700 tracking-wider">Pending Items</p>
-                <span className="text-[9px] font-bold text-amber-500 group-hover:text-amber-800">🛒</span>
-              </div>
-              <p className="text-xl font-black text-amber-900 mt-1">{pendingItemsCount}</p>
-            </button>
-
-            {/* 6. On-Hold Items */}
-            <button
-              type="button"
-              onClick={() => { setSelectedReport('hold_items'); setReportSearchQuery(''); setReportPurchaserFilter('ALL'); }}
-              className="bg-white p-3 rounded-xl border border-purple-200 text-left transition-all hover:scale-[1.02] hover:shadow-md hover:border-purple-400 hover:ring-2 hover:ring-purple-400/20 active:scale-95 group cursor-pointer"
-              title="Click to view On-Hold Items Report"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase text-purple-700 tracking-wider">Hold Items</p>
-                <span className="text-[9px] font-bold text-purple-500 group-hover:text-purple-800">🔒</span>
-              </div>
-              <p className="text-xl font-black text-purple-900 mt-1">{heldItemsCount}</p>
-            </button>
-
-            {/* 7. Partial Purchased Items */}
-            <button
-              type="button"
-              onClick={() => { setSelectedReport('partial_items'); setReportSearchQuery(''); }}
-              className="bg-white p-3 rounded-xl border border-blue-200 text-left transition-all hover:scale-[1.02] hover:shadow-md hover:border-blue-400 hover:ring-2 hover:ring-blue-400/20 active:scale-95 group cursor-pointer"
-              title="Click to view Partial Purchased Items Report"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase text-blue-700 tracking-wider">Partial Items</p>
-                <span className="text-[9px] font-bold text-blue-500 group-hover:text-blue-800">📦</span>
-              </div>
-              <p className="text-xl font-black text-blue-900 mt-1">{partialItemsCount}</p>
-            </button>
-
-            {/* 8. Completed Purchased Items */}
-            <button
-              type="button"
-              onClick={() => { setSelectedReport('purchased_items'); setReportSearchQuery(''); }}
-              className="bg-white p-3 rounded-xl border border-emerald-200 text-left transition-all hover:scale-[1.02] hover:shadow-md hover:border-emerald-400 hover:ring-2 hover:ring-emerald-400/20 active:scale-95 group cursor-pointer"
-              title="Click to view Purchased Items Report"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase text-emerald-700 tracking-wider">Purchased Items</p>
-                <span className="text-[9px] font-bold text-emerald-500 group-hover:text-emerald-800">✨</span>
-              </div>
-              <p className="text-xl font-black text-emerald-900 mt-1">{purchasedItemsCount}</p>
-            </button>
-
-          </div>
+          {/* FRUIT ORBIT STATS */}
+          <FruitOrbitStats
+            totalPO={totalPO}
+            pendingPO={pendingPO}
+            partialPO={partialPO}
+            completedPO={completedPO}
+            pendingItemsCount={pendingItemsCount}
+            heldItemsCount={heldItemsCount}
+            partialItemsCount={partialItemsCount}
+            purchasedItemsCount={purchasedItemsCount}
+            onSelectReport={(reportKey) => {
+              setSelectedReport(reportKey);
+              setReportSearchQuery('');
+              if (reportKey === 'hold_items') {
+                setReportPurchaserFilter('ALL');
+              }
+            }}
+          />
 
           {/* Quick Admin Actions & ERP System Health Status Bar */}
           <div className="bg-slate-900 border border-slate-800 text-white rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-sm">
@@ -857,26 +751,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               )}
             </div>
           </div>
-
-          {/* AI Backup Hub & System Integrity Control */}
-          <AiBackupHub
-            pos={pos}
-            users={users}
-            sheetsConfig={sheetsConfig}
-            auditLogs={auditLogs}
-            onRestoreBackup={(restoredData) => {
-              if (restoredData.pos && restoredData.pos.length > 0) {
-                onImportPOs(restoredData.pos);
-              }
-              if (restoredData.users && restoredData.users.length > 0) {
-                onUpdateUsers(restoredData.users);
-              }
-              if (restoredData.sheetsConfig) {
-                onSaveSheetsConfig(restoredData.sheetsConfig);
-              }
-            }}
-            onShowToast={onShowToast}
-          />
 
           {/* MAIN GRID: RUNNING PO LIST & PURCHASER HOLD MONITOR */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -983,7 +857,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <RunningPoList
                 pos={filteredRunningPOs}
                 allowDelete={true}
-                allowStatusChange={false}
+                allowStatusChange={currentUser?.role === 'super_admin' || currentUser?.isSuperAdmin || currentUser?.name === 'RL TAKMIL' || currentUser?.name === 'RL MUSTAQ'}
                 onHoldPO={onHoldPO}
                 onReleasePO={onReleasePO}
                 onSelectPo={(po) => setSelectedPoForDetail(po)}
@@ -1105,16 +979,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           onUpdateUsers={onUpdateUsers}
           currentUser={currentUser}
           setUserToDelete={(u) => setUserToDelete(u ? u.id : null)}
-        />
-      )}
-
-      {/* SHEETS CONFIG TAB */}
-      {activeTab === 'sheets' && (
-        <AdminSheetsSection
-          sheetsConfig={sheetsConfig}
-          onSaveSheetsConfig={onSaveSheetsConfig}
-          onSync={onSync}
-          onShowToast={(msg, isSuccess) => onShowToast?.(msg, isSuccess)}
         />
       )}
 
@@ -1271,15 +1135,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           onClose={() => setPdfModalPo(null)}
         />
       )}
-
-      {/* Master SKU & Dropbox Auto-Sync Manager Modal */}
-      <MasterSkuModal
-        isOpen={isMasterSkuModalOpen || !!isExternalMasterSkuOpen}
-        onClose={() => {
-          setIsMasterSkuModalOpen(false);
-          if (onCloseExternalMasterSkuModal) onCloseExternalMasterSkuModal();
-        }}
-      />
 
       {/* Custom Telegram Broadcast Alert Modal */}
       <AdminCustomAlertModal

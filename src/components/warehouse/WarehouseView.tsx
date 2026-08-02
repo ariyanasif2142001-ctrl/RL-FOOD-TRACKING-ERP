@@ -592,7 +592,7 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
               onClick={onSync}
               disabled={isSyncing}
               className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold flex items-center gap-1 border border-slate-700"
-              title="Sync with Google Sheets"
+              title="Sync Data"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isSyncing ? 'animate-spin' : ''}`} />
             </button>

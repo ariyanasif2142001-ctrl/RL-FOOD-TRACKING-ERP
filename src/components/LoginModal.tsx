@@ -6,7 +6,7 @@ import { INITIAL_USERS } from '../services/storage';
 import { 
   Shield, ShoppingBag, Warehouse, Truck, User as UserIcon, AlertCircle, X, 
   Loader2, Eye, EyeOff, Lock, CheckCircle2, Sparkles, Leaf, ArrowRight,
-  Utensils, Check, Smartphone, Download, Share
+  Utensils, Check, Smartphone, Download, Share, Crown
 } from 'lucide-react';
 import { CompanyLogo } from './CompanyLogo';
 
@@ -92,7 +92,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     setIsAuthenticating(true);
 
-    // Authenticate via Google Apps Script backend (Sheets API)
+    // Authenticate via Supabase API backend
     const apiRes = await apiLogin(q, passwordInput);
 
     if (apiRes.success && apiRes.data?.user) {
@@ -145,6 +145,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   const getRoleIcon = (role: UserRole) => {
     switch (role) {
+      case 'super_admin': return <Crown className="w-5 h-5 text-amber-600" />;
       case 'admin': return <Shield className="w-5 h-5 text-purple-600" />;
       case 'purchaser': return <ShoppingBag className="w-5 h-5 text-blue-600" />;
       case 'warehouse': return <Warehouse className="w-5 h-5 text-amber-600" />;
@@ -165,7 +166,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const defaultAccounts: User[] = users.length > 0 ? users : INITIAL_USERS;
 
   const filteredAccounts = defaultAccounts.filter(u => {
-    const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+    const matchesRole = roleFilter === 'all' || u.role === roleFilter || (roleFilter === 'admin' && u.role === 'super_admin');
     const query = userSearchQuery.trim().toLowerCase();
     const matchesQuery = !query || 
       u.name.toLowerCase().includes(query) || 
