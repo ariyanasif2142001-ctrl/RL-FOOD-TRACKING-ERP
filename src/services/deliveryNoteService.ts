@@ -76,42 +76,65 @@ const mapDeliveryNoteToRow = (note: DeliveryNoteRecord) => ({
   updated_at: new Date().toISOString()
 });
 
-/**
- * Fetch all delivery notes directly from Supabase DB, falling back to local cache if unavailable.
- */
-export const fetchDeliveryNotesFromSupabase = async (): Promise<DeliveryNoteRecord[]> => {
-  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
-  if (!supabaseUrl || supabaseUrl === 'https://placeholder.supabase.co') {
-    return deliveryNotesCache;
-  }
-
+// Server REST API sync for delivery notes
+const fetchDeliveryNotesFromServer = async (): Promise<DeliveryNoteRecord[]> => {
   try {
-    const { data: rows, error } = await supabase
-      .from('delivery_notes')
-      .select('*')
-      .order('created_date', { ascending: false });
-
-    if (error) {
-      console.warn('[Supabase DeliveryNotes Fetch Notice]', error.message);
-      return deliveryNotesCache;
-    }
-
-    if (rows) {
-      const fetchedNotes = rows.map(mapRowToDeliveryNote);
-      notifyUpdate(fetchedNotes);
-      return fetchedNotes;
+    const res = await fetch('/api/delivery-notes');
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.success && Array.isArray(json.notes) && json.notes.length > 0) {
+        notifyUpdate(json.notes);
+        return json.notes;
+      }
     }
   } catch (err) {
-    console.error('Failed to load delivery notes from Supabase:', err);
+    console.warn('[Server DeliveryNotes Fetch Error]', err);
   }
-
   return deliveryNotesCache;
 };
 
+const saveDeliveryNoteToServer = async (note: DeliveryNoteRecord) => {
+  try {
+    await fetch('/api/delivery-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note })
+    });
+  } catch (err) {
+    console.warn('[Server DeliveryNote Save Error]', err);
+  }
+};
+
 /**
- * Async save single delivery note to Supabase DB.
+ * Fetch all delivery notes directly from Supabase DB or Server API, falling back to local cache.
+ */
+export const fetchDeliveryNotesFromSupabase = async (): Promise<DeliveryNoteRecord[]> => {
+  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+  if (supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co') {
+    try {
+      const { data: rows, error } = await supabase
+        .from('delivery_notes')
+        .select('*')
+        .order('created_date', { ascending: false });
+
+      if (!error && rows) {
+        const fetchedNotes = rows.map(mapRowToDeliveryNote);
+        notifyUpdate(fetchedNotes);
+        return fetchedNotes;
+      }
+    } catch (err) {
+      console.error('Failed to load delivery notes from Supabase:', err);
+    }
+  }
+
+  return await fetchDeliveryNotesFromServer();
+};
+
+/**
+ * Async save single delivery note to Supabase DB and Server API.
  */
 const saveDeliveryNoteToSupabase = async (note: DeliveryNoteRecord) => {
+  saveDeliveryNoteToServer(note);
   const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
   if (!supabaseUrl || supabaseUrl === 'https://placeholder.supabase.co') {
     return;

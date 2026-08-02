@@ -152,6 +152,65 @@ export async function apiLogin(username: string, password: string): Promise<ApiR
   };
 }
 
+// Helper functions for Server REST API cross-device sync
+export async function fetchPOsFromServer(): Promise<PurchaseOrder[] | null> {
+  try {
+    const res = await fetch('/api/pos');
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.success && Array.isArray(json.pos) && json.pos.length > 0) {
+        saveLocalPOs(json.pos);
+        return json.pos;
+      }
+    }
+  } catch (err) {
+    console.warn('[Server API Fetch POs Error]', err);
+  }
+  return null;
+}
+
+export async function savePOsToServer(pos: PurchaseOrder[]): Promise<void> {
+  saveLocalPOs(pos);
+  try {
+    await fetch('/api/pos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pos })
+    });
+  } catch (err) {
+    console.warn('[Server API Save POs Error]', err);
+  }
+}
+
+export async function fetchUsersFromServer(): Promise<User[] | null> {
+  try {
+    const res = await fetch('/api/users');
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.success && Array.isArray(json.users) && json.users.length > 0) {
+        saveLocalUsers(json.users);
+        return json.users;
+      }
+    }
+  } catch (err) {
+    console.warn('[Server API Fetch Users Error]', err);
+  }
+  return null;
+}
+
+export async function saveUsersToServer(users: User[]): Promise<void> {
+  saveLocalUsers(users);
+  try {
+    await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ users })
+    });
+  } catch (err) {
+    console.warn('[Server API Save Users Error]', err);
+  }
+}
+
 export async function apiFetchUsers(): Promise<ApiResponse<{ users: User[] }>> {
   const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
   if (supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co') {
@@ -184,6 +243,7 @@ export async function apiFetchUsers(): Promise<ApiResponse<{ users: User[] }>> {
           };
         });
 
+        saveUsersToServer(users);
         return {
           success: true,
           message: 'Users loaded from Supabase',
@@ -196,6 +256,16 @@ export async function apiFetchUsers(): Promise<ApiResponse<{ users: User[] }>> {
     }
   }
 
+  const serverUsers = await fetchUsersFromServer();
+  if (serverUsers) {
+    return {
+      success: true,
+      message: 'Users loaded from server backend',
+      data: { users: serverUsers },
+      timestamp: new Date().toISOString()
+    };
+  }
+
   return {
     success: true,
     message: 'Users loaded from local storage',
@@ -205,6 +275,7 @@ export async function apiFetchUsers(): Promise<ApiResponse<{ users: User[] }>> {
 }
 
 export async function apiUpdateUsers(users: User[], currentUser?: User): Promise<ApiResponse<any>> {
+  saveUsersToServer(users);
   const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
   if (supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co') {
     try {
@@ -243,10 +314,9 @@ export async function apiUpdateUsers(users: User[], currentUser?: User): Promise
 
       const { error } = await supabase.from('users').upsert(userRows, { onConflict: 'id' });
       if (!error) {
-        saveLocalUsers(users);
         return {
           success: true,
-          message: 'Users updated successfully in Supabase',
+          message: 'Users updated successfully in Supabase & Server',
           data: { users },
           timestamp: new Date().toISOString()
         };
@@ -258,10 +328,9 @@ export async function apiUpdateUsers(users: User[], currentUser?: User): Promise
     }
   }
 
-  saveLocalUsers(users);
   return {
     success: true,
-    message: 'Users updated in local storage',
+    message: 'Users updated in server storage & local cache',
     data: { users },
     timestamp: new Date().toISOString()
   };
@@ -465,6 +534,7 @@ export async function fetchPOsFromSupabase(): Promise<PurchaseOrder[] | null> {
 export async function apiFetchPOs(user?: User): Promise<ApiResponse<{ pos: PurchaseOrder[] }>> {
   const sbPOs = await fetchPOsFromSupabase();
   if (sbPOs !== null) {
+    savePOsToServer(sbPOs);
     return {
       success: true,
       message: 'Purchase orders loaded from Supabase',
@@ -472,10 +542,24 @@ export async function apiFetchPOs(user?: User): Promise<ApiResponse<{ pos: Purch
       timestamp: new Date().toISOString()
     };
   }
+
+  const serverPOs = await fetchPOsFromServer();
+  if (serverPOs) {
+    return {
+      success: true,
+      message: 'Purchase orders loaded from Server',
+      data: { pos: serverPOs },
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  const localPos = getLocalPOs();
+  savePOsToServer(localPos);
+
   return {
     success: true,
     message: 'Purchase orders loaded from local storage',
-    data: { pos: getLocalPOs() },
+    data: { pos: localPos },
     timestamp: new Date().toISOString()
   };
 }
