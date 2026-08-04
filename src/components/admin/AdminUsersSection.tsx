@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { User } from '../../types';
-import { Users, UserPlus, Image as ImageIcon, Trash2, X, Plus, Check } from 'lucide-react';
+import { Users, UserPlus, Image as ImageIcon, Trash2, X, Plus, Check, Eye, EyeOff, Key, Edit3, Shield, Lock } from 'lucide-react';
 
 interface AdminUsersSectionProps {
   users: User[];
@@ -28,6 +28,15 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
   // Editing User Photo Modal State
   const [editingUserForAvatar, setEditingUserForAvatar] = useState<User | null>(null);
   const [editAvatarUrlInput, setEditAvatarUrlInput] = useState('');
+
+  // Super Admin Credentials Management State
+  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
+  const [editingUserCredentials, setEditingUserCredentials] = useState<User | null>(null);
+  const [editNameVal, setEditNameVal] = useState('');
+  const [editUsernameVal, setEditUsernameVal] = useState('');
+  const [editPasswordVal, setEditPasswordVal] = useState('');
+  const [editRoleVal, setEditRoleVal] = useState<User['role']>('purchaser');
+  const [editPhoneVal, setEditPhoneVal] = useState('');
 
   const newUserAvatarFileRef = useRef<HTMLInputElement>(null);
   const editUserAvatarFileRef = useRef<HTMLInputElement>(null);
@@ -89,6 +98,46 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
     onUpdateUsers(updated);
   };
 
+  const togglePasswordVisibility = (userId: string) => {
+    if (!isSuperAdmin) return;
+    setRevealedPasswords(prev => ({
+      ...prev,
+      [userId]: !prev[userId]
+    }));
+  };
+
+  const handleOpenEditCredentials = (userToEdit: User) => {
+    if (!isSuperAdmin) return;
+    setEditingUserCredentials(userToEdit);
+    setEditNameVal(userToEdit.name);
+    setEditUsernameVal(userToEdit.username || userToEdit.email.split('@')[0]);
+    setEditPasswordVal(userToEdit.password || '123');
+    setEditRoleVal(userToEdit.role);
+    setEditPhoneVal(userToEdit.phone || '');
+  };
+
+  const handleSaveUserCredentials = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUserCredentials || !isSuperAdmin) return;
+
+    const updated = users.map(u => {
+      if (u.id === editingUserCredentials.id) {
+        return {
+          ...u,
+          name: editNameVal.trim() || u.name,
+          username: editUsernameVal.trim() || u.username,
+          password: editPasswordVal.trim() || u.password || '123',
+          role: editRoleVal,
+          phone: editPhoneVal.trim()
+        };
+      }
+      return u;
+    });
+
+    onUpdateUsers(updated);
+    setEditingUserCredentials(null);
+  };
+
   const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.isSuperAdmin || currentUser?.name === 'RL TAKMIL' || currentUser?.name === 'RL MUSTAQ';
 
   return (
@@ -116,7 +165,7 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
 
         {!isSuperAdmin && (
           <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-lg text-xs font-semibold">
-            ℹ️ User management actions (adding, editing, deactivating, or deleting users) are restricted to Super Admin accounts.
+            ℹ️ User management actions (adding, editing credentials, deactivating, or deleting users) are restricted to Super Admin accounts.
           </div>
         )}
 
@@ -127,7 +176,9 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
               <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                 <th className="p-3">User Profile</th>
                 <th className="p-3">Role</th>
-                <th className="p-3">Contact</th>
+                <th className="p-3">Username</th>
+                <th className="p-3">Password</th>
+                <th className="p-3">Phone</th>
                 <th className="p-3">Status</th>
                 <th className="p-3 text-right">Actions</th>
               </tr>
@@ -176,9 +227,35 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                       {u.role === 'super_admin' ? 'SUPER ADMIN' : u.role}
                     </span>
                   </td>
-                  <td className="p-3 text-slate-600">
-                    <p className="font-mono">{u.phone || 'No phone'}</p>
-                    <p className="text-[11px] text-slate-400">@{u.username || u.email.split('@')[0]}</p>
+                  <td className="p-3 text-slate-700 font-mono font-medium">
+                    @{u.username || u.email.split('@')[0]}
+                  </td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-1.5 font-mono text-xs">
+                      {isSuperAdmin ? (
+                        <>
+                          <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            {revealedPasswords[u.id] ? (u.password || '123') : '••••••••'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => togglePasswordVisibility(u.id)}
+                            className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 rounded transition cursor-pointer"
+                            title={revealedPasswords[u.id] ? "Hide Password" : "Reveal Password"}
+                          >
+                            {revealedPasswords[u.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 select-none flex items-center gap-1 text-[11px]">
+                          <Lock className="w-3 h-3 text-slate-400" />
+                          <span>••••••••</span>
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-3 text-slate-600 font-mono">
+                    {u.phone || 'No phone'}
                   </td>
                   <td className="p-3">
                     <button
@@ -196,15 +273,27 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                     </button>
                   </td>
                   <td className="p-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => isSuperAdmin && setUserToDelete(u)}
-                      disabled={!isSuperAdmin || currentUser?.id === u.id}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition disabled:opacity-30 cursor-pointer"
-                      title={!isSuperAdmin ? "Requires Super Admin permission" : (currentUser?.id === u.id ? "Cannot delete your own active account" : "Delete User")}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      {isSuperAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditCredentials(u)}
+                          className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                          title="Edit Username, Password & Profile"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => isSuperAdmin && setUserToDelete(u)}
+                        disabled={!isSuperAdmin || currentUser?.id === u.id}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition disabled:opacity-30 cursor-pointer"
+                        title={!isSuperAdmin ? "Requires Super Admin permission" : (currentUser?.id === u.id ? "Cannot delete your own active account" : "Delete User")}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -212,6 +301,113 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
           </table>
         </div>
       </div>
+
+      {/* EDIT USER CREDENTIALS MODAL (SUPER ADMIN ONLY) */}
+      {editingUserCredentials && isSuperAdmin && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-amber-600" />
+                <h3 className="font-bold text-slate-900 text-base">Edit User Account & Credentials</h3>
+              </div>
+              <button type="button" onClick={() => setEditingUserCredentials(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUserCredentials} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editNameVal}
+                  onChange={e => setEditNameVal(e.target.value)}
+                  className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700 flex items-center gap-1">
+                    <Key className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Username *</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editUsernameVal}
+                    onChange={e => setEditUsernameVal(e.target.value)}
+                    className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:border-amber-500 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 flex items-center gap-1">
+                    <Lock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Password *</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editPasswordVal}
+                    onChange={e => setEditPasswordVal(e.target.value)}
+                    className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:border-amber-500 font-mono font-bold bg-amber-50/50"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">System Role</label>
+                  <select
+                    value={editRoleVal}
+                    onChange={e => setEditRoleVal(e.target.value as User['role'])}
+                    className="w-full p-2 border border-slate-300 rounded-lg mt-1 bg-white outline-none focus:border-amber-500 font-bold"
+                  >
+                    <option value="purchaser">Purchaser</option>
+                    <option value="warehouse">Warehouse Manager</option>
+                    <option value="dispatch">Dispatch / Delivery</option>
+                    <option value="admin">Administrator</option>
+                    <option value="super_admin">Super Admin</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Phone Contact</label>
+                  <input
+                    type="text"
+                    value={editPhoneVal}
+                    onChange={e => setEditPhoneVal(e.target.value)}
+                    placeholder="+1 555-0192"
+                    className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:border-amber-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900 font-medium">
+                💡 Changes to username or password take effect immediately and sync with Supabase user records.
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingUserCredentials(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ADD USER MODAL */}
       {isAddUserOpen && (

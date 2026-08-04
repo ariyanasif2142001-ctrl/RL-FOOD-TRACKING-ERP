@@ -473,8 +473,8 @@ export function getCurrentUser(): User | null {
         }
         const allowedAdmins = ['RL TAKMIL', 'RL MUSTAQ', 'RL POLASH', 'RL MURSHID', 'RL SAMIR', 'RL NISAM'];
         if (parsed.role === 'admin' && !allowedAdmins.includes(parsed.name)) {
-          saveCurrentUser(INITIAL_USERS[0]);
-          return INITIAL_USERS[0];
+          saveCurrentUser(null);
+          return null;
         }
         return parsed;
       }
@@ -482,7 +482,7 @@ export function getCurrentUser(): User | null {
       return null;
     }
   }
-  return INITIAL_USERS[0];
+  return null;
 }
 
 export function saveCurrentUser(user: User | null, remember: boolean = true) {
