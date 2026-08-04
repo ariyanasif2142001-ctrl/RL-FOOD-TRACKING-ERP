@@ -979,13 +979,14 @@ export function printOfficialDeliveryChallanNoPrice(po: PurchaseOrder, options?:
   printWin.document.close();
 }
 
-export function generatePurchaseOrderReportHtml(po: PurchaseOrder): string {
+export function generatePurchaseOrderReportHtml(po: PurchaseOrder, titleOverride?: string): string {
   const items = po.items || [];
   const totalItems = items.length;
   const purchasedCount = items.filter(i => (i.purchasedQty || 0) > 0 || i.purchaseStatus === 'Purchased').length;
   const receivedCount = items.filter(i => (i.warehouseQty || i.passedQty || 0) > 0).length;
   const progressPct = totalItems > 0 ? Math.round((receivedCount / totalItems) * 100) : 0;
   const printDate = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  const displayTitle = titleOverride || (po as any).reportTitle || 'Purchase Order Report';
 
   const rowsHtml = items.map((item, idx) => {
     const req = item.requestedQty || item.orderedQty || 0;
@@ -1163,7 +1164,7 @@ export function generatePurchaseOrderReportHtml(po: PurchaseOrder): string {
 <body>
   <div class="header">
     <div>
-      <h1 class="title">Purchase Order Report</h1>
+      <h1 class="title">${escapeHtml(displayTitle)}</h1>
       <div class="subtitle">Purchase Order Breakdown & Inventory Status</div>
     </div>
     <div style="text-align: right;">
@@ -1246,13 +1247,13 @@ export function generatePurchaseOrderReportHtml(po: PurchaseOrder): string {
 </html>`;
 }
 
-export function printPurchaseOrderReport(po: PurchaseOrder) {
+export function printPurchaseOrderReport(po: PurchaseOrder, titleOverride?: string) {
   const printWin = window.open('', '_blank', 'width=1000,height=850');
   if (!printWin) {
     alert("Please allow popups to open and print the Purchase Order Report.");
     return;
   }
-  const html = generatePurchaseOrderReportHtml(po);
+  const html = generatePurchaseOrderReportHtml(po, titleOverride);
   printWin.document.open();
   printWin.document.write(html);
   printWin.document.close();

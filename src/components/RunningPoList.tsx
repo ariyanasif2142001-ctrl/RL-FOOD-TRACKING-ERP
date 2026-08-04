@@ -4,8 +4,10 @@ import { notifySinglePOReport } from '../services/telegramService';
 import { OfficialPdfInvoiceModal } from './OfficialPdfInvoiceModal';
 import { DeliveryChallanModal } from './dispatch/DeliveryChallanModal';
 import { printPurchaseOrderReport } from '../services/officialPdfService';
+import { DepartmentPieChart } from './admin/DepartmentPieChart';
 import { 
-  Layers, FileSpreadsheet, Printer, Search, Eye, X, Lock, Unlock, CheckCircle2, AlertCircle, Send, Trash2
+  Layers, FileSpreadsheet, Printer, Search, Eye, X, Lock, Unlock, CheckCircle2, AlertCircle, Send, Trash2,
+  LayoutGrid, List, MapPin, Building2, Clock, RotateCw, Sparkles, ShoppingBag, PieChart, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 interface RunningPoListProps {
@@ -24,6 +26,169 @@ interface RunningPoListProps {
   onBulkUpdatePoStatus?: (poNumbers: string[], status: string) => void;
   onBulkDeletePOs?: (poNumbers: string[]) => void;
 }
+
+const getDeptBadgeClass = (deptName?: string) => {
+  const d = (deptName || '').toLowerCase();
+  if (d.includes('food') || d.includes('beverage') || d.includes('kitchen') || d.includes('bakery')) {
+    return 'bg-amber-100/90 text-amber-900 border-amber-200/90';
+  }
+  if (d.includes('fruit') || d.includes('veg') || d.includes('fresh') || d.includes('produce')) {
+    return 'bg-emerald-100/90 text-emerald-900 border-emerald-200/90';
+  }
+  if (d.includes('meat') || d.includes('fish') || d.includes('poultry') || d.includes('sea')) {
+    return 'bg-rose-100/90 text-rose-900 border-rose-200/90';
+  }
+  if (d.includes('maint') || d.includes('eng') || d.includes('house') || d.includes('tech')) {
+    return 'bg-indigo-100/90 text-indigo-900 border-indigo-200/90';
+  }
+  if (d.includes('store') || d.includes('ware') || d.includes('logis') || d.includes('central')) {
+    return 'bg-cyan-100/90 text-cyan-900 border-cyan-200/90';
+  }
+  return 'bg-blue-100/90 text-blue-900 border-blue-200/90';
+};
+
+const getStatusBadgeConfig = (status?: string, isHeld?: boolean) => {
+  if (isHeld || status === 'Held') {
+    return {
+      label: 'On Hold',
+      bg: 'bg-purple-100 text-purple-900 border-purple-200/90',
+      gradient: 'bg-gradient-to-r from-purple-600 to-indigo-600',
+      accentBorder: 'border-l-purple-500',
+      cardBorder: 'border-purple-200 hover:border-purple-300',
+      lightBg: 'bg-purple-50/30',
+      icon: Lock,
+    };
+  }
+  if (status === 'Completed') {
+    return {
+      label: 'Completed',
+      bg: 'bg-emerald-100 text-emerald-900 border-emerald-200/90',
+      gradient: 'bg-gradient-to-r from-emerald-500 to-teal-600',
+      accentBorder: 'border-l-emerald-500',
+      cardBorder: 'border-emerald-200 hover:border-emerald-300',
+      lightBg: 'bg-emerald-50/30',
+      icon: CheckCircle2,
+    };
+  }
+  if (status === 'Partial') {
+    return {
+      label: 'Partial',
+      bg: 'bg-blue-100 text-blue-900 border-blue-200/90',
+      gradient: 'bg-gradient-to-r from-blue-500 to-cyan-600',
+      accentBorder: 'border-l-blue-500',
+      cardBorder: 'border-blue-200 hover:border-blue-300',
+      lightBg: 'bg-blue-50/30',
+      icon: RotateCw,
+    };
+  }
+  return {
+    label: 'Pending',
+    bg: 'bg-amber-100 text-amber-900 border-amber-200/90',
+    gradient: 'bg-gradient-to-r from-amber-500 to-orange-500',
+    accentBorder: 'border-l-amber-500',
+    cardBorder: 'border-amber-200 hover:border-amber-300',
+    lightBg: 'bg-amber-50/30',
+    icon: Clock,
+  };
+};
+
+const ROW_COLOR_PALETTE = [
+  {
+    bg: 'bg-amber-50/80',
+    hoverBg: 'hover:bg-amber-100/90',
+    selectedBg: 'bg-amber-100',
+    deepBg: 'bg-amber-600',
+    deepText: 'text-amber-800',
+    border: 'border-amber-200/80',
+    accentBorder: 'border-l-amber-500',
+    stroke: '#d97706',
+  },
+  {
+    bg: 'bg-emerald-50/80',
+    hoverBg: 'hover:bg-emerald-100/90',
+    selectedBg: 'bg-emerald-100',
+    deepBg: 'bg-emerald-600',
+    deepText: 'text-emerald-800',
+    border: 'border-emerald-200/80',
+    accentBorder: 'border-l-emerald-500',
+    stroke: '#059669',
+  },
+  {
+    bg: 'bg-sky-50/80',
+    hoverBg: 'hover:bg-sky-100/90',
+    selectedBg: 'bg-sky-100',
+    deepBg: 'bg-sky-600',
+    deepText: 'text-sky-800',
+    border: 'border-sky-200/80',
+    accentBorder: 'border-l-sky-500',
+    stroke: '#0284c7',
+  },
+  {
+    bg: 'bg-violet-50/80',
+    hoverBg: 'hover:bg-violet-100/90',
+    selectedBg: 'bg-violet-100',
+    deepBg: 'bg-violet-600',
+    deepText: 'text-violet-800',
+    border: 'border-violet-200/80',
+    accentBorder: 'border-l-violet-500',
+    stroke: '#7c3aed',
+  },
+  {
+    bg: 'bg-rose-50/80',
+    hoverBg: 'hover:bg-rose-100/90',
+    selectedBg: 'bg-rose-100',
+    deepBg: 'bg-rose-600',
+    deepText: 'text-rose-800',
+    border: 'border-rose-200/80',
+    accentBorder: 'border-l-rose-500',
+    stroke: '#e11d48',
+  },
+  {
+    bg: 'bg-indigo-50/80',
+    hoverBg: 'hover:bg-indigo-100/90',
+    selectedBg: 'bg-indigo-100',
+    deepBg: 'bg-indigo-600',
+    deepText: 'text-indigo-800',
+    border: 'border-indigo-200/80',
+    accentBorder: 'border-l-indigo-500',
+    stroke: '#4f46e5',
+  },
+  {
+    bg: 'bg-teal-50/80',
+    hoverBg: 'hover:bg-teal-100/90',
+    selectedBg: 'bg-teal-100',
+    deepBg: 'bg-teal-600',
+    deepText: 'text-teal-800',
+    border: 'border-teal-200/80',
+    accentBorder: 'border-l-teal-500',
+    stroke: '#0d9488',
+  },
+  {
+    bg: 'bg-orange-50/80',
+    hoverBg: 'hover:bg-orange-100/90',
+    selectedBg: 'bg-orange-100',
+    deepBg: 'bg-orange-600',
+    deepText: 'text-orange-800',
+    border: 'border-orange-200/80',
+    accentBorder: 'border-l-orange-500',
+    stroke: '#ea580c',
+  },
+];
+
+const getDayOfMonth = (dateStr?: string, defaultVal = '01') => {
+  if (!dateStr) return defaultVal;
+  const str = String(dateStr).trim();
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    return String(d.getDate()).padStart(2, '0');
+  }
+  const match = str.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/) || str.match(/\b(\d{1,2})\b/);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    if (num >= 1 && num <= 31) return String(num).padStart(2, '0');
+  }
+  return defaultVal;
+};
 
 export const RunningPoList: React.FC<RunningPoListProps> = ({ 
   pos, 
@@ -47,6 +212,18 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
   const [runningPoDeptFilter, setRunningPoDeptFilter] = useState<string>('ALL');
   const [runningPoLocFilter, setRunningPoLocFilter] = useState<string>('ALL');
   const [runningPoStatusFilter, setRunningPoStatusFilter] = useState<string>('ACTIVE');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [showDeptChart, setShowDeptChart] = useState<boolean>(true);
+
+  // Department Breakdown calculation
+  const departmentBreakdown = useMemo(() => {
+    const counts: Record<string, number> = {};
+    pos.forEach(p => {
+      const d = p.department?.trim() || 'General';
+      counts[d] = (counts[d] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [pos]);
 
   // Bulk selection states
   const [selectedPoNumbers, setSelectedPoNumbers] = useState<Set<string>>(new Set());
@@ -54,9 +231,62 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
 
   // Selected PO Modal for detailed report view
   const [selectedPoForDetail, setSelectedPoForDetail] = useState<PurchaseOrder | null>(null);
+  const [poDetailFilter, setPoDetailFilter] = useState<'all' | 'complete' | 'partial' | 'hold' | 'received' | 'pending'>('all');
   const [pdfModalPo, setPdfModalPo] = useState<PurchaseOrder | null>(null);
   const [challanModalPo, setChallanModalPo] = useState<PurchaseOrder | null>(null);
   const [sendingPoNumber, setSendingPoNumber] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPoDetailFilter('all');
+  }, [selectedPoForDetail?.poNumber, selectedPoForDetail?.id]);
+
+  const getFilteredPoForExport = (): PurchaseOrder => {
+    if (!selectedPoForDetail) return {} as PurchaseOrder;
+    if (poDetailFilter === 'all') return selectedPoForDetail;
+
+    const items = selectedPoForDetail.items || [];
+    const filteredItems = items.filter(item => {
+      const req = item.requestedQty || item.orderedQty || 0;
+      const pur = item.purchasedQty || 0;
+      const rec = item.warehouseQty || 0;
+      const isHold = item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' || (item as any).isHeld;
+
+      if (poDetailFilter === 'complete') {
+        return (pur >= req && req > 0) || item.purchaseStatus === 'Purchased';
+      }
+      if (poDetailFilter === 'partial') {
+        return pur > 0 && pur < req;
+      }
+      if (poDetailFilter === 'hold') {
+        return isHold;
+      }
+      if (poDetailFilter === 'received') {
+        return rec > 0;
+      }
+      if (poDetailFilter === 'pending') {
+        const target = pur > 0 ? pur : req;
+        return rec < target;
+      }
+      return true;
+    });
+
+    const filterLabelMap: Record<string, string> = {
+      complete: 'Complete Purchase',
+      partial: 'Partial Items',
+      hold: 'Hold Items',
+      received: 'Warehouse Received',
+      pending: 'Pending Receive'
+    };
+
+    const filterLabel = filterLabelMap[poDetailFilter] || 'Filtered Items';
+    const reportTitle = `${filterLabel} Report — PO #${selectedPoForDetail.poNumber}`;
+
+    return {
+      ...selectedPoForDetail,
+      items: filteredItems,
+      reportTitle
+    } as PurchaseOrder & { reportTitle?: string };
+  };
 
   // Delete Modals State
   const [poToDelete, setPoToDelete] = useState<string | null>(null);
@@ -531,44 +761,96 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
     <div className={`bg-white rounded-xl border border-slate-200 p-3 sm:p-4 space-y-3 flex flex-col justify-between ${className}`}>
       <div>
         {/* Header & Export Buttons */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2.5 gap-2">
-          <div className="flex items-center gap-2">
-            <h3 className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-blue-600" />
-              {title}
-            </h3>
-            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-full border border-blue-200">
-              {filteredRunningPOs.length} Active
-            </span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-xl shadow-xs">
+              <Layers className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
+                <span>{title}</span>
+                <span className="px-2.5 py-0.5 bg-blue-100 text-blue-900 text-[10px] font-mono font-bold rounded-full border border-blue-200 shadow-2xs">
+                  {filteredRunningPOs.length} Active
+                </span>
+              </h3>
+              <p className="text-[10px] text-slate-500 font-medium hidden sm:block">
+                Live PO tracking with instant status filters, search, and Telegram dispatching
+              </p>
+            </div>
           </div>
 
-          {/* Export & Action Buttons */}
+          {/* Export, Actions & View Mode Toggle */}
           <div className="flex items-center gap-1.5 flex-wrap">
+            {/* View Mode Switcher */}
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`px-2 py-1 rounded-md text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                  viewMode === 'table'
+                    ? 'bg-white text-blue-700 shadow-2xs border border-slate-200/80 font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Table View"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Table</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('cards')}
+                className={`px-2 py-1 rounded-md text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                  viewMode === 'cards'
+                    ? 'bg-white text-blue-700 shadow-2xs border border-slate-200/80 font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Cards Grid View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Cards</span>
+              </button>
+            </div>
+
             <button
               type="button"
-              onClick={exportRunningPOsToCSV}
+              onClick={() => setShowDeptChart(!showDeptChart)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                showDeptChart
+                  ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm font-black'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+              }`}
+              title="Toggle Department Breakdown Pie Chart"
+            >
+              <PieChart className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Dept Breakdown Chart</span>
+              {showDeptChart ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => exportRunningPOsToCSV()}
               disabled={filteredRunningPOs.length === 0}
-              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs transition cursor-pointer"
+              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs transition cursor-pointer"
               title="Export Running POs report to Excel (CSV)"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Excel Export</span>
+              <span>Excel</span>
             </button>
             <button
               type="button"
-              onClick={exportRunningPOsToPDF}
+              onClick={() => exportRunningPOsToPDF()}
               disabled={filteredRunningPOs.length === 0}
-              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs transition cursor-pointer"
+              className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs transition cursor-pointer"
               title="Export Running POs report as PDF / Print"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>PDF Export</span>
+              <span>PDF Report</span>
             </button>
             {allowDelete && onClearAllPOs && pos.length > 0 && (
               <button
                 type="button"
                 onClick={() => setShowClearAllModal(true)}
-                className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer"
                 title="Delete all purchase orders"
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-600" />
@@ -577,6 +859,17 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
             )}
           </div>
         </div>
+
+        {/* Department Breakdown Pie Chart Banner */}
+        {showDeptChart && (
+          <div className="pt-3">
+            <DepartmentPieChart
+              departmentBreakdown={departmentBreakdown}
+              onSelectDepartment={(dept) => setRunningPoDeptFilter(dept)}
+              activeSelectedDept={runningPoDeptFilter}
+            />
+          </div>
+        )}
 
         {/* Filter Options: PO Number, Item Name, Department, Location, Status */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2 pt-2">
@@ -588,7 +881,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
               value={runningPoSearch}
               onChange={(e) => setRunningPoSearch(e.target.value)}
               placeholder="PO Number..."
-              className="w-full pl-8 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-blue-500 font-medium"
+              className="w-full pl-8 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500 font-mono font-bold text-slate-800"
             />
           </div>
 
@@ -599,8 +892,8 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
               type="text"
               value={runningPoItemSearch}
               onChange={(e) => setRunningPoItemSearch(e.target.value)}
-              placeholder="Item Name..."
-              className="w-full pl-8 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-blue-500 font-medium"
+              placeholder="Search Item Name..."
+              className="w-full pl-8 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500 font-medium text-slate-800"
             />
           </div>
 
@@ -608,9 +901,9 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
           <select
             value={runningPoDeptFilter}
             onChange={(e) => setRunningPoDeptFilter(e.target.value)}
-            className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-blue-500 font-medium text-slate-700 cursor-pointer"
+            className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500 font-bold text-slate-700 cursor-pointer"
           >
-            <option value="ALL">All Depts</option>
+            <option value="ALL">All Depts ({uniqueDepartments.length})</option>
             {uniqueDepartments.map((d, idx) => (
               <option key={`${d}-${idx}`} value={d}>{d}</option>
             ))}
@@ -620,9 +913,9 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
           <select
             value={runningPoLocFilter}
             onChange={(e) => setRunningPoLocFilter(e.target.value)}
-            className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-blue-500 font-medium text-slate-700 cursor-pointer"
+            className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500 font-bold text-slate-700 cursor-pointer"
           >
-            <option value="ALL">All Locations</option>
+            <option value="ALL">All Locations ({uniqueLocations.length})</option>
             {uniqueLocations.map((l, idx) => (
               <option key={`${l}-${idx}`} value={l}>{l}</option>
             ))}
@@ -632,13 +925,14 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
           <select
             value={runningPoStatusFilter}
             onChange={(e) => setRunningPoStatusFilter(e.target.value)}
-            className="w-full px-2 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-xs font-bold text-blue-900 outline-none focus:border-blue-500 cursor-pointer"
+            className="w-full px-2 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-xs font-black text-blue-900 outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
           >
             <option value="ACTIVE">⚡ Active POs</option>
             <option value="ALL">All Statuses</option>
             <option value="Pending">Pending Only</option>
             <option value="Partial">Partial Only</option>
             <option value="Completed">Completed Only</option>
+            <option value="Held">Held Only</option>
           </select>
         </div>
 
@@ -734,10 +1028,11 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
           </div>
         )}
 
-        {/* Running PO Table */}
+        {/* Running PO Content */}
         {filteredRunningPOs.length === 0 ? (
-          <div className="text-center py-8 space-y-2">
-            <p className="text-slate-400 text-xs">No running POs match your selected filters.</p>
+          <div className="text-center py-10 space-y-2 bg-slate-50/60 rounded-2xl border border-dashed border-slate-200 mt-3">
+            <ShoppingBag className="w-8 h-8 text-slate-300 mx-auto mb-1" />
+            <p className="text-slate-500 text-xs font-bold">No running POs match your selected criteria.</p>
             {(runningPoSearch || runningPoItemSearch || runningPoDeptFilter !== 'ALL' || runningPoLocFilter !== 'ALL' || runningPoStatusFilter !== 'ACTIVE') && (
               <button
                 type="button"
@@ -748,51 +1043,266 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                   setRunningPoLocFilter('ALL');
                   setRunningPoStatusFilter('ACTIVE');
                 }}
-                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold"
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-2xs cursor-pointer"
               >
                 Reset All Filters
               </button>
             )}
           </div>
+        ) : viewMode === 'cards' ? (
+          /* CARDS GRID VIEW */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-3 max-h-[580px] overflow-y-auto pr-1">
+            {filteredRunningPOs.map((po, idx) => {
+              const totalItems = po.items ? po.items.length : 0;
+              const purchasedCount = (po.items || []).filter(i => i.purchaseStatus === 'Purchased').length;
+              const percent = totalItems > 0 ? Math.round((purchasedCount / totalItems) * 100) : 0;
+              const isSelected = selectedPoNumbers.has(po.poNumber);
+              const isHeld = po.isHeldByAdmin || po.purchaseStatus === 'Held' || (po.items || []).some(i => i.purchaseStatus === 'Held');
+
+              const statusCfg = getStatusBadgeConfig(po.purchaseStatus, isHeld);
+              const deptBadgeClass = getDeptBadgeClass(po.department);
+              const StatusIcon = statusCfg.icon;
+
+              return (
+                <div
+                  key={po.id ? `${po.id}-${idx}` : `card-po-${idx}`}
+                  onClick={() => {
+                    if (onSelectPo) onSelectPo(po);
+                    setSelectedPoForDetail(po);
+                  }}
+                  className={`group bg-white rounded-2xl border ${statusCfg.cardBorder} shadow-2xs hover:shadow-md transition-all cursor-pointer overflow-hidden flex flex-col justify-between relative ${
+                    isSelected ? 'ring-2 ring-blue-500 bg-blue-50/30' : ''
+                  }`}
+                >
+                  {/* Top Color Accent Line */}
+                  <div className={`h-1.5 w-full ${statusCfg.gradient}`} />
+
+                  <div className="p-3.5 space-y-3">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleToggleSelectPo(po.poNumber);
+                          }}
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer w-4 h-4 accent-blue-600"
+                        />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-black text-slate-900 text-sm group-hover:text-blue-600 transition">
+                              #{po.poNumber}
+                            </span>
+                            {isHeld && (
+                              <span className="p-0.5 bg-purple-100 text-purple-700 rounded" title="Held PO">
+                                <Lock className="w-3 h-3" />
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {po.orderDate || po.createdAt ? new Date(po.orderDate || po.createdAt!).toLocaleDateString() : 'Active PO'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Status Badge */}
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border flex items-center gap-1 shadow-2xs ${statusCfg.bg}`}>
+                        <StatusIcon className="w-3 h-3 shrink-0" />
+                        <span>{statusCfg.label}</span>
+                      </span>
+                    </div>
+
+                    {/* Department & Location Tags */}
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <span className={`px-2 py-0.5 rounded-md font-bold border flex items-center gap-1 truncate max-w-[140px] ${deptBadgeClass}`}>
+                        <Building2 className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{po.department || 'General'}</span>
+                      </span>
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-medium border border-slate-200 flex items-center gap-1 truncate max-w-[130px]">
+                        <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="truncate">{po.location || 'Central Warehouse'}</span>
+                      </span>
+                    </div>
+
+                    {/* Items Snippet (First 3) */}
+                    <div className="bg-slate-50 rounded-xl p-2 border border-slate-100 space-y-1">
+                      <div className="flex items-center justify-between text-[10px] font-extrabold uppercase text-slate-400 pb-1 border-b border-slate-200/60">
+                        <span>Item Preview</span>
+                        <span>{totalItems} Items Total</span>
+                      </div>
+                      {(po.items || []).slice(0, 3).map((item, iIdx) => (
+                        <div key={iIdx} className="flex items-center justify-between text-[11px] gap-2">
+                          <span className="text-slate-800 font-bold truncate">{item.itemName}</span>
+                          <span className="font-mono text-[10px] text-slate-500 shrink-0 font-medium">
+                            {item.requestedQty || item.orderedQty || 0} {item.unit || 'pcs'}
+                          </span>
+                        </div>
+                      ))}
+                      {totalItems > 3 && (
+                        <div className="text-[10px] font-bold text-blue-600 text-right pt-0.5">
+                          +{totalItems - 3} more items...
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="space-y-1 pt-1">
+                      <div className="flex items-center justify-between text-[11px] font-bold">
+                        <span className="text-slate-600">Fulfillment Progress</span>
+                        <span className="font-mono text-slate-900">
+                          {purchasedCount}/{totalItems} <span className="text-blue-600 font-extrabold">({percent}%)</span>
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
+                        <div
+                          className={`h-full transition-all duration-500 rounded-full ${
+                            percent === 100
+                              ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                              : percent > 0
+                              ? 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                              : 'bg-slate-300'
+                          }`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Action Footer */}
+                  <div className="p-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-1.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSendSinglePoTelegram(po);
+                      }}
+                      disabled={sendingPoNumber === po.poNumber}
+                      className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg font-bold text-[11px] flex items-center gap-1 transition cursor-pointer"
+                      title="Send to Telegram"
+                    >
+                      <Send className={`w-3 h-3 text-emerald-600 ${sendingPoNumber === po.poNumber ? 'animate-pulse' : ''}`} />
+                      <span>Telegram</span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedPoForDetail(po);
+                        }}
+                        className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-lg font-bold text-[11px] flex items-center gap-1 transition cursor-pointer"
+                      >
+                        <Eye className="w-3 h-3 text-blue-600" />
+                        <span>Report</span>
+                      </button>
+
+                      {isHeld ? (
+                        onReleasePO && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onReleasePO(po.poNumber);
+                            }}
+                            className="p-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg transition cursor-pointer"
+                            title="Release Hold"
+                          >
+                            <Unlock className="w-3.5 h-3.5 text-amber-600" />
+                          </button>
+                        )
+                      ) : (
+                        onHoldPO && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onHoldPO(po.poNumber);
+                            }}
+                            className="p-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg transition cursor-pointer"
+                            title="Hold PO"
+                          >
+                            <Lock className="w-3.5 h-3.5 text-purple-600" />
+                          </button>
+                        )
+                      )}
+
+                      {allowDelete && (onDeletePO || onDeletePo) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPoToDelete(po.poNumber);
+                          }}
+                          className="p-1 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-lg transition cursor-pointer"
+                          title="Delete PO"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
-          <div className="overflow-x-auto mt-3 max-h-[550px] overflow-y-auto border border-slate-100 rounded-lg">
+          /* TABLE VIEW */
+          <div className="overflow-x-auto mt-3 max-h-[560px] overflow-y-auto border border-slate-200 rounded-2xl shadow-2xs bg-white">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[9px] sticky top-0 z-10 shadow-2xs">
+              <thead className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white font-extrabold uppercase text-[9px] tracking-wider sticky top-0 z-10 shadow-sm">
                 <tr>
-                  <th className="p-2 w-8 text-center">
+                  <th className="p-2.5 w-8 text-center">
                     <input
                       type="checkbox"
                       checked={isAllFilteredSelected}
                       onChange={handleSelectAll}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer w-3.5 h-3.5 accent-blue-600"
+                      className="rounded border-slate-400 text-blue-500 focus:ring-blue-500 cursor-pointer w-3.5 h-3.5 accent-blue-600"
                       title={isAllFilteredSelected ? "Deselect all filtered POs" : "Select all filtered POs"}
                     />
                   </th>
-                  <th className="p-2">PO Number</th>
-                  <th className="p-2">Department</th>
-                  <th className="p-2">Location</th>
-                  <th className="p-2 text-center">Progress</th>
-                  <th className="p-2">Status</th>
-                  <th className="p-2 text-center">Action</th>
+                  <th className="p-2.5">PO Number</th>
+                  <th className="p-2.5">Department</th>
+                  <th className="p-2.5">Location</th>
+                  <th className="p-2.5 text-center">Progress</th>
+                  <th className="p-2.5">Status</th>
+                  <th className="p-2.5 text-center">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
+              <tbody className="divide-y divide-slate-100/60 font-medium">
                 {filteredRunningPOs.map((po, idx) => {
                   const totalItems = po.items ? po.items.length : 0;
                   const purchasedCount = (po.items || []).filter(i => i.purchaseStatus === 'Purchased').length;
                   const percent = totalItems > 0 ? Math.round((purchasedCount / totalItems) * 100) : 0;
                   const isSelected = selectedPoNumbers.has(po.poNumber);
+                  const isHeld = po.isHeldByAdmin || po.purchaseStatus === 'Held' || (po.items || []).some(i => i.purchaseStatus === 'Held');
+
+                  const statusCfg = getStatusBadgeConfig(po.purchaseStatus, isHeld);
+                  const deptBadgeClass = getDeptBadgeClass(po.department);
+                  const StatusIcon = statusCfg.icon;
+
+                  // Rotating color palette theme per row
+                  const rowTheme = ROW_COLOR_PALETTE[idx % ROW_COLOR_PALETTE.length];
+
+                  // Date Badges (Order Day & Delivery Day)
+                  const orderDay = getDayOfMonth(po.orderDate || po.createdAt, '01');
+                  const deliveryDay = getDayOfMonth(po.deliveryDate || po.items?.[0]?.deliveryDate || po.orderDate || po.createdAt, orderDay);
 
                   return (
                     <tr 
                       key={po.id ? `${po.id}-${idx}` : `rpo-${idx}`} 
-                      className={`hover:bg-blue-50/50 transition cursor-pointer ${isSelected ? 'bg-blue-50/70' : ''}`} 
+                      className={`transition-colors duration-200 ease-in-out cursor-pointer border-l-4 ${rowTheme.accentBorder} ${
+                        isSelected ? `${rowTheme.selectedBg} font-semibold shadow-2xs` : rowTheme.bg
+                      } ${rowTheme.hoverBg}`} 
                       onClick={() => {
                         if (onSelectPo) onSelectPo(po);
                         setSelectedPoForDetail(po);
                       }}
                     >
-                      <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      {/* Checkbox Column */}
+                      <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -800,112 +1310,161 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                           className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer w-3.5 h-3.5 accent-blue-600"
                         />
                       </td>
-                      <td className="p-2 font-mono font-bold text-blue-700">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedPoForDetail(po);
-                          }}
-                          className="hover:underline flex items-center gap-1 group text-left cursor-pointer"
-                          title="Click to view detailed PO Details & Dispatch Report"
-                        >
-                          <span>{po.poNumber}</span>
-                          <Eye className="w-3 h-3 text-blue-400 opacity-0 group-hover:opacity-100 transition" />
-                        </button>
-                      </td>
-                      <td className="p-2 text-slate-700">{po.department || 'General'}</td>
-                      <td className="p-2 text-slate-700">{po.location || 'Central Warehouse'}</td>
-                      <td className="p-2">
-                        <div className="flex flex-col items-center gap-0.5">
-                          <span className="text-[10px] font-bold text-slate-700">
-                            {purchasedCount}/{totalItems} <span className="text-slate-400 font-normal">({percent}%)</span>
-                          </span>
-                          <div className="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden border border-slate-200">
-                            <div
-                              className={`h-full transition-all duration-300 ${
-                                percent === 100 ? 'bg-emerald-500' : percent > 0 ? 'bg-blue-500' : 'bg-slate-300'
-                              }`}
-                              style={{ width: `${percent}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-2">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1 ${
-                          po.purchaseStatus === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
-                          po.purchaseStatus === 'Partial' ? 'bg-blue-100 text-blue-800' :
-                          'bg-amber-100 text-amber-800'
-                        }`}>
-                          <span>{po.purchaseStatus || 'Pending'}</span>
-                        </span>
-                      </td>
-                      <td className="p-2 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSendSinglePoTelegram(po);
-                            }}
-                            disabled={sendingPoNumber === po.poNumber}
-                            className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-                            title="Send this PO Report directly to Telegram"
+
+                      {/* PO Number Column with Order Date Badge */}
+                      <td className="p-2.5 font-mono font-bold text-slate-900">
+                        <div className="flex items-center gap-2">
+                          {/* Order Date Badge (34x34px rounded square) */}
+                          <span
+                            className={`w-8 h-8 ${rowTheme.deepBg} text-white rounded-lg flex items-center justify-center font-mono font-black text-xs shadow-xs shrink-0 cursor-default`}
+                            title={`Order Day: ${orderDay} (${po.orderDate || po.createdAt || 'Active'})`}
                           >
-                            <Send className={`w-3 h-3 ${sendingPoNumber === po.poNumber ? 'animate-pulse' : ''}`} />
-                            <span>Telegram</span>
-                          </button>
+                            {orderDay}
+                          </span>
+
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedPoForDetail(po);
                             }}
-                            className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                            className="hover:text-blue-600 flex items-center gap-1.5 group text-left cursor-pointer"
+                            title="Click to view detailed PO Details & Dispatch Report"
+                          >
+                            <span className="text-xs font-black">#{po.poNumber}</span>
+                            <Eye className="w-3.5 h-3.5 text-blue-500 opacity-0 group-hover:opacity-100 transition" />
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Department Column */}
+                      <td className="p-2.5">
+                        <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] border inline-block truncate max-w-[150px] ${deptBadgeClass}`}>
+                          {po.department || 'General'}
+                        </span>
+                      </td>
+
+                      {/* Location Column */}
+                      <td className="p-2.5 text-slate-700 font-medium">
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-slate-400" />
+                          <span>{po.location || 'Central Warehouse'}</span>
+                        </span>
+                      </td>
+
+                      {/* Progress Column with Ring/Donut Chart */}
+                      <td className="p-2.5 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="relative w-9 h-9 flex items-center justify-center shrink-0">
+                            <svg viewBox="0 0 36 36" className="w-9 h-9 -rotate-90 overflow-visible">
+                              {/* Empty gray background ring */}
+                              <path
+                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                fill="none"
+                                stroke="#cbd5e1"
+                                strokeWidth="3.5"
+                              />
+                              {/* Overlaid colored arc */}
+                              <path
+                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                fill="none"
+                                stroke={rowTheme.stroke}
+                                strokeWidth="3.8"
+                                strokeDasharray={`${percent}, 100`}
+                                strokeLinecap="round"
+                                className="transition-all duration-500 ease-out"
+                              />
+                            </svg>
+                            <span className="absolute font-mono font-black text-[9px] text-slate-800">
+                              {percent}%
+                            </span>
+                          </div>
+                          <div className="flex flex-col text-left font-mono leading-tight">
+                            <span className="text-[10px] font-bold text-slate-800">
+                              {purchasedCount}/{totalItems}
+                            </span>
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-tight">
+                              {percent === 100 ? 'Done' : 'Items'}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Status Column */}
+                      <td className="p-2.5">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border inline-flex items-center gap-1 shadow-2xs ${statusCfg.bg}`}>
+                          <StatusIcon className="w-3 h-3" />
+                          <span>{statusCfg.label}</span>
+                        </span>
+                      </td>
+
+                      {/* Actions Column */}
+                      <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          {/* Telegram */}
+                          <button
+                            type="button"
+                            onClick={() => handleSendSinglePoTelegram(po)}
+                            disabled={sendingPoNumber === po.poNumber}
+                            className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                            title="Send this PO Report directly to Telegram"
+                          >
+                            <Send className={`w-3 h-3 text-emerald-600 ${sendingPoNumber === po.poNumber ? 'animate-pulse' : ''}`} />
+                            <span className="hidden xl:inline">Telegram</span>
+                          </button>
+
+                          {/* Report */}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPoForDetail(po)}
+                            className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
                             title="View full PO details & print report"
                           >
-                            <Eye className="w-3 h-3" />
-                            <span>Report</span>
+                            <Eye className="w-3 h-3 text-blue-600" />
+                            <span className="hidden xl:inline">Report</span>
                           </button>
-                          {(po.isHeldByAdmin || po.purchaseStatus === 'Held' || (po.items || []).some(i => i.purchaseStatus === 'Held')) ? (
+
+                          {/* Hold / Release Hold */}
+                          {isHeld ? (
                             onReleasePO && (
                               <button
                                 type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onReleasePO(po.poNumber);
-                                }}
-                                className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                                onClick={() => onReleasePO(po.poNumber)}
+                                className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
                                 title="Release PO Hold"
                               >
-                                <Unlock className="w-3 h-3" />
-                                <span>Release Hold</span>
+                                <Unlock className="w-3 h-3 text-amber-600" />
+                                <span className="hidden xl:inline">Release</span>
                               </button>
                             )
                           ) : (
                             onHoldPO && (
                               <button
                                 type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onHoldPO(po.poNumber);
-                                }}
-                                className="px-2 py-0.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                                onClick={() => onHoldPO(po.poNumber)}
+                                className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
                                 title="Hold PO"
                               >
-                                <Lock className="w-3 h-3" />
-                                <span>Hold</span>
+                                <Lock className="w-3 h-3 text-purple-600" />
+                                <span className="hidden xl:inline">Hold</span>
                               </button>
                             )
                           )}
+
+                          {/* Delivery Date Badge (~30px, immediately before Delete button) */}
+                          <span
+                            className={`w-7 h-7 ${rowTheme.deepBg} text-white rounded-lg flex items-center justify-center font-mono font-black text-[11px] shadow-xs shrink-0 cursor-default`}
+                            title={`Delivery Day: ${deliveryDay}`}
+                          >
+                            {deliveryDay}
+                          </span>
+
+                          {/* Delete */}
                           {allowDelete && (onDeletePO || onDeletePo) && (
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPoToDelete(po.poNumber);
-                              }}
-                              className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded transition cursor-pointer"
+                              onClick={() => setPoToDelete(po.poNumber)}
+                              className="p-1.5 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-700 border border-slate-200 hover:border-rose-300 rounded-lg transition cursor-pointer"
                               title="Delete PO"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -986,102 +1545,284 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
               {(() => {
                 const items = selectedPoForDetail.items || [];
                 const totalItems = items.length;
-                const purchasedCount = items.filter(i => (i.purchasedQty || 0) > 0 || i.purchaseStatus === 'Purchased').length;
+
+                const completeCount = items.filter(i => {
+                  const req = i.requestedQty || i.orderedQty || 0;
+                  const pur = i.purchasedQty || 0;
+                  return (pur >= req && req > 0) || i.purchaseStatus === 'Purchased';
+                }).length;
+
+                const partialCount = items.filter(i => {
+                  const req = i.requestedQty || i.orderedQty || 0;
+                  const pur = i.purchasedQty || 0;
+                  return pur > 0 && pur < req;
+                }).length;
+
+                const holdCount = items.filter(i => 
+                  i.purchaseStatus === 'Held' || i.purchaseStatus === 'Hold' || (i as any).isHeld
+                ).length;
+
                 const receivedCount = items.filter(i => (i.warehouseQty || 0) > 0).length;
 
+                const pendingReceiveCount = items.filter(i => {
+                  const req = i.requestedQty || i.orderedQty || 0;
+                  const pur = i.purchasedQty || 0;
+                  const target = pur > 0 ? pur : req;
+                  return (i.warehouseQty || 0) < target;
+                }).length;
+
+                const filteredItems = items.filter(item => {
+                  if (poDetailFilter === 'all') return true;
+                  const req = item.requestedQty || item.orderedQty || 0;
+                  const pur = item.purchasedQty || 0;
+                  const rec = item.warehouseQty || 0;
+                  const isHold = item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' || (item as any).isHeld;
+
+                  if (poDetailFilter === 'complete') {
+                    return (pur >= req && req > 0) || item.purchaseStatus === 'Purchased';
+                  }
+                  if (poDetailFilter === 'partial') {
+                    return pur > 0 && pur < req;
+                  }
+                  if (poDetailFilter === 'hold') {
+                    return isHold;
+                  }
+                  if (poDetailFilter === 'received') {
+                    return rec > 0;
+                  }
+                  if (poDetailFilter === 'pending') {
+                    const target = pur > 0 ? pur : req;
+                    return rec < target;
+                  }
+                  return true;
+                });
+
+                const getFilteredPoForExport = (): PurchaseOrder => {
+                  if (poDetailFilter === 'all') {
+                    return selectedPoForDetail;
+                  }
+
+                  const filterLabelMap: Record<string, string> = {
+                    complete: 'Complete Purchase',
+                    partial: 'Partial Items',
+                    hold: 'Hold Items',
+                    received: 'Warehouse Received',
+                    pending: 'Pending Receive'
+                  };
+
+                  const filterLabel = filterLabelMap[poDetailFilter] || 'Filtered Items';
+                  const reportTitle = `${filterLabel} Report — PO #${selectedPoForDetail.poNumber}`;
+
+                  return {
+                    ...selectedPoForDetail,
+                    items: filteredItems,
+                    reportTitle
+                  } as PurchaseOrder & { reportTitle?: string };
+                };
+
                 return (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl">
-                      <span className="text-[9px] font-bold uppercase text-blue-600">Total Items</span>
-                      <p className="text-lg font-black text-blue-900">{totalItems}</p>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-center">
+                      {/* Total Items */}
+                      <button
+                        type="button"
+                        onClick={() => setPoDetailFilter('all')}
+                        className={`p-2.5 rounded-xl transition-all cursor-pointer shadow-xs text-center flex flex-col justify-between select-none ${
+                          poDetailFilter === 'all'
+                            ? 'bg-blue-600 text-white ring-4 ring-blue-300 ring-offset-2 scale-[1.02] shadow-md font-bold'
+                            : 'bg-blue-600 text-white hover:bg-blue-700 opacity-90 hover:opacity-100 font-medium'
+                        }`}
+                      >
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-blue-100">Total Items</span>
+                        <p className="text-xl font-black text-white mt-1">{totalItems}</p>
+                        <span className="text-[9px] font-semibold text-blue-200 mt-0.5">
+                          {poDetailFilter === 'all' ? '● Show All' : 'Click to Reset'}
+                        </span>
+                      </button>
+
+                      {/* Complete Purchase */}
+                      <button
+                        type="button"
+                        onClick={() => setPoDetailFilter(prev => prev === 'complete' ? 'all' : 'complete')}
+                        className={`p-2.5 rounded-xl transition-all cursor-pointer shadow-xs text-center flex flex-col justify-between select-none ${
+                          poDetailFilter === 'complete'
+                            ? 'bg-emerald-600 text-white ring-4 ring-emerald-300 ring-offset-2 scale-[1.02] shadow-md font-bold'
+                            : 'bg-emerald-600 text-white hover:bg-emerald-700 opacity-90 hover:opacity-100 font-medium'
+                        }`}
+                      >
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-emerald-100">Complete Purchase</span>
+                        <p className="text-xl font-black text-white mt-1">{completeCount}</p>
+                        <span className="text-[9px] font-semibold text-emerald-200 mt-0.5">
+                          {poDetailFilter === 'complete' ? '● Filtered' : 'Filter Items'}
+                        </span>
+                      </button>
+
+                      {/* Partial Items */}
+                      <button
+                        type="button"
+                        onClick={() => setPoDetailFilter(prev => prev === 'partial' ? 'all' : 'partial')}
+                        className={`p-2.5 rounded-xl transition-all cursor-pointer shadow-xs text-center flex flex-col justify-between select-none ${
+                          poDetailFilter === 'partial'
+                            ? 'bg-orange-500 text-white ring-4 ring-orange-300 ring-offset-2 scale-[1.02] shadow-md font-bold'
+                            : 'bg-orange-500 text-white hover:bg-orange-600 opacity-90 hover:opacity-100 font-medium'
+                        }`}
+                      >
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-orange-100">Partial Items</span>
+                        <p className="text-xl font-black text-white mt-1">{partialCount}</p>
+                        <span className="text-[9px] font-semibold text-orange-200 mt-0.5">
+                          {poDetailFilter === 'partial' ? '● Filtered' : 'Filter Items'}
+                        </span>
+                      </button>
+
+                      {/* Hold Items */}
+                      <button
+                        type="button"
+                        onClick={() => setPoDetailFilter(prev => prev === 'hold' ? 'all' : 'hold')}
+                        className={`p-2.5 rounded-xl transition-all cursor-pointer shadow-xs text-center flex flex-col justify-between select-none ${
+                          poDetailFilter === 'hold'
+                            ? 'bg-purple-600 text-white ring-4 ring-purple-300 ring-offset-2 scale-[1.02] shadow-md font-bold'
+                            : 'bg-purple-600 text-white hover:bg-purple-700 opacity-90 hover:opacity-100 font-medium'
+                        }`}
+                      >
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-purple-100">Hold Items</span>
+                        <p className="text-xl font-black text-white mt-1">{holdCount}</p>
+                        <span className="text-[9px] font-semibold text-purple-200 mt-0.5">
+                          {poDetailFilter === 'hold' ? '● Filtered' : 'Filter Items'}
+                        </span>
+                      </button>
+
+                      {/* Warehouse Received */}
+                      <button
+                        type="button"
+                        onClick={() => setPoDetailFilter(prev => prev === 'received' ? 'all' : 'received')}
+                        className={`p-2.5 rounded-xl transition-all cursor-pointer shadow-xs text-center flex flex-col justify-between select-none ${
+                          poDetailFilter === 'received'
+                            ? 'bg-teal-600 text-white ring-4 ring-teal-300 ring-offset-2 scale-[1.02] shadow-md font-bold'
+                            : 'bg-teal-600 text-white hover:bg-teal-700 opacity-90 hover:opacity-100 font-medium'
+                        }`}
+                      >
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-teal-100">Warehouse Received</span>
+                        <p className="text-xl font-black text-white mt-1">{receivedCount}</p>
+                        <span className="text-[9px] font-semibold text-teal-200 mt-0.5">
+                          {poDetailFilter === 'received' ? '● Filtered' : 'Filter Items'}
+                        </span>
+                      </button>
+
+                      {/* Pending Receive */}
+                      <button
+                        type="button"
+                        onClick={() => setPoDetailFilter(prev => prev === 'pending' ? 'all' : 'pending')}
+                        className={`p-2.5 rounded-xl transition-all cursor-pointer shadow-xs text-center flex flex-col justify-between select-none ${
+                          poDetailFilter === 'pending'
+                            ? 'bg-amber-600 text-white ring-4 ring-amber-300 ring-offset-2 scale-[1.02] shadow-md font-bold'
+                            : 'bg-amber-600 text-white hover:bg-amber-700 opacity-90 hover:opacity-100 font-medium'
+                        }`}
+                      >
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-amber-100">Pending Receive</span>
+                        <p className="text-xl font-black text-white mt-1">{pendingReceiveCount}</p>
+                        <span className="text-[9px] font-semibold text-amber-200 mt-0.5">
+                          {poDetailFilter === 'pending' ? '● Filtered' : 'Filter Items'}
+                        </span>
+                      </button>
                     </div>
-                    <div className="p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl">
-                      <span className="text-[9px] font-bold uppercase text-indigo-600">Purchased Items</span>
-                      <p className="text-lg font-black text-indigo-900">{purchasedCount}</p>
+
+                    {/* Items Breakdown Table */}
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span>Line Items Detailed Breakdown ({filteredItems.length}/{items.length})</span>
+                          {poDetailFilter !== 'all' && (
+                            <button
+                              type="button"
+                              onClick={() => setPoDetailFilter('all')}
+                              className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded text-[10px] font-bold transition cursor-pointer"
+                            >
+                              Clear Filter
+                            </button>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-normal">Dispatch & Receive Status</span>
+                      </h4>
+
+                      <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[9px]">
+                            <tr>
+                              <th className="p-2.5 text-center">SL</th>
+                              <th className="p-2.5">Item Name</th>
+                              <th className="p-2.5">Brand</th>
+                              <th className="p-2.5 text-center">Requested</th>
+                              <th className="p-2.5 text-center">Purchased</th>
+                              <th className="p-2.5 text-center">Received</th>
+                              <th className="p-2.5 text-center">Remaining</th>
+                              <th className="p-2.5 text-center">Purchase Status</th>
+                              <th className="p-2.5 text-center">Receive Status</th>
+                              <th className="p-2.5">Notes / Hold</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-medium">
+                            {filteredItems.map((item, idx) => {
+                              const req = item.requestedQty || item.orderedQty || 0;
+                              const pur = item.purchasedQty || 0;
+                              const rec = item.warehouseQty || 0;
+                              const rem = Math.max(0, req - rec);
+
+                              return (
+                                <tr key={item.id ? `${item.id}-${idx}` : `poitem-${idx}`} className="hover:bg-slate-50 transition">
+                                  <td className="p-2.5 text-center font-mono font-bold text-slate-500">{item.slNumber || idx + 1}</td>
+                                  <td className="p-2.5 font-bold text-slate-900">{item.itemName}</td>
+                                  <td className="p-2.5 text-slate-600">{item.brand || 'N/A'}</td>
+                                  <td className="p-2.5 text-center font-bold text-slate-800">{req} {item.unit || 'pcs'}</td>
+                                  <td className="p-2.5 text-center font-bold text-blue-700">{pur} {item.unit || 'pcs'}</td>
+                                  <td className="p-2.5 text-center font-bold text-emerald-700">{rec} {item.unit || 'pcs'}</td>
+                                  <td className="p-2.5 text-center font-bold text-amber-700">{rem} {item.unit || 'pcs'}</td>
+                                  <td className="p-2.5 text-center">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                      item.purchaseStatus === 'Purchased' ? 'bg-emerald-100 text-emerald-800' :
+                                      item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' ? 'bg-purple-100 text-purple-800' :
+                                      'bg-amber-100 text-amber-800'
+                                    }`}>
+                                      {item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' ? 'Hold' : (item.purchaseStatus || 'Pending')}
+                                    </span>
+                                  </td>
+                                  <td className="p-2.5 text-center">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                      rec >= req && req > 0 ? 'bg-purple-100 text-purple-800' :
+                                      rec > 0 ? 'bg-blue-100 text-blue-800' :
+                                      'bg-slate-100 text-slate-600'
+                                    }`}>
+                                      {rec >= req && req > 0 ? 'Ready/Received' : rec > 0 ? 'Partial Rec' : 'Pending Rec'}
+                                    </span>
+                                  </td>
+                                  <td className="p-2.5 text-slate-500 text-[11px]">
+                                    {item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' ? (
+                                      <span className="text-purple-700 font-bold">🔒 Hold: {item.holdBy || item.holdByName || 'Admin'}</span>
+                                    ) : (
+                                      item.notes || '-'
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            {filteredItems.length === 0 && (
+                              <tr>
+                                <td colSpan={10} className="p-6 text-center text-slate-400 text-xs italic bg-slate-50/50">
+                                  No line items match the selected filter ({poDetailFilter}).
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
-                      <span className="text-[9px] font-bold uppercase text-emerald-600">Warehouse Received</span>
-                      <p className="text-lg font-black text-emerald-900">{receivedCount}</p>
-                    </div>
-                    <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl">
-                      <span className="text-[9px] font-bold uppercase text-amber-600">Pending Receive</span>
-                      <p className="text-lg font-black text-amber-900">{totalItems - receivedCount}</p>
+
+                    {/* Footer Buttons override within closure */}
+                    <div className="hidden">
+                      {/* Hidden marker */}
                     </div>
                   </div>
                 );
               })()}
-
-              {/* Items Breakdown Table */}
-              <div className="space-y-2">
-                <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center justify-between">
-                  <span>Line Items Detailed Breakdown ({selectedPoForDetail.items?.length || 0})</span>
-                  <span className="text-[10px] text-slate-400 font-normal">Dispatch & Receive Status</span>
-                </h4>
-
-                <div className="overflow-x-auto rounded-xl border border-slate-200">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[9px]">
-                      <tr>
-                        <th className="p-2.5 text-center">SL</th>
-                        <th className="p-2.5">Item Name</th>
-                        <th className="p-2.5">Brand</th>
-                        <th className="p-2.5 text-center">Requested</th>
-                        <th className="p-2.5 text-center">Purchased</th>
-                        <th className="p-2.5 text-center">Received</th>
-                        <th className="p-2.5 text-center">Remaining</th>
-                        <th className="p-2.5 text-center">Purchase Status</th>
-                        <th className="p-2.5 text-center">Receive Status</th>
-                        <th className="p-2.5">Notes / Hold</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium">
-                      {(selectedPoForDetail.items || []).map((item, idx) => {
-                        const req = item.requestedQty || item.orderedQty || 0;
-                        const pur = item.purchasedQty || 0;
-                        const rec = item.warehouseQty || 0;
-                        const rem = Math.max(0, req - rec);
-
-                        return (
-                          <tr key={item.id ? `${item.id}-${idx}` : `poitem-${idx}`} className="hover:bg-slate-50 transition">
-                            <td className="p-2.5 text-center font-mono font-bold text-slate-500">{item.slNumber || idx + 1}</td>
-                            <td className="p-2.5 font-bold text-slate-900">{item.itemName}</td>
-                            <td className="p-2.5 text-slate-600">{item.brand || 'N/A'}</td>
-                            <td className="p-2.5 text-center font-bold text-slate-800">{req} {item.unit || 'pcs'}</td>
-                            <td className="p-2.5 text-center font-bold text-blue-700">{pur} {item.unit || 'pcs'}</td>
-                            <td className="p-2.5 text-center font-bold text-emerald-700">{rec} {item.unit || 'pcs'}</td>
-                            <td className="p-2.5 text-center font-bold text-amber-700">{rem} {item.unit || 'pcs'}</td>
-                            <td className="p-2.5 text-center">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                item.purchaseStatus === 'Purchased' ? 'bg-emerald-100 text-emerald-800' :
-                                item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' ? 'bg-purple-100 text-purple-800' :
-                                'bg-amber-100 text-amber-800'
-                              }`}>
-                                {item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' ? 'Hold' : (item.purchaseStatus || 'Pending')}
-                              </span>
-                            </td>
-                            <td className="p-2.5 text-center">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                rec >= req && req > 0 ? 'bg-purple-100 text-purple-800' :
-                                rec > 0 ? 'bg-blue-100 text-blue-800' :
-                                'bg-slate-100 text-slate-600'
-                              }`}>
-                                {rec >= req && req > 0 ? 'Ready/Received' : rec > 0 ? 'Partial Rec' : 'Pending Rec'}
-                              </span>
-                            </td>
-                            <td className="p-2.5 text-slate-500 text-[11px]">
-                              {item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' ? (
-                                <span className="text-purple-700 font-bold">🔒 Hold: {item.holdBy || item.holdByName || 'Admin'}</span>
-                              ) : (
-                                item.notes || '-'
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
 
             </div>
 
@@ -1111,7 +1852,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => handlePrintPoReport(selectedPoForDetail)}
+                  onClick={() => handlePrintPoReport(getFilteredPoForExport())}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-xs"
                 >
                   <Printer className="w-3.5 h-3.5" />

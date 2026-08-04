@@ -26,7 +26,7 @@ import { AdminReportModal } from './AdminReportModal';
 import { AdminPoDetailModal } from './AdminPoDetailModal';
 import { AdminCustomAlertModal } from './AdminCustomAlertModal';
 import { 
-  Trash2, X, AlertCircle, Zap, Eye, Printer, ChevronDown, ChevronUp, Download
+  Trash2, X, AlertCircle, Zap, Eye, Printer, ChevronDown, ChevronUp, Download, Layers
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -259,6 +259,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (holdPurchaserFilter === 'ALL') return heldItemsList;
     return heldItemsList.filter(i => (i.holdBy || i.holdByName || 'Admin') === holdPurchaserFilter);
   }, [heldItemsList, holdPurchaserFilter]);
+
+  // Activity Logs sorted descending by timestamp
+  const recentActivityLogs = React.useMemo(() => {
+    const logs = auditLogs || [];
+    return [...logs].sort((a, b) => {
+      const timeA = new Date(a.timestamp || (a as any).createdAt || 0).getTime();
+      const timeB = new Date(b.timestamp || (b as any).createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+  }, [auditLogs]);
+
+  const formatActivityTimestamp = (ts?: string) => {
+    if (!ts) return 'Recently';
+    const dateObj = new Date(ts);
+    if (isNaN(dateObj.getTime())) return String(ts);
+    const datePart = dateObj.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    const timePart = dateObj.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    return `${datePart} · ${timePart}`;
+  };
+
+  const formatRoleLabel = (roleStr?: string) => {
+    if (!roleStr) return 'User';
+    const r = roleStr.toLowerCase().trim();
+    if (r === 'super_admin' || r === 'superadmin') return 'Super Admin';
+    if (r === 'purchaser') return 'Purchaser';
+    if (r === 'warehouse') return 'Warehouse';
+    if (r === 'dispatch') return 'Dispatch';
+    if (r === 'admin') return 'Admin';
+    return r.charAt(0).toUpperCase() + r.slice(1);
+  };
 
   // Department & Location Summaries
   const departmentBreakdown = React.useMemo(() => {
@@ -752,208 +790,184 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
 
-          {/* MAIN GRID: RUNNING PO LIST & PURCHASER HOLD MONITOR */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* MAIN CONTAINER: RUNNING PO LIST & PURCHASER HOLD MONITOR */}
+          <div className="space-y-4">
             
-            {/* Running PO List (3 Columns) */}
-            <div className="lg:col-span-3 space-y-3">
+            {/* Running PO List (Full Width) */}
+            <RunningPoList
+              pos={pos}
+              allowDelete={true}
+              allowStatusChange={currentUser?.role === 'super_admin' || currentUser?.isSuperAdmin || currentUser?.name === 'RL TAKMIL' || currentUser?.name === 'RL MUSTAQ'}
+              onHoldPO={onHoldPO}
+              onReleasePO={onReleasePO}
+              onSelectPo={(po) => setSelectedPoForDetail(po)}
+              onDeletePO={(poNumber) => {
+                if (onDeletePO) onDeletePO(poNumber);
+                else setPoToDelete(poNumber);
+              }}
+              onDeletePo={(poNumber) => {
+                if (onDeletePO) onDeletePO(poNumber);
+                else setPoToDelete(poNumber);
+              }}
+              onClearAllPOs={onClearAllPOs}
+            />
+
+            {/* TWO-COLUMN SPLIT: PURCHASER HOLD MONITOR (LEFT) & ACTIVITY LOG (RIGHT) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               
-              {/* Running PO Toolbar */}
-              <div className="bg-white rounded-xl border border-slate-200 p-3 space-y-2.5 shadow-2xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                  <div>
-                    <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                      <span>Running Active Purchase Orders ({filteredRunningPOs.length})</span>
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-full">
-                        {pos.length} Total Registered
-                      </span>
-                    </h3>
-                    <p className="text-[11px] text-slate-500">Live operational tracker with search, department filters, and direct PDF/Excel exporting.</p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={exportRunningPOsToCSV}
-                      disabled={filteredRunningPOs.length === 0}
-                      className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer disabled:opacity-40"
-                    >
-                      <Download className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Export CSV</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={exportRunningPOsToPDF}
-                      disabled={filteredRunningPOs.length === 0}
-                      className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer disabled:opacity-40"
-                    >
-                      <Printer className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Print PDF Report</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Filters Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
-                  
-                  {/* Status Pills */}
-                  <div className="sm:col-span-2 flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 overflow-x-auto">
-                    {['ACTIVE', 'ALL', 'Pending', 'Partial', 'Completed', 'Held'].map(st => (
-                      <button
-                        key={st}
-                        type="button"
-                        onClick={() => setRunningPoStatusFilter(st)}
-                        className={`px-2 py-1 rounded-md text-[10px] font-bold transition shrink-0 cursor-pointer ${
-                          runningPoStatusFilter === st
-                            ? 'bg-blue-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
-                        }`}
-                      >
-                        {st === 'ACTIVE' ? 'Active Running' : st}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Search PO Number */}
-                  <div>
-                    <input
-                      type="text"
-                      value={runningPoSearch}
-                      onChange={(e) => setRunningPoSearch(e.target.value)}
-                      placeholder="PO Number (e.g. 101)..."
-                      className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold focus:bg-white focus:border-blue-500 outline-none"
-                    />
-                  </div>
-
-                  {/* Search Item Name */}
-                  <div>
-                    <input
-                      type="text"
-                      value={runningPoItemSearch}
-                      onChange={(e) => setRunningPoItemSearch(e.target.value)}
-                      placeholder="Search Item Name..."
-                      className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:border-blue-500 outline-none"
-                    />
-                  </div>
-
-                  {/* Department Filter */}
-                  <div>
-                    <select
-                      value={runningPoDeptFilter}
-                      onChange={(e) => setRunningPoDeptFilter(e.target.value)}
-                      className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:bg-white focus:border-blue-500 outline-none"
-                    >
-                      <option value="ALL">All Departments ({uniqueDepartments.length})</option>
-                      {uniqueDepartments.map(d => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                </div>
-              </div>
-
-              {/* Running PO Cards Component */}
-              <RunningPoList
-                pos={filteredRunningPOs}
-                allowDelete={true}
-                allowStatusChange={currentUser?.role === 'super_admin' || currentUser?.isSuperAdmin || currentUser?.name === 'RL TAKMIL' || currentUser?.name === 'RL MUSTAQ'}
-                onHoldPO={onHoldPO}
-                onReleasePO={onReleasePO}
-                onSelectPo={(po) => setSelectedPoForDetail(po)}
-                onDeletePO={(poNumber) => {
-                  if (onDeletePO) onDeletePO(poNumber);
-                  else setPoToDelete(poNumber);
-                }}
-                onDeletePo={(poNumber) => {
-                  if (onDeletePO) onDeletePO(poNumber);
-                  else setPoToDelete(poNumber);
-                }}
-                onClearAllPOs={onClearAllPOs}
-              />
-            </div>
-
-            {/* PURCHASER HOLD MONITOR (1 Column Sidebar) */}
-            <div className="space-y-3">
-              <div className="bg-white rounded-xl border border-purple-200 p-3 space-y-3 shadow-2xs">
-                <div className="flex items-center justify-between border-b border-purple-100 pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="p-1.5 bg-purple-100 text-purple-800 rounded-lg font-bold text-xs">🔒</span>
-                    <div>
-                      <h3 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider">Purchaser Hold Monitor</h3>
-                      <p className="text-[10px] text-slate-500">Items locked for active purchasing</p>
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 bg-purple-100 text-purple-900 text-xs font-black rounded-full border border-purple-200">
-                    {heldItemsList.length}
-                  </span>
-                </div>
-
-                {/* Filter Purchaser */}
-                {uniqueHoldPurchasers.length > 0 && (
-                  <div>
-                    <select
-                      value={holdPurchaserFilter}
-                      onChange={(e) => setHoldPurchaserFilter(e.target.value)}
-                      className="w-full p-1.5 bg-purple-50/50 border border-purple-200 rounded-lg text-xs font-bold text-purple-900 outline-none focus:ring-2 focus:ring-purple-400"
-                    >
-                      <option value="ALL">All Purchasers ({uniqueHoldPurchasers.length})</option>
-                      {uniqueHoldPurchasers.map(p => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Held Items List */}
-                <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-                  {displayHeldItems.map((item, idx) => {
-                    const holderName = item.holdBy || item.holdByName || 'Admin';
-                    const avatarUrl = getUserAvatar(holderName);
-
-                    return (
-                      <div key={idx} className="p-2.5 bg-purple-50/40 border border-purple-200/80 rounded-xl space-y-1.5 text-xs hover:bg-purple-50 transition">
-                        <div className="flex items-start justify-between gap-1.5">
-                          <div>
-                            <span className="font-mono font-bold text-purple-900 text-[11px]">PO #{item.poNumber}</span>
-                            <h4 className="font-bold text-slate-900 text-xs leading-tight">{item.itemName}</h4>
-                          </div>
-                          <span className="px-2 py-0.5 bg-purple-200 text-purple-900 text-[9px] font-black rounded uppercase shrink-0">
-                            Hold
+              {/* LEFT: PURCHASER HOLD MONITOR PANEL */}
+              <div className="bg-white rounded-2xl border border-purple-200 p-4 space-y-3 shadow-2xs flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-purple-100 pb-3 gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="p-2 bg-purple-100 text-purple-800 rounded-xl font-bold text-sm">🔒</span>
+                      <div>
+                        <h3 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-2">
+                          <span>Purchaser Hold Monitor</span>
+                          <span className="px-2.5 py-0.5 bg-purple-100 text-purple-900 text-xs font-black rounded-full border border-purple-200">
+                            {heldItemsList.length} Items Locked
                           </span>
-                        </div>
-
-                        <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 border-t border-purple-100">
-                          <div className="flex items-center gap-1.5">
-                            <img src={avatarUrl} alt={holderName} className="w-4 h-4 rounded-full object-cover border border-purple-300 shrink-0" />
-                            <span className="font-bold text-purple-900">{holderName}</span>
-                          </div>
-                          <span className="font-bold text-slate-800">{item.requestedQty || item.orderedQty || 0} {item.unit || 'pcs'}</span>
-                        </div>
+                        </h3>
+                        <p className="text-[10px] text-slate-500">Items locked for active purchasing</p>
                       </div>
-                    );
-                  })}
-
-                  {displayHeldItems.length === 0 && (
-                    <div className="p-6 text-center text-slate-400 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                      No items currently on hold
                     </div>
-                  )}
+
+                    {/* Filter Purchaser */}
+                    {uniqueHoldPurchasers.length > 0 && (
+                      <div className="w-full sm:w-48">
+                        <select
+                          value={holdPurchaserFilter}
+                          onChange={(e) => setHoldPurchaserFilter(e.target.value)}
+                          className="w-full p-2 bg-purple-50/60 border border-purple-200 rounded-xl text-xs font-bold text-purple-900 outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer"
+                        >
+                          <option value="ALL">All Purchasers ({uniqueHoldPurchasers.length})</option>
+                          {uniqueHoldPurchasers.map(p => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Held Items List Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
+                    {displayHeldItems.map((item, idx) => {
+                      const holderName = item.holdBy || item.holdByName || 'Admin';
+                      const avatarUrl = getUserAvatar(holderName);
+
+                      return (
+                        <div key={idx} className="p-3 bg-purple-50/40 border border-purple-200/80 rounded-xl space-y-2 text-xs hover:bg-purple-50 transition shadow-2xs">
+                          <div className="flex items-start justify-between gap-1.5">
+                            <div>
+                              <span className="font-mono font-bold text-purple-900 text-xs">PO #{item.poNumber}</span>
+                              <h4 className="font-bold text-slate-900 text-xs leading-tight line-clamp-2">{item.itemName}</h4>
+                            </div>
+                            <span className="px-2 py-0.5 bg-purple-200 text-purple-900 text-[9px] font-black rounded uppercase shrink-0">
+                              Hold
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1.5 border-t border-purple-100">
+                            <div className="flex items-center gap-1.5">
+                              <img src={avatarUrl} alt={holderName} className="w-4 h-4 rounded-full object-cover border border-purple-300 shrink-0" />
+                              <span className="font-bold text-purple-900">{holderName}</span>
+                            </div>
+                            <span className="font-bold text-slate-800">{item.requestedQty || item.orderedQty || 0} {item.unit || 'pcs'}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {displayHeldItems.length === 0 && (
+                      <div className="col-span-full p-6 text-center text-slate-400 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        No items currently on hold
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Department Breakdown Mini-Widget */}
-              <div className="bg-white rounded-xl border border-slate-200 p-3 space-y-2 shadow-2xs">
-                <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider border-b border-slate-100 pb-1.5">
-                  Department Breakdown ({departmentBreakdown.length})
-                </h4>
-                <div className="space-y-1.5 max-h-[220px] overflow-y-auto text-xs">
-                  {departmentBreakdown.map(([dept, count]) => (
-                    <div key={dept} className="flex items-center justify-between p-1.5 bg-slate-50 rounded-lg">
-                      <span className="font-bold text-slate-700 truncate">{dept}</span>
-                      <span className="px-2 py-0.5 bg-slate-200 text-slate-800 rounded font-mono font-bold text-[10px]">{count} POs</span>
+              {/* RIGHT: ACTIVITY LOG PANEL */}
+              <div className="bg-white rounded-2xl border border-purple-200 p-4 space-y-3 shadow-2xs flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-purple-100 pb-3 gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="p-2 bg-purple-100 text-purple-800 rounded-xl font-bold text-sm">📋</span>
+                      <div>
+                        <h3 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-2">
+                          <span>Activity Log</span>
+                          <span className="px-2.5 py-0.5 bg-purple-100 text-purple-900 text-xs font-black rounded-full border border-purple-200">
+                            {recentActivityLogs.length} Events
+                          </span>
+                        </h3>
+                        <p className="text-[10px] text-slate-500">Live audit trail & recent user actions</p>
+                      </div>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Activity Log Scrollable List */}
+                  <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                    {recentActivityLogs.map((log, idx) => {
+                      const userName = log.user || (log as any).userName || (log as any).userEmail || 'System';
+                      const avatarUrl = getUserAvatar(userName);
+                      const matchingUser = users.find(u => 
+                        (u.name || '').trim().toLowerCase() === userName.trim().toLowerCase() ||
+                        (u.username || '').trim().toLowerCase() === userName.trim().toLowerCase()
+                      );
+                      const rawRole = log.role || matchingUser?.role || 'admin';
+                      const formattedRole = formatRoleLabel(rawRole);
+
+                      return (
+                        <div 
+                          key={log.id ? `${log.id}-${idx}` : `log-${idx}`} 
+                          className="p-3 bg-purple-50/40 border border-purple-200/80 rounded-xl space-y-2 text-xs hover:bg-purple-50 transition shadow-2xs"
+                        >
+                          {/* Top: User Photo / Avatar */}
+                          <div className="flex items-start gap-2.5">
+                            <img
+                              src={avatarUrl}
+                              alt={userName}
+                              className="w-10 h-10 rounded-full object-cover border-2 border-purple-200 shadow-2xs shrink-0"
+                              onError={(e) => {
+                                (e.target as HTMLElement).setAttribute('src', `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=6b21a8&color=ffffff&bold=true`);
+                              }}
+                            />
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-bold text-slate-900 text-xs truncate leading-snug">{userName}</span>
+                              {/* Role displayed directly below avatar/name */}
+                              <span className="inline-block px-2 py-0.5 bg-purple-100 text-purple-900 border border-purple-200/90 rounded-md text-[9px] font-black uppercase tracking-wide w-fit mt-0.5">
+                                {formattedRole}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Activity Description */}
+                          <div className="bg-white/80 p-2.5 rounded-lg border border-purple-100 space-y-1">
+                            <div className="font-extrabold text-purple-950 text-xs flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-600 shrink-0"></span>
+                              <span>{log.action}</span>
+                            </div>
+                            {log.details && (
+                              <p className="text-slate-700 text-[11px] leading-relaxed pl-3 font-medium">
+                                {log.details}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Date and Time */}
+                          <div className="text-[10px] font-mono text-slate-500 font-semibold pt-0.5 flex items-center justify-between">
+                            <span>{formatActivityTimestamp(log.timestamp)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {recentActivityLogs.length === 0 && (
+                      <div className="p-6 text-center text-slate-400 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        No activity logs recorded yet
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
