@@ -1,7 +1,12 @@
-import { User, PurchaseOrder, POItem, AuditLog, DeliveryNoteRecord } from '../types';
+import { User, PurchaseOrder, POItem, AuditLog, DeliveryNoteRecord, MasterStatus } from '../types';
 import { getCurrentUser, INITIAL_USERS, getLocalUsers, saveLocalUsers, getLocalPOs, saveLocalPOs, getLocalAuditLogs } from './storage';
 import { supabase } from './supabaseClient';
 
+const recentWritesMap = new Map<string, { warehouseQty?: number; purchaseStatus?: string; holdBy?: string; timestamp: number }>();
+
+export function recordRecentWrite(itemId: string, values: { warehouseQty?: number; purchaseStatus?: string; holdBy?: string }) {
+  recentWritesMap.set(String(itemId).trim(), { ...values, timestamp: Date.now() });
+}
 export interface ApiResponse<T = any> {
   success: boolean;
   message: string;
@@ -444,8 +449,16 @@ export async function fetchPOsFromSupabase(): Promise<PurchaseOrder[] | null> {
           ? 'Held'
           : rawItemStatus;
 
+        const itemIdKey = String(item.item_id || item.id || '').trim();
+        const lastWrite = recentWritesMap.get(itemIdKey);
+        if (lastWrite && (Date.now() - lastWrite.timestamp < 30000)) {
+          if (lastWrite.warehouseQty !== undefined && whQty < lastWrite.warehouseQty) {
+            console.warn(`[DEFENSIVE AUDIT WARNING] Reversion detected on item "${item.item_name}" (${itemIdKey}): fetched warehouseQty (${whQty}) is lower than recent write (${lastWrite.warehouseQty}).`);
+          }
+        }
+
         return {
-          id: String(item.item_id || item.id || ''),
+          id: itemIdKey,
           poId: String(item.po_number || po.po_number || ''),
           poNumber: String(item.po_number || po.po_number || ''),
           orderDate: item.order_date || po.order_date || '',
@@ -501,6 +514,18 @@ export async function fetchPOsFromSupabase(): Promise<PurchaseOrder[] | null> {
       const normPoIdKey = String(po.id || '').trim().toLowerCase();
       const poDeliveryNotes = deliveryNotesMap[normPoNumKey] || deliveryNotesMap[normPoIdKey] || [];
 
+      const activeItemsForRec = items.filter(i => (i.requestedQty || 0) > 0 || (i.purchasedQty || 0) > 0);
+      let calculatedRecStatus: MasterStatus = 'Pending';
+      if (activeItemsForRec.length > 0) {
+        const allRecComp = activeItemsForRec.every(i => (i.warehouseQty || 0) >= (i.purchasedQty || i.requestedQty || 0) && (i.warehouseQty || 0) > 0);
+        const anyRecDone = activeItemsForRec.some(i => (i.warehouseQty || 0) > 0);
+        calculatedRecStatus = allRecComp ? 'Completed' : (anyRecDone ? 'Partial' : 'Pending');
+      }
+      const rawRecStatus = String(po.receive_status || '').trim();
+      const finalRecStatus = (calculatedRecStatus !== 'Pending')
+        ? calculatedRecStatus
+        : ((rawRecStatus === 'Completed' || rawRecStatus === 'Partial' || rawRecStatus === 'Pending') ? rawRecStatus : calculatedRecStatus);
+
       return {
         id: String(po.po_number || po.id || ''),
         poNumber: String(po.po_number || ''),
@@ -514,7 +539,7 @@ export async function fetchPOsFromSupabase(): Promise<PurchaseOrder[] | null> {
         purchaseStatus: masterPurchaseStatus as any,
         isHeldByAdmin: po.is_held_by_admin === true || po.is_held_by_admin === 'true' || String(po.is_held_by_admin || '').toLowerCase() === 'true' || po.purchase_status === 'Held',
         holdByAdmin: po.hold_by_admin || '',
-        receiveStatus: (po.receive_status || 'Pending') as any,
+        receiveStatus: finalRecStatus as any,
         status: (po.status || (masterPurchaseStatus === 'Completed' ? 'purchased' : 'pending')) as any,
         items,
         deliveryNotes: poDeliveryNotes,
@@ -693,7 +718,7 @@ export async function apiHoldItem(itemId: string, user: User, holdStartTime?: st
       const nowIso = new Date().toISOString();
       const startTimeStr = holdStartTime || nowIso;
 
-      await supabase.from('po_items').update({
+      const { error: updateErr } = await supabase.from('po_items').update({
         purchase_status: 'Held',
         hold_by: user.name,
         hold_start_time: startTimeStr,
@@ -701,11 +726,20 @@ export async function apiHoldItem(itemId: string, user: User, holdStartTime?: st
         updated_date: nowIso.split('T')[0]
       }).eq('item_id', itemId);
 
+      if (updateErr) {
+        console.error('[Supabase Hold Item Error]', updateErr.message);
+        return {
+          success: false,
+          message: `Failed to place hold in Supabase: ${updateErr.message}`,
+          timestamp: nowIso
+        };
+      }
+
       const poNumber = itemRow?.po_number || '';
       const itemName = itemRow?.item_name || '';
       const holdId = `HOLD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-      await supabase.from('hold_items').upsert({
+      const { error: holdErr } = await supabase.from('hold_items').upsert({
         id: holdId,
         item_id: itemId,
         po_number: poNumber,
@@ -716,6 +750,10 @@ export async function apiHoldItem(itemId: string, user: User, holdStartTime?: st
         status: 'Active',
         updated_at: nowIso
       }, { onConflict: 'item_id' });
+
+      if (holdErr) {
+        console.warn('[Supabase Hold Items Upsert Error]', holdErr.message);
+      }
 
       const freshPOs = await fetchPOsFromSupabase();
       if (freshPOs) saveLocalPOs(freshPOs);
@@ -767,7 +805,7 @@ export async function apiReleaseHold(itemId: string, user: User): Promise<ApiRes
 
         const nowIso = new Date().toISOString();
 
-        await supabase.from('po_items').update({
+        const { error: updateErr } = await supabase.from('po_items').update({
           purchase_status: newStatus,
           hold_by: null,
           hold_start_time: null,
@@ -775,10 +813,23 @@ export async function apiReleaseHold(itemId: string, user: User): Promise<ApiRes
           updated_date: nowIso.split('T')[0]
         }).eq('item_id', itemId);
 
-        await supabase.from('hold_items').update({
+        if (updateErr) {
+          console.error('[Supabase Release Hold Error]', updateErr.message);
+          return {
+            success: false,
+            message: `Failed to release hold in Supabase: ${updateErr.message}`,
+            timestamp: nowIso
+          };
+        }
+
+        const { error: holdErr } = await supabase.from('hold_items').update({
           status: 'Released',
           updated_at: nowIso
         }).eq('item_id', itemId);
+
+        if (holdErr) {
+          console.warn('[Supabase Hold Items Release Update Error]', holdErr.message);
+        }
 
         const freshPOs = await fetchPOsFromSupabase();
         if (freshPOs) saveLocalPOs(freshPOs);
@@ -968,9 +1019,10 @@ export async function apiReceiveItem(
       if (itemRow) {
         const reqQty = Number(itemRow.requested_qty ?? itemRow.ordered_qty ?? 0);
         const purchasedQty = Number(itemRow.purchased_qty ?? 0);
+        const targetQty = purchasedQty > 0 ? purchasedQty : reqQty;
         const isQuickPass = batchData === undefined || batchData.receivedQty === undefined;
-        const recQty = isQuickPass ? purchasedQty : Number(batchData.receivedQty || 0);
-        const passedQty = isQuickPass ? purchasedQty : Number(batchData.passedQty ?? recQty);
+        const recQty = isQuickPass ? targetQty : Number(batchData.receivedQty || 0);
+        const passedQty = isQuickPass ? targetQty : Number(batchData.passedQty ?? recQty);
         const newlyDamagedQty = isQuickPass ? 0 : Number(batchData.damagedQty ?? 0);
         const totalDamagedQty = Number(itemRow.damaged_qty || 0) + newlyDamagedQty;
 
@@ -979,10 +1031,12 @@ export async function apiReceiveItem(
         const newPurchaseStatus = (newPurchasedQty >= reqQty && reqQty > 0) ? 'Purchased' : (newPurchasedQty > 0 ? 'Partial Purchased' : 'Pending');
 
         const existingWarehouseQty = Number(itemRow.warehouse_qty || 0);
-        const effectiveWarehouseQty = isQuickPass ? purchasedQty : Math.min(newPurchasedQty, existingWarehouseQty + passedQty);
+        const effectiveWarehouseQty = isQuickPass
+          ? (targetQty > 0 ? targetQty : 1)
+          : (existingWarehouseQty + passedQty);
         const nowIso = new Date().toISOString();
 
-        await supabase.from('po_items').update({
+        const { error: itemUpdateErr } = await supabase.from('po_items').update({
           warehouse_qty: effectiveWarehouseQty,
           passed_qty: effectiveWarehouseQty,
           damaged_qty: totalDamagedQty,
@@ -993,6 +1047,34 @@ export async function apiReceiveItem(
           warehouse_verified_at: nowIso,
           updated_date: nowIso.split('T')[0]
         }).eq('item_id', itemId);
+
+        if (itemUpdateErr) {
+          console.error('[Supabase Receive Item Update Error]', itemUpdateErr.message);
+          return {
+            success: false,
+            message: `Failed to record receive in Supabase: ${itemUpdateErr.message}`,
+            timestamp: nowIso
+          };
+        }
+
+        const poNumber = itemRow.po_number;
+        if (poNumber) {
+          const { data: allPoItems } = await supabase.from('po_items').select('warehouse_qty, purchased_qty, requested_qty').ilike('po_number', poNumber);
+          if (allPoItems && allPoItems.length > 0) {
+            const allComplete = allPoItems.every(i => Number(i.warehouse_qty || 0) >= Number(i.purchased_qty || i.requested_qty || 0) && Number(i.warehouse_qty || 0) > 0);
+            const anyRec = allPoItems.some(i => Number(i.warehouse_qty || 0) > 0);
+            const masterRecStatus = allComplete ? 'Completed' : (anyRec ? 'Partial' : 'Pending');
+            const { error: masterErr } = await supabase.from('po_master').update({
+              receive_status: masterRecStatus,
+              updated_at: nowIso
+            }).ilike('po_number', poNumber);
+            if (masterErr) {
+              console.warn('[Supabase PO Master Receive Status Sync Error]', masterErr.message);
+            }
+          }
+        }
+
+        recordRecentWrite(itemId, { warehouseQty: effectiveWarehouseQty });
 
         const freshPOs = await fetchPOsFromSupabase();
         if (freshPOs) saveLocalPOs(freshPOs);

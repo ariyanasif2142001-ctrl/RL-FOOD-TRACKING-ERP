@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, PurchaseOrder, AuditLog, POItem, MasterStatus, getNormalizedItemStatus, ReceiveBatchLog } from './types';
+import { User, PurchaseOrder, AuditLog, POItem, MasterStatus, ItemPurchaseStatus, getNormalizedItemStatus, ReceiveBatchLog } from './types';
 import { 
   getCurrentUser, saveCurrentUser, 
   getLocalUsers, saveLocalUsers, sanitizeAndMergeAdmins,
@@ -118,7 +118,7 @@ export default function App() {
     }, 4000);
   };
 
-  // Helper to merge fetched POs with local state so holds, partial purchases, and full purchases are never prematurely reset by backend syncs
+  // Helper to merge fetched POs with local state so holds, purchases, and warehouse receive data are never prematurely reset by backend syncs
   const mergePreservedHolds = (fetchedPOs: PurchaseOrder[], currentPOs: PurchaseOrder[]): PurchaseOrder[] => {
     const localItemMap = new Map<string, POItem>();
     (currentPOs || []).forEach(po => {
@@ -135,87 +135,70 @@ export default function App() {
         const reqQty = item.requestedQty || item.orderedQty || localItem?.requestedQty || localItem?.orderedQty || 0;
         const fetchedPurQty = item.purchasedQty || 0;
         const localPurQty = localItem?.purchasedQty || 0;
-
-        // Take the highest purchased quantity between local and fetched
         const effectivePurQty = Math.max(fetchedPurQty, localPurQty);
+
+        const fetchedWhQty = item.warehouseQty || 0;
+        const localWhQty = localItem?.warehouseQty || 0;
+        const effectiveWhQty = Math.max(fetchedWhQty, localWhQty);
+
+        const fetchedPassedQty = item.passedQty || 0;
+        const localPassedQty = localItem?.passedQty || 0;
+        const effectivePassedQty = Math.max(fetchedPassedQty, localPassedQty, effectiveWhQty);
+
+        const fetchedDamagedQty = item.damagedQty || 0;
+        const localDamagedQty = localItem?.damagedQty || 0;
+        const effectiveDamagedQty = Math.max(fetchedDamagedQty, localDamagedQty);
 
         const isFullyPurchased = (effectivePurQty >= reqQty && reqQty > 0) || item.purchaseStatus === 'Purchased' || localItem?.purchaseStatus === 'Purchased';
         const isPartiallyPurchased = !isFullyPurchased && (effectivePurQty > 0 || item.purchaseStatus === 'Partial Purchased' || localItem?.purchaseStatus === 'Partial Purchased');
 
-        if (isFullyPurchased) {
-          const finalPurQty = effectivePurQty >= reqQty ? effectivePurQty : (reqQty || effectivePurQty);
-          return {
-            ...item,
-            purchasedQty: finalPurQty,
-            remainingQty: 0,
-            purchaseStatus: 'Purchased' as const,
-            purchaserName: localItem?.purchaserName || item.purchaserName || '',
-            purchasedAt: localItem?.purchasedAt || item.purchasedAt || '',
-            notes: localItem?.notes || item.notes || '',
-            holdBy: '',
-            holdById: '',
-            holdByName: '',
-            holdStartTime: '',
-            holdSince: '',
-            holdExpireTime: ''
-          };
-        }
-
-        if (isPartiallyPurchased) {
-          const finalPurQty = effectivePurQty;
-          const remQty = Math.max(0, reqQty - finalPurQty);
-          return {
-            ...item,
-            purchasedQty: finalPurQty,
-            remainingQty: remQty,
-            purchaseStatus: 'Partial Purchased' as const,
-            purchaserName: localItem?.purchaserName || item.purchaserName || '',
-            purchasedAt: localItem?.purchasedAt || item.purchasedAt || '',
-            notes: localItem?.notes || item.notes || '',
-            holdBy: '',
-            holdById: '',
-            holdByName: '',
-            holdStartTime: '',
-            holdSince: '',
-            holdExpireTime: ''
-          };
-        }
-
         const localNorm = localItem ? getNormalizedItemStatus(localItem) : undefined;
         const fetchedNorm = getNormalizedItemStatus(item);
-
         const localIsHeld = localNorm === 'Held' && Boolean(localItem?.holdBy && localItem.holdBy.trim() !== '' && localItem.holdBy !== 'Admin');
         const fetchedIsHeld = fetchedNorm === 'Held' && Boolean(item.holdBy && item.holdBy.trim() !== '' && item.holdBy !== 'Admin');
 
-        if (localIsHeld || fetchedIsHeld) {
-          const activeItem = localIsHeld ? localItem! : item;
-          const hBy = activeItem.holdBy!.trim();
-          const hById = activeItem.holdById || '';
-          const hName = activeItem.holdByName || activeItem.holdBy || hBy;
-          const hTime = activeItem.holdStartTime || activeItem.holdSince || new Date().toISOString();
-          return {
-            ...item,
-            purchaseStatus: 'Held' as const,
-            holdBy: hBy,
-            holdById: hById,
-            holdByName: hName,
-            holdStartTime: hTime,
-            holdSince: hTime,
-            holdExpireTime: ''
-          };
-        }
+        let purchaseStatus: ItemPurchaseStatus = 'Pending';
+        if (isFullyPurchased) purchaseStatus = 'Purchased';
+        else if (isPartiallyPurchased) purchaseStatus = 'Partial Purchased';
+        else if (localIsHeld || fetchedIsHeld) purchaseStatus = 'Held';
+
+        const finalPurQty = isFullyPurchased
+          ? (effectivePurQty >= reqQty ? effectivePurQty : (reqQty || effectivePurQty))
+          : effectivePurQty;
+        const finalRemQty = isFullyPurchased ? 0 : Math.max(0, reqQty - finalPurQty);
+
+        const activeHoldItem = localIsHeld ? localItem! : item;
+        const hBy = (purchaseStatus === 'Held') ? (activeHoldItem.holdBy || '').trim() : '';
+        const hById = (purchaseStatus === 'Held') ? (activeHoldItem.holdById || '') : '';
+        const hName = (purchaseStatus === 'Held') ? (activeHoldItem.holdByName || activeHoldItem.holdBy || hBy) : '';
+        const hTime = (purchaseStatus === 'Held') ? (activeHoldItem.holdStartTime || activeHoldItem.holdSince || new Date().toISOString()) : '';
+
+        const mergedLogs = (item.receiveLogs && item.receiveLogs.length > 0)
+          ? item.receiveLogs
+          : (localItem?.receiveLogs || []);
 
         return {
           ...item,
-          purchasedQty: 0,
-          remainingQty: reqQty,
-          purchaseStatus: 'Pending' as const,
-          holdBy: '',
-          holdById: '',
-          holdByName: '',
-          holdStartTime: '',
-          holdSince: '',
-          holdExpireTime: ''
+          purchasedQty: finalPurQty,
+          remainingQty: finalRemQty,
+          purchaseStatus,
+          holdBy: hBy,
+          holdById: hById,
+          holdByName: hName,
+          holdStartTime: hTime,
+          holdSince: hTime,
+          holdExpireTime: '',
+          purchaserName: item.purchaserName || localItem?.purchaserName || '',
+          purchasedAt: item.purchasedAt || localItem?.purchasedAt || '',
+          notes: item.notes || localItem?.notes || '',
+          warehouseQty: effectiveWhQty,
+          passedQty: effectivePassedQty,
+          damagedQty: effectiveDamagedQty,
+          warehouseVerifiedBy: item.warehouseVerifiedBy || localItem?.warehouseVerifiedBy || '',
+          warehouseVerifiedAt: item.warehouseVerifiedAt || localItem?.warehouseVerifiedAt || '',
+          warehouseNotes: item.warehouseNotes || localItem?.warehouseNotes || '',
+          qcNotes: item.qcNotes || localItem?.qcNotes || '',
+          receiveLogs: mergedLogs
         };
       });
 
@@ -223,11 +206,20 @@ export default function App() {
       const anyItemsPurchased = updatedItems.some(i => i.purchaseStatus === 'Partial Purchased' || i.purchaseStatus === 'Purchased');
       const calculatedPoStatus = po.isHeldByAdmin ? 'Held' : (allItemsPurchased ? 'Completed' : (anyItemsPurchased ? 'Partial' : 'Pending'));
 
+      const activeItemsForRec = updatedItems.filter(i => (i.requestedQty || 0) > 0 || (i.purchasedQty || 0) > 0);
+      let poRecStatus: MasterStatus = 'Pending';
+      if (activeItemsForRec.length > 0) {
+        const allComplete = activeItemsForRec.every(i => (i.warehouseQty || 0) >= (i.purchasedQty || i.requestedQty || 0) && (i.warehouseQty || 0) > 0);
+        const anyRec = activeItemsForRec.some(i => (i.warehouseQty || 0) > 0);
+        poRecStatus = allComplete ? 'Completed' : (anyRec ? 'Partial' : 'Pending');
+      }
+
       return {
         ...po,
         isHeldByAdmin: po.isHeldByAdmin,
         holdByAdmin: po.holdByAdmin,
         purchaseStatus: calculatedPoStatus,
+        receiveStatus: (poRecStatus !== 'Pending' ? poRecStatus : po.receiveStatus) || 'Pending',
         items: updatedItems
       };
     });
