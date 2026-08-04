@@ -668,33 +668,138 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
         </div>
       </div>
 
-      {/* SYSTEM OPERATIONS KPI BANNER - Matches Admin Dashboard Metrics */}
-      <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl space-y-2">
-        <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
-          <span className="flex items-center gap-1 text-slate-800">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            System Operations Metrics
+      {/* SYSTEM OPERATIONS KPI BANNER - CLICKABLE 3D COLORFUL CARDS */}
+      <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-slate-700/80 p-3 sm:p-3.5 rounded-2xl space-y-2.5 shadow-xl shadow-slate-950/20">
+        <div className="flex items-center justify-between text-xs font-bold text-slate-200">
+          <span className="flex items-center gap-1.5 text-white font-extrabold tracking-wide">
+            <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+            <span>System Operations Metrics</span>
+            <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full font-mono uppercase tracking-wider hidden sm:inline">
+              Interactive Filter
+            </span>
           </span>
-          <span className="text-slate-500 font-medium">Total POs: <strong className="text-slate-900 font-bold">{systemTotalPO}</strong> | Total Items: <strong className="text-slate-900 font-bold">{systemTotalItems}</strong></span>
+          <span className="text-slate-300 font-medium text-[11px] sm:text-xs">
+            Total POs: <strong className="text-white font-black">{systemTotalPO}</strong> | Total Items: <strong className="text-white font-black">{systemTotalItems}</strong>
+          </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center">
-          <div className="bg-white border border-amber-200 p-1.5 rounded-lg">
-            <span className="text-[10px] font-bold text-amber-700 uppercase block">Pending Items</span>
-            <span className="text-sm font-black text-amber-900">{systemPendingItemsCount}</span>
-          </div>
-          <div className="bg-white border border-purple-200 p-1.5 rounded-lg">
-            <span className="text-[10px] font-bold text-purple-700 uppercase block">System Holds</span>
-            <span className="text-sm font-black text-purple-900">{systemHeldItemsCount}</span>
-          </div>
-          <div className="bg-white border border-blue-200 p-1.5 rounded-lg">
-            <span className="text-[10px] font-bold text-blue-700 uppercase block">Partial Items</span>
-            <span className="text-sm font-black text-blue-900">{systemPartialItemsCount}</span>
-          </div>
-          <div className="bg-white border border-emerald-200 p-1.5 rounded-lg">
-            <span className="text-[10px] font-bold text-emerald-700 uppercase block">Purchased Items</span>
-            <span className="text-sm font-black text-emerald-900">{systemPurchasedItemsCount}</span>
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
+          {/* 1. Pending Items Card */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowHistory(false);
+              setStatusFilter('pending');
+            }}
+            className={`group relative overflow-hidden p-2.5 sm:p-3 rounded-xl transition-all duration-200 text-left cursor-pointer active:translate-y-0.5 active:shadow-none ${
+              !showHistory && statusFilter === 'pending'
+                ? 'bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 text-white shadow-[0_8px_20px_rgba(245,158,11,0.45),0_3px_0_rgba(217,119,6,1)] border-2 border-amber-300 ring-2 ring-amber-400/50 scale-[1.02]'
+                : 'bg-gradient-to-br from-slate-800/90 via-slate-800/70 to-slate-900 hover:from-amber-950/60 hover:to-orange-950/60 text-slate-100 border border-amber-500/40 hover:border-amber-400/80 shadow-[0_4px_12px_rgba(0,0,0,0.3),0_2px_0_rgba(245,158,11,0.3)] hover:-translate-y-0.5'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider ${!showHistory && statusFilter === 'pending' ? 'text-amber-100' : 'text-amber-400'}`}>
+                Pending
+              </span>
+              <Clock className={`w-4 h-4 shrink-0 ${!showHistory && statusFilter === 'pending' ? 'text-white' : 'text-amber-400'}`} />
+            </div>
+            <div className="mt-1 flex items-baseline justify-between">
+              <span className={`text-xl sm:text-2xl font-black ${!showHistory && statusFilter === 'pending' ? 'text-white' : 'text-amber-300 font-mono'}`}>
+                {systemPendingItemsCount}
+              </span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${!showHistory && statusFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-400/20 text-amber-300'}`}>
+                Items
+              </span>
+            </div>
+          </button>
+
+          {/* 2. System Holds Card */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowHistory(false);
+              setStatusFilter('hold');
+              setHoldViewScope('all');
+            }}
+            className={`group relative overflow-hidden p-2.5 sm:p-3 rounded-xl transition-all duration-200 text-left cursor-pointer active:translate-y-0.5 active:shadow-none ${
+              !showHistory && statusFilter === 'hold'
+                ? 'bg-gradient-to-br from-purple-600 via-fuchsia-600 to-indigo-700 text-white shadow-[0_8px_20px_rgba(147,51,234,0.45),0_3px_0_rgba(126,34,206,1)] border-2 border-purple-300 ring-2 ring-purple-400/50 scale-[1.02]'
+                : 'bg-gradient-to-br from-slate-800/90 via-slate-800/70 to-slate-900 hover:from-purple-950/60 hover:to-fuchsia-950/60 text-slate-100 border border-purple-500/40 hover:border-purple-400/80 shadow-[0_4px_12px_rgba(0,0,0,0.3),0_2px_0_rgba(168,85,247,0.3)] hover:-translate-y-0.5'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider ${!showHistory && statusFilter === 'hold' ? 'text-purple-100' : 'text-purple-400'}`}>
+                Holds
+              </span>
+              <Lock className={`w-4 h-4 shrink-0 ${!showHistory && statusFilter === 'hold' ? 'text-white' : 'text-purple-400'}`} />
+            </div>
+            <div className="mt-1 flex items-baseline justify-between">
+              <span className={`text-xl sm:text-2xl font-black ${!showHistory && statusFilter === 'hold' ? 'text-white' : 'text-purple-300 font-mono'}`}>
+                {systemHeldItemsCount}
+              </span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${!showHistory && statusFilter === 'hold' ? 'bg-white/20 text-white' : 'bg-purple-400/20 text-purple-300'}`}>
+                System
+              </span>
+            </div>
+          </button>
+
+          {/* 3. Partial Items Card */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowHistory(false);
+              setStatusFilter('partial');
+            }}
+            className={`group relative overflow-hidden p-2.5 sm:p-3 rounded-xl transition-all duration-200 text-left cursor-pointer active:translate-y-0.5 active:shadow-none ${
+              !showHistory && statusFilter === 'partial'
+                ? 'bg-gradient-to-br from-cyan-600 via-blue-600 to-indigo-700 text-white shadow-[0_8px_20px_rgba(37,99,235,0.45),0_3px_0_rgba(29,78,216,1)] border-2 border-cyan-300 ring-2 ring-cyan-400/50 scale-[1.02]'
+                : 'bg-gradient-to-br from-slate-800/90 via-slate-800/70 to-slate-900 hover:from-cyan-950/60 hover:to-blue-950/60 text-slate-100 border border-cyan-500/40 hover:border-cyan-400/80 shadow-[0_4px_12px_rgba(0,0,0,0.3),0_2px_0_rgba(59,130,246,0.3)] hover:-translate-y-0.5'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider ${!showHistory && statusFilter === 'partial' ? 'text-cyan-100' : 'text-cyan-400'}`}>
+                Partial
+              </span>
+              <Sparkles className={`w-4 h-4 shrink-0 ${!showHistory && statusFilter === 'partial' ? 'text-white' : 'text-cyan-400'}`} />
+            </div>
+            <div className="mt-1 flex items-baseline justify-between">
+              <span className={`text-xl sm:text-2xl font-black ${!showHistory && statusFilter === 'partial' ? 'text-white' : 'text-cyan-300 font-mono'}`}>
+                {systemPartialItemsCount}
+              </span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${!showHistory && statusFilter === 'partial' ? 'bg-white/20 text-white' : 'bg-cyan-400/20 text-cyan-300'}`}>
+                Items
+              </span>
+            </div>
+          </button>
+
+          {/* 4. Purchased Items Card */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowHistory(false);
+              setStatusFilter('today');
+            }}
+            className={`group relative overflow-hidden p-2.5 sm:p-3 rounded-xl transition-all duration-200 text-left cursor-pointer active:translate-y-0.5 active:shadow-none ${
+              !showHistory && statusFilter === 'today'
+                ? 'bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-[0_8px_20px_rgba(16,185,129,0.45),0_3px_0_rgba(5,150,105,1)] border-2 border-emerald-300 ring-2 ring-emerald-400/50 scale-[1.02]'
+                : 'bg-gradient-to-br from-slate-800/90 via-slate-800/70 to-slate-900 hover:from-emerald-950/60 hover:to-teal-950/60 text-slate-100 border border-emerald-500/40 hover:border-emerald-400/80 shadow-[0_4px_12px_rgba(0,0,0,0.3),0_2px_0_rgba(16,185,129,0.3)] hover:-translate-y-0.5'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider ${!showHistory && statusFilter === 'today' ? 'text-emerald-100' : 'text-emerald-400'}`}>
+                Purchased
+              </span>
+              <ShoppingBag className={`w-4 h-4 shrink-0 ${!showHistory && statusFilter === 'today' ? 'text-white' : 'text-emerald-400'}`} />
+            </div>
+            <div className="mt-1 flex items-baseline justify-between">
+              <span className={`text-xl sm:text-2xl font-black ${!showHistory && statusFilter === 'today' ? 'text-white' : 'text-emerald-300 font-mono'}`}>
+                {systemPurchasedItemsCount}
+              </span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${!showHistory && statusFilter === 'today' ? 'bg-white/20 text-white' : 'bg-emerald-400/20 text-emerald-300'}`}>
+                Total
+              </span>
+            </div>
+          </button>
         </div>
       </div>
 
@@ -814,63 +919,71 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
       {/* STATUS TABS */}
       {!showHistory && (
         <div className="space-y-2">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-slate-200/80 p-1.5 rounded-xl text-xs font-bold">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-200/90 p-1.5 rounded-2xl text-xs font-bold border border-slate-300/60 shadow-inner">
             <button
               onClick={() => setStatusFilter('pending')}
-              className={`min-h-[44px] py-2 px-2.5 rounded-lg transition flex items-center justify-center gap-1.5 active:scale-98 ${
+              className={`min-h-[44px] py-2 px-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
                 statusFilter === 'pending'
-                  ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-300'
-                  : 'text-slate-700 hover:text-slate-900'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25 border border-amber-300/50 font-black'
+                  : 'text-slate-700 hover:bg-slate-300/60 hover:text-slate-900 font-bold'
               }`}
             >
-              <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+              <Clock className={`w-4 h-4 shrink-0 ${statusFilter === 'pending' ? 'text-white' : 'text-amber-600'}`} />
               <span className="truncate">Pending</span>
-              <span className="bg-amber-100 text-amber-900 text-xs px-2 py-0.5 rounded-full font-extrabold shrink-0">
+              <span className={`text-xs px-2 py-0.5 rounded-full font-black shrink-0 shadow-2xs ${
+                statusFilter === 'pending' ? 'bg-white text-amber-900' : 'bg-amber-100 text-amber-900'
+              }`}>
                 {myPendingItems.length}
               </span>
             </button>
 
             <button
               onClick={() => setStatusFilter('hold')}
-              className={`min-h-[44px] py-2 px-2.5 rounded-lg transition flex items-center justify-center gap-1.5 active:scale-98 ${
+              className={`min-h-[44px] py-2 px-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
                 statusFilter === 'hold'
-                  ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-300'
-                  : 'text-slate-700 hover:text-slate-900'
+                  ? 'bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 text-white shadow-md shadow-purple-500/25 border border-purple-300/50 font-black'
+                  : 'text-slate-700 hover:bg-slate-300/60 hover:text-slate-900 font-bold'
               }`}
             >
-              <Lock className="w-4 h-4 text-purple-600 shrink-0" />
+              <Lock className={`w-4 h-4 shrink-0 ${statusFilter === 'hold' ? 'text-white' : 'text-purple-600'}`} />
               <span className="truncate">Hold</span>
-              <span className="bg-purple-100 text-purple-900 text-xs px-2 py-0.5 rounded-full font-extrabold shrink-0" title={`My Holds: ${myHoldItems.length} | System Total: ${systemHeldItemsCount}`}>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-black shrink-0 shadow-2xs ${
+                statusFilter === 'hold' ? 'bg-white text-purple-950' : 'bg-purple-100 text-purple-900'
+              }`} title={`My Holds: ${myHoldItems.length} | System Total: ${systemHeldItemsCount}`}>
                 {myHoldItems.length}/{systemHeldItemsCount}
               </span>
             </button>
 
             <button
               onClick={() => setStatusFilter('partial')}
-              className={`min-h-[44px] py-2 px-2.5 rounded-lg transition flex items-center justify-center gap-1.5 active:scale-98 ${
+              className={`min-h-[44px] py-2 px-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
                 statusFilter === 'partial'
-                  ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-300'
-                  : 'text-slate-700 hover:text-slate-900'
+                  ? 'bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 border border-cyan-300/50 font-black'
+                  : 'text-slate-700 hover:bg-slate-300/60 hover:text-slate-900 font-bold'
               }`}
             >
-              <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+              <Sparkles className={`w-4 h-4 shrink-0 ${statusFilter === 'partial' ? 'text-white' : 'text-blue-600'}`} />
               <span className="truncate">Partial</span>
-              <span className="bg-blue-100 text-blue-900 text-xs px-2 py-0.5 rounded-full font-extrabold shrink-0">
+              <span className={`text-xs px-2 py-0.5 rounded-full font-black shrink-0 shadow-2xs ${
+                statusFilter === 'partial' ? 'bg-white text-blue-950' : 'bg-blue-100 text-blue-900'
+              }`}>
                 {systemPartialItemsCount}
               </span>
             </button>
 
             <button
               onClick={() => setStatusFilter('today')}
-              className={`min-h-[44px] py-2 px-2.5 rounded-lg transition flex items-center justify-center gap-1.5 active:scale-98 ${
+              className={`min-h-[44px] py-2 px-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
                 statusFilter === 'today'
-                  ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-300'
-                  : 'text-slate-700 hover:text-slate-900'
+                  ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-md shadow-emerald-500/25 border border-emerald-300/50 font-black'
+                  : 'text-slate-700 hover:bg-slate-300/60 hover:text-slate-900 font-bold'
               }`}
             >
-              <ShoppingBag className="w-4 h-4 text-emerald-600 shrink-0" />
+              <ShoppingBag className={`w-4 h-4 shrink-0 ${statusFilter === 'today' ? 'text-white' : 'text-emerald-600'}`} />
               <span className="truncate">Today Purchase</span>
-              <span className="bg-emerald-100 text-emerald-900 text-xs px-2 py-0.5 rounded-full font-extrabold shrink-0">
+              <span className={`text-xs px-2 py-0.5 rounded-full font-black shrink-0 shadow-2xs ${
+                statusFilter === 'today' ? 'bg-white text-emerald-950' : 'bg-emerald-100 text-emerald-900'
+              }`}>
                 {myTodayPurchases.length}
               </span>
             </button>
@@ -971,56 +1084,104 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
                 <div
                   key={item.id ? `${item.id}-${idx}` : `item-${idx}`}
                   onClick={() => toggleCardExpand(item.id)}
-                  className={`bg-white rounded-xl border transition-all shadow-2xs overflow-hidden cursor-pointer ${
+                  className={`group relative overflow-hidden bg-white/95 rounded-2xl border transition-all duration-200 cursor-pointer transform hover:-translate-y-0.5 ${
                     isHeldByMe 
-                      ? 'border-purple-300 bg-purple-50/10' 
+                      ? 'border-purple-300/90 shadow-[0_8px_25px_-5px_rgba(147,51,234,0.18),0_2px_4px_-1px_rgba(147,51,234,0.08)] bg-gradient-to-br from-purple-50/30 via-white to-purple-50/10' 
                       : item.purchaseStatus === 'Partial Purchased'
-                      ? 'border-blue-300 bg-blue-50/10'
-                      : 'border-slate-200 hover:border-slate-300'
+                      ? 'border-blue-300/90 shadow-[0_8px_25px_-5px_rgba(37,99,235,0.18),0_2px_4px_-1px_rgba(37,99,235,0.08)] bg-gradient-to-br from-blue-50/30 via-white to-cyan-50/10'
+                      : 'border-slate-200/90 hover:border-blue-300/80 shadow-[0_8px_20px_-6px_rgba(0,0,0,0.08),0_2px_4px_-1px_rgba(0,0,0,0.04)] hover:shadow-[0_14px_28px_-6px_rgba(37,99,235,0.15)]'
                   }`}
                 >
-                  {/* DEFAULT COLLAPSED CARD: PO Number, Item Name, Status, HOLD button, PURCHASE button. NOTHING ELSE. */}
-                  <div className="p-3 space-y-2">
+                  {/* Left 3D Accent Gradient Strip */}
+                  <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${
+                    isHeldByMe || item.purchaseStatus === 'Held'
+                      ? 'bg-gradient-to-b from-purple-500 via-fuchsia-600 to-indigo-700'
+                      : item.purchaseStatus === 'Partial Purchased'
+                      ? 'bg-gradient-to-b from-cyan-400 via-blue-600 to-indigo-700'
+                      : statusFilter === 'today'
+                      ? 'bg-gradient-to-b from-emerald-400 via-teal-500 to-emerald-700'
+                      : 'bg-gradient-to-b from-amber-400 via-orange-500 to-amber-600'
+                  }`} />
+
+                  {/* DEFAULT COLLAPSED CARD CONTENT */}
+                  <div className="p-3.5 pl-4 space-y-2.5">
+                    {/* Top Row: PO Badge, Status Pill, Held Info, Expand Trigger */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                        {/* PO Number Badge with 3D shadow */}
+                        <span className="font-mono text-[11px] font-black text-white bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 px-2.5 py-0.5 rounded-lg shadow-sm shadow-blue-600/30 border border-blue-400/30 tracking-wider flex items-center gap-1">
                           {item.poNumber}
                         </span>
-                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                          item.purchaseStatus === 'Held' ? 'bg-purple-100 text-purple-800' :
-                          item.purchaseStatus === 'Partial Purchased' ? 'bg-blue-100 text-blue-800' :
-                          'bg-amber-100 text-amber-800'
+
+                        {/* Colorful 3D Status Pill */}
+                        <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-lg shadow-xs flex items-center gap-1 ${
+                          item.purchaseStatus === 'Held' 
+                            ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-purple-500/30 border border-purple-400/40' :
+                          item.purchaseStatus === 'Partial Purchased' 
+                            ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-cyan-500/30 border border-cyan-400/40' :
+                          'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-500/30 border border-amber-300/40'
                         }`}>
-                          {item.purchaseStatus === 'Held' ? 'Hold' : (item.purchaseStatus || 'Pending')}
+                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                          <span>{item.purchaseStatus === 'Held' ? 'Hold' : (item.purchaseStatus || 'Pending')}</span>
                         </span>
+
+                        {/* Held By Notice Badge */}
                         {item.purchaseStatus === 'Held' && (
-                          <span className="text-[11px] font-mono font-bold text-purple-800 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 flex items-center gap-1">
-                            <Lock className="w-3 h-3 text-purple-600 shrink-0" />
-                            <span>Held By: {item.holdBy || item.holdByName || 'Admin'}</span>
+                          <span className="text-[11px] font-mono font-bold text-purple-950 bg-gradient-to-r from-purple-100 to-indigo-100 px-2.5 py-0.5 rounded-lg border border-purple-200/80 shadow-2xs flex items-center gap-1">
+                            <Lock className="w-3 h-3 text-purple-700 shrink-0" />
+                            <span>Held By: <strong className="text-purple-900">{item.holdBy || item.holdByName || 'Admin'}</strong></span>
                           </span>
                         )}
                       </div>
 
-                      <span className="text-[11px] text-slate-400 font-semibold flex items-center gap-0.5">
-                        {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                      {/* Expand / Collapse Icon */}
+                      <span className="text-xs font-bold text-slate-500 bg-slate-100/80 hover:bg-slate-200/80 p-1 rounded-lg transition border border-slate-200/60 flex items-center gap-1">
+                        <span className="text-[10px] font-mono text-slate-600 hidden sm:inline">{isExpanded ? 'Hide' : 'Details'}</span>
+                        {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-700" /> : <ChevronDown className="w-4 h-4 text-slate-600" />}
                       </span>
                     </div>
 
-                    <h2 className="text-sm font-bold text-slate-900 leading-tight flex items-center gap-1.5 flex-wrap">
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-800 text-white font-mono text-[11px] font-black shrink-0">
-                        SL #{idx + 1}
+                    {/* Item Title & SL Tag */}
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="text-base sm:text-lg font-black text-slate-900 leading-snug tracking-tight flex items-center gap-2 flex-wrap group-hover:text-blue-700 transition-colors">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-amber-300 font-mono text-xs font-black shrink-0 shadow-md border border-slate-700/60">
+                          SL #{idx + 1}
+                        </span>
+                        <span>{item.itemName}</span>
+                      </h2>
+                    </div>
+
+                    {/* Quick Specs Chips row */}
+                    <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
+                      <span className="bg-slate-100/90 text-slate-700 border border-slate-200/80 px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
+                        <span className="text-slate-400 uppercase text-[9px] font-bold">Qty:</span>
+                        <strong className="font-bold text-slate-900">{orderedQty} {item.unit}</strong>
                       </span>
-                      <span>{item.itemName}</span>
-                    </h2>
+                      {Boolean(item.brand) && (
+                        <span className="bg-indigo-50/80 text-indigo-900 border border-indigo-100 px-2 py-0.5 rounded-md font-medium">
+                          Brand: <strong className="font-bold">{item.brand}</strong>
+                        </span>
+                      )}
+                      {Boolean(item.department) && (
+                        <span className="bg-emerald-50/80 text-emerald-900 border border-emerald-100 px-2 py-0.5 rounded-md font-medium">
+                          Dept: <strong className="font-bold">{item.department}</strong>
+                        </span>
+                      )}
+                      {statusFilter === 'partial' && (
+                        <span className="bg-cyan-50 text-cyan-900 border border-cyan-200 px-2 py-0.5 rounded-md font-bold">
+                          Rem: <strong className="text-cyan-700">{remainingQty} {item.unit}</strong>
+                        </span>
+                      )}
+                    </div>
 
                     {/* Notice if item is held by another purchaser */}
                     {isHeldByOther && (
-                      <div className="bg-purple-100/90 border border-purple-300 px-2.5 py-1.5 rounded-lg flex items-center justify-between text-xs font-bold text-purple-950">
+                      <div className="bg-gradient-to-r from-purple-100 via-fuchsia-50 to-purple-100 border border-purple-300/80 px-3 py-1.5 rounded-xl flex items-center justify-between text-xs font-bold text-purple-950 shadow-2xs">
                         <span className="flex items-center gap-1.5">
                           <Lock className="w-3.5 h-3.5 text-purple-700 shrink-0" />
-                          <span>Held by: <span className="font-black text-purple-900">{item.holdBy}</span></span>
+                          <span>Currently held by: <span className="font-black text-purple-900">{item.holdBy}</span></span>
                         </span>
-                        <span className="text-[10px] bg-purple-200 text-purple-900 px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wider">
+                        <span className="text-[10px] bg-purple-700 text-white px-2 py-0.5 rounded-md font-black uppercase tracking-wider shadow-2xs">
                           Locked
                         </span>
                       </div>
@@ -1029,11 +1190,11 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
                     {/* IF TODAY PURCHASE: SHOW PURCHASED QTY DISPLAY & RETURN BUTTON */}
                     {statusFilter === 'today' ? (
                       <div className="space-y-2 mt-1">
-                        <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-lg flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200/90 p-3 rounded-xl flex items-center justify-between shadow-2xs">
+                          <div className="flex items-center gap-2.5">
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                             <div>
-                              <span className="text-[10px] font-bold uppercase text-emerald-800 tracking-wider block">Today Purchased</span>
+                              <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wider block">Today Purchased</span>
                               <p className="text-xs font-bold text-emerald-950">
                                 Purchased: <span className="text-sm font-black text-emerald-700">{purchasedQty} {item.unit}</span>
                                 {orderedQty > 0 && (
@@ -1043,55 +1204,55 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
                             </div>
                           </div>
                           {remainingQty > 0 ? (
-                            <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold shrink-0">
+                            <span className="text-[11px] bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 rounded-lg font-black shrink-0 shadow-2xs">
                               Rem: {remainingQty} {item.unit}
                             </span>
                           ) : (
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold shrink-0">
+                            <span className="text-[11px] bg-emerald-600 text-white px-2.5 py-0.5 rounded-lg font-black shrink-0 shadow-2xs">
                               Completed
                             </span>
                           )}
                         </div>
 
-                        {/* RETURN ITEM BUTTON */}
+                        {/* RETURN ITEM BUTTON WITH 3D EFFECT */}
                         <button
                           onClick={(e) => handleReturnClick(e, item)}
                           disabled={actionLoadingItemId === item.id || isSubmitting}
-                          className="w-full min-h-[44px] bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50 cursor-pointer"
+                          className="w-full min-h-[46px] bg-gradient-to-b from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs rounded-xl shadow-[0_4px_12px_rgba(245,158,11,0.35),0_2px_0_rgba(217,119,6,1)] active:translate-y-0.5 active:shadow-none border border-amber-300/40 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                         >
-                          <RotateCcw className={`w-4 h-4 text-amber-700 shrink-0 ${actionLoadingItemId === item.id ? 'animate-spin' : ''}`} />
+                          <RotateCcw className={`w-4 h-4 text-white shrink-0 ${actionLoadingItemId === item.id ? 'animate-spin' : ''}`} />
                           <span>{actionLoadingItemId === item.id ? 'Returning Item...' : 'Return Item to Pending'}</span>
                         </button>
                       </div>
                     ) : (
-                      /* TWO LARGE TOUCH-FRIENDLY BUTTONS: [ HOLD ] and [ PURCHASE ] */
-                      <div className="flex items-center gap-2 pt-1">
+                      /* TWO LARGE 3D TOUCH-FRIENDLY BUTTONS: [ HOLD ITEM ] and [ PURCHASE ] */
+                      <div className="flex items-center gap-2.5 pt-1.5">
                         {item.purchaseStatus === 'Held' && isHeldByMe ? (
                           <button
                             onClick={(e) => handleReleaseHoldClick(e, item)}
                             disabled={actionLoadingItemId === item.id || isSubmitting}
-                            className="flex-1 min-h-[44px] bg-purple-100 hover:bg-purple-200 disabled:opacity-40 text-purple-900 border border-purple-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
+                            className="flex-1 min-h-[46px] bg-gradient-to-b from-purple-600 via-purple-700 to-indigo-800 hover:from-purple-700 hover:to-indigo-900 text-white font-black text-xs rounded-xl shadow-[0_4px_14px_rgba(147,51,234,0.35),0_2px_0_rgba(126,34,206,1)] active:translate-y-0.5 active:shadow-none border border-purple-400/40 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
                             title="Cancel hold & return item to Pending list"
                           >
-                            <Lock className={`w-4 h-4 text-purple-700 shrink-0 ${actionLoadingItemId === item.id ? 'animate-spin' : ''}`} />
-                            <span className="truncate">{actionLoadingItemId === item.id ? 'Releasing...' : 'RELEASE HOLD'}</span>
+                            <Lock className={`w-4 h-4 text-purple-200 shrink-0 ${actionLoadingItemId === item.id ? 'animate-spin' : ''}`} />
+                            <span className="truncate tracking-wide">{actionLoadingItemId === item.id ? 'Releasing...' : 'RELEASE HOLD'}</span>
                           </button>
                         ) : (
                           <button
                             onClick={(e) => handleHoldClick(e, item)}
                             disabled={isHeldByOther || item.purchaseStatus === 'Partial Purchased' || actionLoadingItemId === item.id || isSubmitting}
-                            className="flex-1 min-h-[44px] bg-slate-100 hover:bg-purple-100 disabled:opacity-40 text-slate-800 hover:text-purple-900 border border-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
+                            className="flex-1 min-h-[46px] bg-gradient-to-b from-slate-50 via-purple-50/80 to-purple-100 hover:from-purple-100 hover:to-purple-200 disabled:opacity-40 text-purple-950 font-black text-xs rounded-xl border-2 border-purple-300/90 shadow-[0_3px_10px_rgba(168,85,247,0.12),0_2px_0_rgba(192,132,252,0.6)] active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-2 cursor-pointer"
                             title={isHeldByOther ? `Locked: Currently on hold by ${item.holdBy}` : "Hold item"}
                           >
-                            <Lock className={`w-4 h-4 text-purple-600 shrink-0 ${actionLoadingItemId === item.id ? 'animate-spin' : ''}`} />
-                            <span className="truncate">{actionLoadingItemId === item.id ? 'Holding...' : 'HOLD ITEM'}</span>
+                            <Lock className={`w-4 h-4 text-purple-700 shrink-0 ${actionLoadingItemId === item.id ? 'animate-spin' : ''}`} />
+                            <span className="truncate tracking-wide">{actionLoadingItemId === item.id ? 'Holding...' : 'HOLD ITEM'}</span>
                           </button>
                         )}
 
                         <button
                           onClick={(e) => openPurchasePopup(e, item)}
                           disabled={isHeldByOther || isSubmitting || actionLoadingItemId === item.id}
-                          className="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
+                          className="flex-1 min-h-[46px] bg-gradient-to-b from-blue-500 via-blue-600 to-indigo-700 hover:from-blue-600 hover:to-indigo-800 text-white font-black text-xs rounded-xl shadow-[0_4px_14px_rgba(37,99,235,0.4),0_2px_0_rgba(29,78,216,1)] active:translate-y-0.5 active:shadow-none border border-blue-400/40 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer uppercase tracking-wider"
                           title={isHeldByOther ? `Locked: Currently on hold by ${item.holdBy}` : "Record purchase"}
                         >
                           <ShoppingBag className="w-4 h-4 shrink-0" />
@@ -1101,53 +1262,71 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
                     )}
                   </div>
 
-                  {/* EXPANDED CARD DETAILS */}
+                  {/* EXPANDED CARD DETAILS WITH ULTRA CRISP 3D TILES */}
                   {isExpanded && (
-                    <div className="bg-slate-50 border-t border-slate-200 p-3 space-y-2.5 text-xs">
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Brand</p>
-                          <p className="font-medium text-slate-800">{item.brand || 'N/A'}</p>
+                    <div className="bg-gradient-to-br from-slate-50 via-indigo-50/20 to-slate-100 border-t border-slate-200/80 p-3.5 space-y-3 text-xs">
+                      {/* Visual Progress Bar */}
+                      {orderedQty > 0 && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span className="text-slate-600">Purchase Progress</span>
+                            <span className="text-blue-700 font-mono font-extrabold">
+                              {Math.round((purchasedQty / orderedQty) * 100)}%
+                            </span>
+                          </div>
+                          <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden p-0.5 shadow-inner border border-slate-300/60">
+                            <div 
+                              className="h-full bg-gradient-to-r from-blue-500 via-cyan-500 to-emerald-500 rounded-full transition-all duration-300 shadow-xs"
+                              style={{ width: `${Math.min(100, Math.round((purchasedQty / orderedQty) * 100))}%` }}
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Unit</p>
-                          <p className="font-bold text-slate-900">{item.unit}</p>
+                      )}
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Brand</p>
+                          <p className="font-bold text-slate-900 mt-0.5">{item.brand || 'N/A'}</p>
                         </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Ordered Qty</p>
-                          <p className="font-bold text-slate-900">{orderedQty} {item.unit}</p>
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Unit</p>
+                          <p className="font-bold text-slate-900 mt-0.5">{item.unit}</p>
                         </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Purchased Qty</p>
-                          <p className="font-bold text-emerald-700">{purchasedQty} {item.unit}</p>
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Ordered Qty</p>
+                          <p className="font-black text-slate-900 mt-0.5">{orderedQty} {item.unit}</p>
                         </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Remaining Qty</p>
-                          <p className="font-bold text-amber-700">{remainingQty} {item.unit}</p>
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Purchased Qty</p>
+                          <p className="font-black text-emerald-600 mt-0.5">{purchasedQty} {item.unit}</p>
                         </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Department</p>
-                          <p className="font-medium text-slate-800">{item.department || 'General'}</p>
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Remaining Qty</p>
+                          <p className="font-black text-amber-600 mt-0.5">{remainingQty} {item.unit}</p>
                         </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Location</p>
-                          <p className="font-medium text-slate-800">{item.location || 'Central Warehouse'}</p>
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Department</p>
+                          <p className="font-bold text-slate-800 mt-0.5">{item.department || 'General'}</p>
                         </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Delivery Date</p>
-                          <p className="font-medium text-slate-800">{item.deliveryDate || 'N/A'}</p>
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Location</p>
+                          <p className="font-bold text-slate-800 mt-0.5">{item.location || 'Central Warehouse'}</p>
+                        </div>
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Delivery Date</p>
+                          <p className="font-bold text-slate-800 mt-0.5">{item.deliveryDate || 'N/A'}</p>
                         </div>
                       </div>
 
                       {/* Hold Remaining Time if held */}
                       {item.purchaseStatus === 'Held' && (
-                        <div className="bg-purple-50 p-2.5 rounded-lg border border-purple-200 flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-purple-900 flex items-center gap-1">
-                            <Lock className="w-3.5 h-3.5 text-purple-600" />
-                            Hold By: {item.holdBy}
+                        <div className="bg-gradient-to-r from-purple-100 to-indigo-100 p-3 rounded-xl border border-purple-200 flex items-center justify-between shadow-2xs">
+                          <span className="text-[11px] font-bold text-purple-950 flex items-center gap-1.5">
+                            <Lock className="w-4 h-4 text-purple-600" />
+                            Hold Owner: <strong className="text-purple-900">{item.holdBy}</strong>
                           </span>
-                          <span className="text-xs font-mono font-bold text-purple-800 bg-white px-2 py-0.5 rounded border border-purple-200">
-                            Status: On Hold
+                          <span className="text-xs font-mono font-black text-purple-900 bg-white px-2.5 py-1 rounded-lg border border-purple-200 shadow-2xs">
+                            Status: Locked On Hold
                           </span>
                         </div>
                       )}
@@ -1158,7 +1337,7 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
                           <button
                             onClick={(e) => openPurchasePopup(e, item)}
                             disabled={isHeldByOther || isSubmitting || actionLoadingItemId === item.id}
-                            className="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition flex items-center justify-center cursor-pointer"
+                            className="flex-1 min-h-[44px] bg-gradient-to-b from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 disabled:opacity-40 text-white font-black text-xs rounded-xl shadow-md transition flex items-center justify-center cursor-pointer"
                           >
                             Confirm Purchase
                           </button>
@@ -1167,14 +1346,14 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
                           <button
                             onClick={(e) => handleReleaseHoldClick(e, item)}
                             disabled={actionLoadingItemId === item.id || isSubmitting}
-                            className="flex-1 min-h-[44px] bg-purple-100 hover:bg-purple-200 disabled:opacity-40 text-purple-800 font-bold text-xs rounded-xl transition flex items-center justify-center cursor-pointer"
+                            className="flex-1 min-h-[44px] bg-purple-100 hover:bg-purple-200 disabled:opacity-40 text-purple-900 border border-purple-300 font-black text-xs rounded-xl transition flex items-center justify-center cursor-pointer"
                           >
                             {actionLoadingItemId === item.id ? 'Releasing...' : 'Release Hold'}
                           </button>
                         )}
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleCardExpand(item.id); }}
-                          className={`${statusFilter === 'today' ? 'w-full' : 'sm:w-auto px-4'} min-h-[44px] bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 transition flex items-center justify-center cursor-pointer`}
+                          className={`${statusFilter === 'today' ? 'w-full' : 'sm:w-auto px-4'} min-h-[44px] bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 transition flex items-center justify-center cursor-pointer shadow-2xs`}
                         >
                           Collapse
                         </button>

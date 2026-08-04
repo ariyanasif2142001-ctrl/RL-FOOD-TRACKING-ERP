@@ -1037,17 +1037,32 @@ export async function apiReceiveItem(
           : (existingWarehouseQty + passedQty);
         const nowIso = new Date().toISOString();
 
-        const { error: itemUpdateErr } = await supabase.from('po_items').update({
+        const basePayload: Record<string, any> = {
           warehouse_qty: effectiveWarehouseQty,
-          passed_qty: effectiveWarehouseQty,
-          damaged_qty: totalDamagedQty,
           purchased_qty: newPurchasedQty,
           remaining_qty: newRemainingQty,
           purchase_status: newPurchaseStatus,
           warehouse_verified_by: user?.name || 'Warehouse Officer',
           warehouse_verified_at: nowIso,
           updated_date: nowIso.split('T')[0]
+        };
+
+        let { error: itemUpdateErr } = await supabase.from('po_items').update({
+          ...basePayload,
+          passed_qty: effectiveWarehouseQty,
+          damaged_qty: totalDamagedQty
         }).eq('item_id', itemId);
+
+        if (itemUpdateErr && (
+          itemUpdateErr.message.includes('schema cache') ||
+          itemUpdateErr.message.includes('column') ||
+          itemUpdateErr.message.includes('damaged_qty') ||
+          itemUpdateErr.message.includes('passed_qty')
+        )) {
+          console.warn('[Supabase Receive Item Fallback - Missing Schema Column]', itemUpdateErr.message);
+          const fallbackRes = await supabase.from('po_items').update(basePayload).eq('item_id', itemId);
+          itemUpdateErr = fallbackRes.error;
+        }
 
         if (itemUpdateErr) {
           console.error('[Supabase Receive Item Update Error]', itemUpdateErr.message);
