@@ -439,14 +439,15 @@ export async function fetchPOsFromSupabase(): Promise<PurchaseOrder[] | null> {
         const passQty = Number(item.passed_qty ?? whQty);
 
         const rawItemStatus = String(item.purchase_status || 'Pending').trim();
-        const itemPurchaseStatus = rawItemStatus.toLowerCase() === 'pending'
-          ? 'Pending'
-          : rawItemStatus.toLowerCase() === 'completed' || rawItemStatus.toLowerCase() === 'purchased'
-          ? 'Completed'
-          : rawItemStatus.toLowerCase() === 'partial' || rawItemStatus.toLowerCase() === 'partially purchased'
-          ? 'Partial'
-          : rawItemStatus.toLowerCase() === 'held'
+        const lowerStatus = rawItemStatus.toLowerCase();
+        const itemPurchaseStatus = (lowerStatus === 'purchased' || lowerStatus === 'completed')
+          ? 'Purchased'
+          : (lowerStatus === 'partial purchased' || lowerStatus === 'partially purchased' || lowerStatus === 'partial')
+          ? 'Partial Purchased'
+          : (lowerStatus === 'held' || lowerStatus === 'hold')
           ? 'Held'
+          : lowerStatus === 'pending'
+          ? 'Pending'
           : rawItemStatus;
 
         const itemIdKey = String(item.item_id || item.id || '').trim();

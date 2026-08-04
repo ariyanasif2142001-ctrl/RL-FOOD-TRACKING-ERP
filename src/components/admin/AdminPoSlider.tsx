@@ -172,15 +172,37 @@ export const AdminPoSlider: React.FC<AdminPoSliderProps> = ({ pos }) => {
     return true; // 'all'
   });
 
+  const getFilteredPoForExport = (): PurchaseOrder => {
+    if (!currentPo) return {} as PurchaseOrder;
+    if (activeFilter === 'all') return currentPo;
+
+    const filterLabelMap: Record<FilterCategory, string> = {
+      all: 'Total Items',
+      purchased: 'Complete Purchase',
+      partial: 'Partial Items',
+      balance: 'Pending Receive',
+      hold: 'Hold Items'
+    };
+
+    const filterLabel = filterLabelMap[activeFilter] || 'Filtered Items';
+    const reportTitle = `${filterLabel} Report — PO #${currentPo.poNumber}`;
+
+    return {
+      ...currentPo,
+      items: filteredItems,
+      reportTitle
+    } as PurchaseOrder & { reportTitle?: string };
+  };
+
   const handlePrint = () => {
     if (currentPo) {
-      printPurchaseOrderReport(currentPo);
+      printPurchaseOrderReport(getFilteredPoForExport());
     }
   };
 
   const handleExcelExport = () => {
     if (currentPo) {
-      exportPOsToXLSX([currentPo]);
+      exportPOsToXLSX([getFilteredPoForExport()]);
     }
   };
 

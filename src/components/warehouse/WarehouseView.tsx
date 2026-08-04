@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PurchaseOrder, POItem, User, ReceiveBatchLog } from '../../types';
-import { Warehouse, CheckCircle2, Clock, Search, Filter, RefreshCw, Printer, AlertTriangle, ShieldCheck, History, Send, AlertCircle } from 'lucide-react';
+import { Warehouse, CheckCircle2, Clock, Search, Filter, RefreshCw, Printer, AlertTriangle, ShieldCheck, History, Send, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 export interface WarehouseProcessedItem extends POItem {
   parentPo: PurchaseOrder;
@@ -52,6 +52,7 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
   const [selectedPurchaser, setSelectedPurchaser] = useState<string>(initialFilters.purchaserName || 'all');
   const [searchTerm, setSearchTerm] = useState<string>(initialFilters.itemName || '');
   const [statusFilter, setStatusFilter] = useState<'all' | 'waiting' | 'pending' | 'completed' | 'damaged'>('all');
+  const [showFilters, setShowFilters] = useState<boolean>(true);
 
   // Modal State for QC & Partial Receiving
   const [qcModalItem, setQcModalItem] = useState<WarehouseProcessedItem | null>(null);
@@ -94,7 +95,7 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
       // Item receive status
       let receiveStatus: 'Pending Receive' | 'Partial Receive' | 'Completed Receive' = 'Pending Receive';
       if (passed >= purchased && purchased > 0) {
-        receiveStatus = purchased < ordered ? 'Partial Receive' : 'Completed Receive';
+        receiveStatus = 'Completed Receive';
       } else if (received > 0 || passed > 0) {
         receiveStatus = 'Partial Receive';
       }
@@ -344,8 +345,8 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
         )}
 
         {/* Action Row */}
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-between sm:justify-start gap-2">
             <span className="text-[11px] text-slate-500">
               {item.warehouseVerifiedBy ? `Verified by ${item.warehouseVerifiedBy}` : 'Awaiting verification'}
             </span>
@@ -353,50 +354,50 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
               <button
                 type="button"
                 onClick={() => setLogsModalItem(item)}
-                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 cursor-pointer"
+                className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 flex items-center gap-1 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200 cursor-pointer min-h-[36px]"
               >
-                <History className="w-3 h-3" />
-                History ({item.receiveLogs.length} batches)
+                <History className="w-3.5 h-3.5 shrink-0" />
+                History ({item.receiveLogs.length})
               </button>
             )}
           </div>
 
           {canReceive ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => handleOpenQcModal(item)}
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition active:scale-95 cursor-pointer"
+                className="flex-1 sm:flex-initial min-h-[44px] px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition active:scale-98 cursor-pointer"
               >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Receive & QC Check
+                <ShieldCheck className="w-4 h-4 shrink-0" />
+                <span>Receive & QC Check</span>
               </button>
 
               <button
                 onClick={() => handleQuickReceiveClick(item.id)}
                 disabled={receivingItemId === item.id}
-                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition active:scale-95 cursor-pointer"
+                className="flex-1 sm:flex-initial min-h-[44px] px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition active:scale-98 cursor-pointer"
                 title="Quick Full Receive without QC Notes"
               >
-                <CheckCircle2 className={`w-3.5 h-3.5 ${receivingItemId === item.id ? 'animate-spin' : ''}`} />
-                {receivingItemId === item.id ? 'Processing...' : 'Quick Pass'}
+                <CheckCircle2 className={`w-4 h-4 shrink-0 ${receivingItemId === item.id ? 'animate-spin' : ''}`} />
+                <span>{receivingItemId === item.id ? 'Processing...' : 'Quick Pass'}</span>
               </button>
             </div>
           ) : isCompleted ? (
-            <div className="flex items-center gap-1.5">
-              <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-2 justify-between sm:justify-end">
+              <span className="min-h-[44px] px-3 py-2 bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
                 Completed
               </span>
               <button
                 onClick={() => handleOpenQcModal(item)}
-                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                className="min-h-[44px] px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1 cursor-pointer border border-slate-200"
                 title="Add supplemental batch receive or update QC"
               >
                 + Additional Batch
               </button>
             </div>
           ) : (
-            <span className="text-xs text-amber-600 font-semibold italic">
+            <span className="text-xs text-amber-600 font-semibold italic text-right sm:text-left py-1">
               Awaiting Purchase
             </span>
           )}
@@ -675,10 +676,18 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
       </div>
 
       {/* Filter Panel */}
-      <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2 text-xs">
-        <div className="flex items-center gap-1.5 font-bold text-slate-700 pb-1 border-b border-slate-100">
-          <Filter className="w-3.5 h-3.5 text-blue-600" />
-          <span>Receiver Inspection Filters</span>
+      <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2.5 text-xs">
+        <div className="flex items-center justify-between font-bold text-slate-700 pb-1 border-b border-slate-100">
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-1.5 hover:text-blue-600 transition cursor-pointer text-xs font-bold"
+          >
+            <Filter className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>Receiver Inspection Filters</span>
+            {showFilters ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </button>
+
           {(statusFilter !== 'all' || selectedLocation !== 'all' || selectedDepartment !== 'all' || selectedPoNumber !== 'all' || selectedPurchaser !== 'all' || searchTerm !== '') && (
             <button
               onClick={() => {
@@ -689,134 +698,138 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
                 setSelectedPurchaser('all');
                 setSearchTerm('');
               }}
-              className="ml-auto text-[10px] font-bold text-blue-600 hover:underline"
+              className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
             >
-              Clear All Filters
+              Clear Filters
             </button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-          <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400">Location</label>
-            <select
-              value={selectedLocation}
-              onChange={(e) => setSelectedLocation(e.target.value)}
-              className="w-full mt-0.5 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold"
-            >
-              <option value="all">All Locations</option>
-              {locations.map((loc, idx) => (
-                <option key={`${loc}-${idx}`} value={loc}>{loc}</option>
-              ))}
-            </select>
-          </div>
+        {showFilters && (
+          <div className="space-y-3 pt-1 animate-in fade-in duration-150">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
+              <div>
+                <label className="text-[10px] font-bold uppercase text-slate-400">Location</label>
+                <select
+                  value={selectedLocation}
+                  onChange={(e) => setSelectedLocation(e.target.value)}
+                  className="w-full mt-0.5 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-hidden"
+                >
+                  <option value="all">All Locations</option>
+                  {locations.map((loc, idx) => (
+                    <option key={`${loc}-${idx}`} value={loc}>{loc}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400">Department</label>
-            <select
-              value={selectedDepartment}
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="w-full mt-0.5 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold"
-            >
-              <option value="all">All Departments</option>
-              {departments.map((dept, idx) => (
-                <option key={`${dept}-${idx}`} value={dept}>{dept}</option>
-              ))}
-            </select>
-          </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-slate-400">Department</label>
+                <select
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className="w-full mt-0.5 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-hidden"
+                >
+                  <option value="all">All Departments</option>
+                  {departments.map((dept, idx) => (
+                    <option key={`${dept}-${idx}`} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400">PO Number</label>
-            <select
-              value={selectedPoNumber}
-              onChange={(e) => setSelectedPoNumber(e.target.value)}
-              className="w-full mt-0.5 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold"
-            >
-              <option value="all">All PO Numbers</option>
-              {poNumbers.map((po, idx) => (
-                <option key={`${po}-${idx}`} value={po}>{po}</option>
-              ))}
-            </select>
-          </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-slate-400">PO Number</label>
+                <select
+                  value={selectedPoNumber}
+                  onChange={(e) => setSelectedPoNumber(e.target.value)}
+                  className="w-full mt-0.5 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-hidden"
+                >
+                  <option value="all">All PO Numbers</option>
+                  {poNumbers.map((po, idx) => (
+                    <option key={`${po}-${idx}`} value={po}>{po}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400">Purchaser Name</label>
-            <select
-              value={selectedPurchaser}
-              onChange={(e) => setSelectedPurchaser(e.target.value)}
-              className="w-full mt-0.5 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold"
-            >
-              <option value="all">All Purchasers</option>
-              {purchasers.map((pName, idx) => (
-                <option key={`${pName}-${idx}`} value={pName}>{pName}</option>
-              ))}
-            </select>
-          </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-slate-400">Purchaser Name</label>
+                <select
+                  value={selectedPurchaser}
+                  onChange={(e) => setSelectedPurchaser(e.target.value)}
+                  className="w-full mt-0.5 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-hidden"
+                >
+                  <option value="all">All Purchasers</option>
+                  {purchasers.map((pName, idx) => (
+                    <option key={`${pName}-${idx}`} value={pName}>{pName}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400">Search Item / Purchaser</label>
-            <div className="relative mt-0.5">
-              <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search..."
-                className="w-full pl-7 pr-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs"
-              />
+              <div>
+                <label className="text-[10px] font-bold uppercase text-slate-400">Search Item / Purchaser</label>
+                <div className="relative mt-0.5">
+                  <Search className="w-4 h-4 absolute left-2.5 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search..."
+                    className="w-full pl-8 pr-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-hidden"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Purchaser Quick Filters & PDF Report Row */}
-        <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-            <span className="text-[10px] font-bold uppercase text-slate-500 shrink-0 flex items-center gap-1">
-              Filter Purchaser:
-            </span>
-            <button
-              type="button"
-              onClick={() => setSelectedPurchaser('all')}
-              className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition shrink-0 ${
-                selectedPurchaser === 'all'
-                  ? 'bg-indigo-700 text-white shadow-2xs'
-                  : 'bg-slate-100 text-slate-700 hover:bg-indigo-50 hover:text-indigo-900 border border-slate-200'
-              }`}
-            >
-              All Purchasers
-            </button>
-            {purchasers.map(p => {
-              const pCount = allItems.filter(i => (i.purchaserName || i.holdBy) === p).length;
-              return (
+            {/* Purchaser Quick Filters & PDF Report Row */}
+            <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none">
+                <span className="text-[10px] font-bold uppercase text-slate-500 shrink-0">
+                  Filter Purchaser:
+                </span>
                 <button
-                  key={p}
                   type="button"
-                  onClick={() => setSelectedPurchaser(p)}
-                  className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition shrink-0 flex items-center gap-1 ${
-                    selectedPurchaser === p
+                  onClick={() => setSelectedPurchaser('all')}
+                  className={`min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-bold transition shrink-0 flex items-center justify-center cursor-pointer ${
+                    selectedPurchaser === 'all'
                       ? 'bg-indigo-700 text-white shadow-2xs'
-                      : 'bg-indigo-50 text-indigo-900 hover:bg-indigo-100 border border-indigo-200'
+                      : 'bg-slate-100 text-slate-700 hover:bg-indigo-50 hover:text-indigo-900 border border-slate-200'
                   }`}
                 >
-                  <span>{p}</span>
-                  <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${
-                    selectedPurchaser === p ? 'bg-indigo-800 text-white' : 'bg-indigo-200 text-indigo-900'
-                  }`}>{pCount}</span>
+                  All Purchasers
                 </button>
-              );
-            })}
-          </div>
+                {purchasers.map(p => {
+                  const pCount = allItems.filter(i => (i.purchaserName || i.holdBy) === p).length;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setSelectedPurchaser(p)}
+                      className={`min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-bold transition shrink-0 flex items-center justify-center gap-1.5 cursor-pointer ${
+                        selectedPurchaser === p
+                          ? 'bg-indigo-700 text-white shadow-2xs'
+                          : 'bg-indigo-50 text-indigo-900 hover:bg-indigo-100 border border-indigo-200'
+                      }`}
+                    >
+                      <span>{p}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                        selectedPurchaser === p ? 'bg-indigo-800 text-white' : 'bg-indigo-200 text-indigo-900'
+                      }`}>{pCount}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-          <button
-            type="button"
-            onClick={handlePrintReceivingPdf}
-            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shrink-0 shadow-2xs active:scale-95 cursor-pointer ml-auto sm:ml-0"
-            title="Print or Save PDF report for current purchaser selection"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print Report</span>
-          </button>
-        </div>
+              <button
+                type="button"
+                onClick={handlePrintReceivingPdf}
+                className="min-h-[40px] px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shrink-0 shadow-2xs active:scale-95 cursor-pointer w-full sm:w-auto"
+                title="Print or Save PDF report for current purchaser selection"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Report</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -901,22 +914,22 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
 
       {/* QC & PARTIAL RECEIVE MODAL */}
       {qcModalItem && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-5 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in duration-200 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-3">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-lg w-full p-4 sm:p-5 space-y-4 shadow-2xl border border-slate-200 animate-in slide-in-from-bottom sm:zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-indigo-50 text-indigo-700 rounded-lg">
+                <div className="p-2 bg-indigo-50 text-indigo-700 rounded-xl shrink-0">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-sm">Quality Check (QC) & Partial Receiving</h3>
-                  <p className="text-[11px] text-slate-500">PO #{qcModalItem.parentPo.poNumber} • {qcModalItem.itemName}</p>
+                  <h3 className="font-bold text-slate-900 text-sm leading-tight">Quality Check (QC) & Partial Receiving</h3>
+                  <p className="text-xs text-slate-500">PO #{qcModalItem.parentPo.poNumber} • {qcModalItem.itemName}</p>
                 </div>
               </div>
               <button
                 onClick={() => setQcModalItem(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
+                className="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 min-h-[40px] min-w-[40px] flex items-center justify-center cursor-pointer"
               >
                 ✕
               </button>
@@ -943,9 +956,9 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
             </div>
 
             {/* Form Inputs */}
-            <form onSubmit={handleSubmitQC} className="space-y-3 text-xs">
+            <form onSubmit={handleSubmitQC} className="space-y-3.5 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">
+                <label className="font-bold text-slate-800 block uppercase">
                   1. Current Delivery Batch Quantity ({qcModalItem.unit}):
                 </label>
                 <input
@@ -960,15 +973,15 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
                     const d = parseFloat(batchDamagedQty) || 0;
                     setBatchPassedQty(String(Math.max(0, r - d)));
                   }}
-                  className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500"
+                  className="w-full p-2.5 sm:p-2 bg-white border border-slate-300 rounded-xl font-bold text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-hidden"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div className="space-y-1">
-                  <label className="font-bold text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  <label className="font-bold text-emerald-700 flex items-center gap-1 uppercase text-[11px]">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                     Passed QC Qty:
                   </label>
                   <input
@@ -982,15 +995,15 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
                       const r = parseFloat(batchReceivedQty) || 0;
                       setBatchDamagedQty(String(Math.max(0, r - p)));
                     }}
-                    className="w-full p-2 bg-emerald-50/50 border border-emerald-300 rounded-lg font-bold text-emerald-900 focus:ring-2 focus:ring-emerald-500"
+                    className="w-full p-2.5 sm:p-2 bg-emerald-50/50 border border-emerald-300 rounded-xl font-bold text-sm text-emerald-900 focus:ring-2 focus:ring-emerald-500 outline-hidden"
                     required
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-red-700 flex items-center gap-1">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    Damaged / Rejected Qty:
+                  <label className="font-bold text-red-700 flex items-center gap-1 uppercase text-[11px]">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    Damaged Qty:
                   </label>
                   <input
                     type="number"
@@ -1003,28 +1016,28 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
                       const r = parseFloat(batchReceivedQty) || 0;
                       setBatchPassedQty(String(Math.max(0, r - d)));
                     }}
-                    className="w-full p-2 bg-red-50/50 border border-red-300 rounded-lg font-bold text-red-900 focus:ring-2 focus:ring-red-500"
+                    className="w-full p-2.5 sm:p-2 bg-red-50/50 border border-red-300 rounded-xl font-bold text-sm text-red-900 focus:ring-2 focus:ring-red-500 outline-hidden"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">
-                  QC Inspection & Damage Notes (Optional/Recommended for Discrepancy):
+                <label className="font-bold text-slate-800 block uppercase">
+                  QC Inspection & Damage Notes:
                 </label>
                 <textarea
                   rows={2}
                   value={qcNotes}
                   onChange={(e) => setQcNotes(e.target.value)}
-                  placeholder="Describe condition, damage cause, or package shortage details..."
-                  className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs"
+                  placeholder="Describe condition, damage cause, or shortage details..."
+                  className="w-full p-2.5 sm:p-2 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
                 />
               </div>
 
               {/* Telegram Auto Discrepancy Alert Notice */}
               {(parseFloat(batchDamagedQty) > 0 || parseFloat(batchReceivedQty) < qcModalItem.purchased) && (
-                <div className="p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-[11px] text-amber-900 flex items-start gap-2">
+                <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 flex items-start gap-2">
                   <Send className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 animate-bounce" />
                   <div>
                     <span className="font-extrabold block">🚨 Instant Telegram Purchaser Discrepancy Alert Active</span>
@@ -1033,21 +1046,21 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setQcModalItem(null)}
-                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold cursor-pointer"
+                  className="min-h-[44px] px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold cursor-pointer transition text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={receivingItemId === qcModalItem.id}
-                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                  className="min-h-[44px] px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50 transition text-xs active:scale-98"
                 >
                   <ShieldCheck className="w-4 h-4" />
-                  {receivingItemId === qcModalItem.id ? 'Processing QC...' : 'Submit QC & Log Receive'}
+                  <span>{receivingItemId === qcModalItem.id ? 'Processing QC...' : 'Submit QC & Log Receive'}</span>
                 </button>
               </div>
             </form>
@@ -1057,21 +1070,21 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
 
       {/* BATCH LOGS HISTORY MODAL */}
       {logsModalItem && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3">
-          <div className="bg-white rounded-2xl max-w-md w-full p-4 space-y-3 shadow-2xl border border-slate-200">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-3">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-md w-full p-4 space-y-3 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <div className="flex items-center gap-2">
                 <History className="w-4 h-4 text-indigo-600" />
                 <h3 className="font-bold text-slate-900 text-xs">Receiving & QC Log History</h3>
               </div>
-              <button onClick={() => setLogsModalItem(null)} className="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+              <button onClick={() => setLogsModalItem(null)} className="text-slate-400 hover:text-slate-600 font-bold p-1 min-h-[36px] min-w-[36px] flex items-center justify-center">✕</button>
             </div>
             
             <p className="text-xs font-bold text-slate-800">{logsModalItem.itemName} <span className="text-slate-500 font-mono">(PO #{logsModalItem.parentPo.poNumber})</span></p>
 
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {(logsModalItem.receiveLogs || []).map((log: ReceiveBatchLog, i: number) => (
-                <div key={log.id || i} className="p-2 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1">
+                <div key={log.id || i} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
                   <div className="flex justify-between text-[10px] text-slate-500 font-semibold">
                     <span>Batch #{i + 1} • {log.receivedBy}</span>
                     <span>{new Date(log.timestamp).toLocaleString()}</span>
@@ -1089,7 +1102,7 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
             <div className="pt-2 text-right">
               <button
                 onClick={() => setLogsModalItem(null)}
-                className="px-3 py-1 bg-slate-800 text-white rounded-lg text-xs font-bold cursor-pointer"
+                className="w-full sm:w-auto min-h-[44px] px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold cursor-pointer"
               >
                 Close History
               </button>

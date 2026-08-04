@@ -632,38 +632,37 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
       )}
 
       {/* Header Bar - Compact Enterprise ERP */}
-      <div className="bg-slate-900 text-white p-3 rounded-xl flex items-center justify-between">
+      <div className="bg-slate-900 text-white p-3 sm:p-3.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div>
-          <h1 className="text-base font-bold leading-tight">Purchaser Dashboard</h1>
-          <p className="text-[11px] text-slate-400">Purchaser: <span className="text-slate-200 font-bold">{currentUser.name}</span></p>
+          <h1 className="text-base sm:text-lg font-bold leading-tight">Purchaser Dashboard</h1>
+          <p className="text-xs text-slate-400">Purchaser: <span className="text-slate-200 font-bold">{currentUser.name}</span></p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <button
             onClick={handlePrintPurchaserPdf}
-            className="px-2.5 py-1.5 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-2xs border border-purple-600 active:scale-95 cursor-pointer"
+            className="flex-1 sm:flex-initial min-h-[40px] px-3 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs border border-purple-600 active:scale-95 cursor-pointer"
             title="Print or Save PDF Report of Purchaser Items"
           >
-            <Printer className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Save PDF</span>
-            <span className="inline sm:hidden">PDF</span>
+            <Printer className="w-4 h-4 shrink-0" />
+            <span>Save PDF</span>
           </button>
           {onSync && (
             <button
               onClick={onSync}
               disabled={isSyncing}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1 border border-slate-700"
+              className="min-h-[40px] min-w-[40px] px-2.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center justify-center gap-1 border border-slate-700"
               title="Sync Data"
             >
-              <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isSyncing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 text-emerald-400 ${isSyncing ? 'animate-spin' : ''}`} />
             </button>
           )}
           <button
             onClick={() => setShowHistory(!showHistory)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
+            className={`flex-1 sm:flex-initial min-h-[40px] px-3.5 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${
               showHistory ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
             }`}
           >
-            <History className="w-3.5 h-3.5" />
+            <History className="w-4 h-4 shrink-0" />
             <span>History</span>
           </button>
         </div>
@@ -815,63 +814,63 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
       {/* STATUS TABS */}
       {!showHistory && (
         <div className="space-y-2">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-slate-200/80 p-1 rounded-xl text-xs font-bold">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-slate-200/80 p-1.5 rounded-xl text-xs font-bold">
             <button
               onClick={() => setStatusFilter('pending')}
-              className={`py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1.5 ${
+              className={`min-h-[44px] py-2 px-2.5 rounded-lg transition flex items-center justify-center gap-1.5 active:scale-98 ${
                 statusFilter === 'pending'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-300'
+                  : 'text-slate-700 hover:text-slate-900'
               }`}
             >
-              <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <Clock className="w-4 h-4 text-amber-500 shrink-0" />
               <span className="truncate">Pending</span>
-              <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 rounded-full font-bold shrink-0">
+              <span className="bg-amber-100 text-amber-900 text-xs px-2 py-0.5 rounded-full font-extrabold shrink-0">
                 {myPendingItems.length}
               </span>
             </button>
 
             <button
               onClick={() => setStatusFilter('hold')}
-              className={`py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1.5 ${
+              className={`min-h-[44px] py-2 px-2.5 rounded-lg transition flex items-center justify-center gap-1.5 active:scale-98 ${
                 statusFilter === 'hold'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-300'
+                  : 'text-slate-700 hover:text-slate-900'
               }`}
             >
-              <Lock className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+              <Lock className="w-4 h-4 text-purple-600 shrink-0" />
               <span className="truncate">Hold</span>
-              <span className="bg-purple-100 text-purple-800 text-[10px] px-1.5 rounded-full font-bold shrink-0" title={`My Holds: ${myHoldItems.length} | System Total: ${systemHeldItemsCount}`}>
-                {myHoldItems.length} / {systemHeldItemsCount}
+              <span className="bg-purple-100 text-purple-900 text-xs px-2 py-0.5 rounded-full font-extrabold shrink-0" title={`My Holds: ${myHoldItems.length} | System Total: ${systemHeldItemsCount}`}>
+                {myHoldItems.length}/{systemHeldItemsCount}
               </span>
             </button>
 
             <button
               onClick={() => setStatusFilter('partial')}
-              className={`py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1.5 ${
+              className={`min-h-[44px] py-2 px-2.5 rounded-lg transition flex items-center justify-center gap-1.5 active:scale-98 ${
                 statusFilter === 'partial'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-300'
+                  : 'text-slate-700 hover:text-slate-900'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
               <span className="truncate">Partial</span>
-              <span className="bg-blue-100 text-blue-800 text-[10px] px-1.5 rounded-full font-bold shrink-0">
+              <span className="bg-blue-100 text-blue-900 text-xs px-2 py-0.5 rounded-full font-extrabold shrink-0">
                 {systemPartialItemsCount}
               </span>
             </button>
 
             <button
               onClick={() => setStatusFilter('today')}
-              className={`py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1.5 ${
+              className={`min-h-[44px] py-2 px-2.5 rounded-lg transition flex items-center justify-center gap-1.5 active:scale-98 ${
                 statusFilter === 'today'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-300'
+                  : 'text-slate-700 hover:text-slate-900'
               }`}
             >
-              <ShoppingBag className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <ShoppingBag className="w-4 h-4 text-emerald-600 shrink-0" />
               <span className="truncate">Today Purchase</span>
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 rounded-full font-bold shrink-0">
+              <span className="bg-emerald-100 text-emerald-900 text-xs px-2 py-0.5 rounded-full font-extrabold shrink-0">
                 {myTodayPurchases.length}
               </span>
             </button>
@@ -1058,9 +1057,9 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
                         <button
                           onClick={(e) => handleReturnClick(e, item)}
                           disabled={actionLoadingItemId === item.id || isSubmitting}
-                          className="w-full min-h-[38px] bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold text-xs rounded-lg transition flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50"
+                          className="w-full min-h-[44px] bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50 cursor-pointer"
                         >
-                          <RotateCcw className={`w-3.5 h-3.5 text-amber-700 ${actionLoadingItemId === item.id ? 'animate-spin' : ''}`} />
+                          <RotateCcw className={`w-4 h-4 text-amber-700 shrink-0 ${actionLoadingItemId === item.id ? 'animate-spin' : ''}`} />
                           <span>{actionLoadingItemId === item.id ? 'Returning Item...' : 'Return Item to Pending'}</span>
                         </button>
                       </div>
@@ -1071,32 +1070,32 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
                           <button
                             onClick={(e) => handleReleaseHoldClick(e, item)}
                             disabled={actionLoadingItemId === item.id || isSubmitting}
-                            className="flex-1 min-h-[40px] bg-purple-100 hover:bg-purple-200 disabled:opacity-40 text-purple-900 border border-purple-300 font-bold text-xs rounded-lg transition flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
+                            className="flex-1 min-h-[44px] bg-purple-100 hover:bg-purple-200 disabled:opacity-40 text-purple-900 border border-purple-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
                             title="Cancel hold & return item to Pending list"
                           >
-                            <Lock className={`w-3.5 h-3.5 text-purple-700 ${actionLoadingItemId === item.id ? 'animate-spin' : ''}`} />
-                            {actionLoadingItemId === item.id ? 'Releasing...' : 'RELEASE HOLD (REVERT TO PENDING)'}
+                            <Lock className={`w-4 h-4 text-purple-700 shrink-0 ${actionLoadingItemId === item.id ? 'animate-spin' : ''}`} />
+                            <span className="truncate">{actionLoadingItemId === item.id ? 'Releasing...' : 'RELEASE HOLD'}</span>
                           </button>
                         ) : (
                           <button
                             onClick={(e) => handleHoldClick(e, item)}
                             disabled={isHeldByOther || item.purchaseStatus === 'Partial Purchased' || actionLoadingItemId === item.id || isSubmitting}
-                            className="flex-1 min-h-[40px] bg-slate-100 hover:bg-purple-100 disabled:opacity-40 text-slate-800 hover:text-purple-900 border border-slate-200 font-bold text-xs rounded-lg transition flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
+                            className="flex-1 min-h-[44px] bg-slate-100 hover:bg-purple-100 disabled:opacity-40 text-slate-800 hover:text-purple-900 border border-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
                             title={isHeldByOther ? `Locked: Currently on hold by ${item.holdBy}` : "Hold item"}
                           >
-                            <Lock className={`w-3.5 h-3.5 text-purple-600 ${actionLoadingItemId === item.id ? 'animate-spin' : ''}`} />
-                            {actionLoadingItemId === item.id ? 'Holding...' : 'HOLD ITEM'}
+                            <Lock className={`w-4 h-4 text-purple-600 shrink-0 ${actionLoadingItemId === item.id ? 'animate-spin' : ''}`} />
+                            <span className="truncate">{actionLoadingItemId === item.id ? 'Holding...' : 'HOLD ITEM'}</span>
                           </button>
                         )}
 
                         <button
                           onClick={(e) => openPurchasePopup(e, item)}
                           disabled={isHeldByOther || isSubmitting || actionLoadingItemId === item.id}
-                          className="flex-1 min-h-[40px] bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center justify-center gap-1.5 active:scale-98"
+                          className="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
                           title={isHeldByOther ? `Locked: Currently on hold by ${item.holdBy}` : "Record purchase"}
                         >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          PURCHASE
+                          <ShoppingBag className="w-4 h-4 shrink-0" />
+                          <span>PURCHASE</span>
                         </button>
                       </div>
                     )}
@@ -1154,12 +1153,12 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
                       )}
 
                       {/* Expanded Action Buttons */}
-                      <div className="flex items-center gap-2 pt-1">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
                         {statusFilter !== 'today' && (
                           <button
                             onClick={(e) => openPurchasePopup(e, item)}
                             disabled={isHeldByOther || isSubmitting || actionLoadingItemId === item.id}
-                            className="flex-1 min-h-[38px] bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-xs rounded-lg transition"
+                            className="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition flex items-center justify-center cursor-pointer"
                           >
                             Confirm Purchase
                           </button>
@@ -1168,14 +1167,14 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
                           <button
                             onClick={(e) => handleReleaseHoldClick(e, item)}
                             disabled={actionLoadingItemId === item.id || isSubmitting}
-                            className="flex-1 min-h-[38px] bg-purple-100 hover:bg-purple-200 disabled:opacity-40 text-purple-800 font-bold text-xs rounded-lg transition"
+                            className="flex-1 min-h-[44px] bg-purple-100 hover:bg-purple-200 disabled:opacity-40 text-purple-800 font-bold text-xs rounded-xl transition flex items-center justify-center cursor-pointer"
                           >
                             {actionLoadingItemId === item.id ? 'Releasing...' : 'Release Hold'}
                           </button>
                         )}
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleCardExpand(item.id); }}
-                          className={`${statusFilter === 'today' ? 'w-full' : 'px-3'} min-h-[38px] bg-white hover:bg-slate-100 text-slate-600 font-bold text-xs rounded-lg border border-slate-200`}
+                          className={`${statusFilter === 'today' ? 'w-full' : 'sm:w-auto px-4'} min-h-[44px] bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 transition flex items-center justify-center cursor-pointer`}
                         >
                           Collapse
                         </button>
