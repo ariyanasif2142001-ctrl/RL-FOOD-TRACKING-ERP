@@ -14,6 +14,8 @@ interface HeaderProps {
   onOpenCommandPalette?: () => void;
   onSelectAdminTab?: (tab: 'dashboard' | 'import' | 'users' | 'telegram' | 'tests' | 'docs' | 'logs') => void;
   usersCount?: number;
+  viewOrientation?: 'portrait' | 'desktop';
+  onToggleOrientation?: (mode: 'portrait' | 'desktop') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -25,7 +27,9 @@ export const Header: React.FC<HeaderProps> = ({
   onUpdateUserAvatar,
   onOpenCommandPalette,
   onSelectAdminTab,
-  usersCount = 0
+  usersCount = 0,
+  viewOrientation = 'portrait',
+  onToggleOrientation
 }) => {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -149,6 +153,38 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Controls */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           
+          {/* Orientation Toggle (Portrait vs Desktop) */}
+          {onToggleOrientation && (
+            <div className="flex items-center p-0.5 bg-slate-900 border border-slate-800 rounded-lg text-[10px] font-bold">
+              <button
+                type="button"
+                onClick={() => onToggleOrientation('portrait')}
+                className={`px-2 py-0.5 rounded-md flex items-center gap-1 transition cursor-pointer ${
+                  viewOrientation === 'portrait'
+                    ? 'bg-emerald-600 text-white font-extrabold shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Switch to Portrait Mobile View"
+              >
+                <Smartphone className="w-3 h-3" />
+                <span className="hidden sm:inline">Portrait</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onToggleOrientation('desktop')}
+                className={`px-2 py-0.5 rounded-md flex items-center gap-1 transition cursor-pointer ${
+                  viewOrientation === 'desktop'
+                    ? 'bg-emerald-600 text-white font-extrabold shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Switch to Desktop Wide View"
+              >
+                <FileSpreadsheet className="w-3 h-3" />
+                <span className="hidden sm:inline">Desktop</span>
+              </button>
+            </div>
+          )}
+
           {/* Live Sync Button */}
           <button
             onClick={onSync}

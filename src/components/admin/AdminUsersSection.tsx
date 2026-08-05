@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { User } from '../../types';
-import { Users, UserPlus, Image as ImageIcon, Trash2, X, Plus, Check, Eye, EyeOff, Key, Edit3, Shield, Lock, BellRing, Smartphone, Volume2 } from 'lucide-react';
+import { Users, UserPlus, Image as ImageIcon, Trash2, X, Plus, Check, Eye, EyeOff, Key, Edit3, Shield, Lock, BellRing, Smartphone, Volume2, Send } from 'lucide-react';
 import { sendTargetedUserAlert } from '../../services/notificationService';
 
 interface AdminUsersSectionProps {
@@ -24,6 +24,7 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState<User['role']>('purchaser');
   const [newUserPhone, setNewUserPhone] = useState('');
+  const [newUserTelegramChatId, setNewUserTelegramChatId] = useState('');
   const [newUserAvatar, setNewUserAvatar] = useState('');
 
   // Editing User Photo Modal State
@@ -38,6 +39,7 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
   const [editPasswordVal, setEditPasswordVal] = useState('');
   const [editRoleVal, setEditRoleVal] = useState<User['role']>('purchaser');
   const [editPhoneVal, setEditPhoneVal] = useState('');
+  const [editTelegramChatIdVal, setEditTelegramChatIdVal] = useState('');
 
   // Target User Direct Alert Vibration State
   const [alertFeedbackMsg, setAlertFeedbackMsg] = useState<string | null>(null);
@@ -78,6 +80,7 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
       password: newUserPassword || '123',
       role: newUserRole,
       phone: newUserPhone.trim(),
+      telegramChatId: newUserTelegramChatId.trim() || undefined,
       avatar: newUserAvatar.trim() || undefined,
       active: true,
       status: 'Active',
@@ -90,6 +93,7 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
     setNewUserEmail('');
     setNewUserUsername('');
     setNewUserPhone('');
+    setNewUserTelegramChatId('');
     setNewUserAvatar('');
     setIsAddUserOpen(false);
   };
@@ -124,6 +128,7 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
     setEditPasswordVal(userToEdit.password || '123');
     setEditRoleVal(userToEdit.role);
     setEditPhoneVal(userToEdit.phone || '');
+    setEditTelegramChatIdVal(userToEdit.telegramChatId || '');
   };
 
   const handleSaveUserCredentials = (e: React.FormEvent) => {
@@ -138,7 +143,8 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
           username: editUsernameVal.trim() || u.username,
           password: editPasswordVal.trim() || u.password || '123',
           role: editRoleVal,
-          phone: editPhoneVal.trim()
+          phone: editPhoneVal.trim(),
+          telegramChatId: editTelegramChatIdVal.trim() || undefined
         };
       }
       return u;
@@ -283,7 +289,15 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                     </div>
                   </td>
                   <td className="p-3 text-slate-600 font-mono">
-                    {u.phone || 'No phone'}
+                    <div>{u.phone || 'No phone'}</div>
+                    {u.telegramChatId ? (
+                      <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold mt-0.5">
+                        <Send className="w-2.5 h-2.5 text-emerald-600" />
+                        <span>TG: {u.telegramChatId}</span>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-slate-400 italic mt-0.5">No Telegram ID</div>
+                    )}
                   </td>
                   <td className="p-3">
                     <button
@@ -423,6 +437,20 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                 </div>
               </div>
 
+              <div>
+                <label className="font-bold text-slate-700 flex items-center justify-between">
+                  <span>Telegram Chat ID / Number</span>
+                  <span className="text-[10px] text-emerald-700 font-medium">For direct offline alerts</span>
+                </label>
+                <input
+                  type="text"
+                  value={editTelegramChatIdVal}
+                  onChange={e => setEditTelegramChatIdVal(e.target.value)}
+                  placeholder="e.g. 123456789 or @username"
+                  className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:border-amber-500 font-mono text-emerald-800 bg-emerald-50/40"
+                />
+              </div>
+
               <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900 font-medium">
                 💡 Changes to username or password take effect immediately and sync with Supabase user records.
               </div>
@@ -515,15 +543,26 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700">Login Password</label>
+                  <label className="font-bold text-slate-700">Telegram Chat ID</label>
                   <input
                     type="text"
-                    value={newUserPassword}
-                    onChange={e => setNewUserPassword(e.target.value)}
-                    placeholder="Default: 123"
-                    className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:border-amber-500 font-mono"
+                    value={newUserTelegramChatId}
+                    onChange={e => setNewUserTelegramChatId(e.target.value)}
+                    placeholder="e.g. 987654321"
+                    className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:border-amber-500 font-mono text-emerald-800"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700">Login Password</label>
+                <input
+                  type="text"
+                  value={newUserPassword}
+                  onChange={e => setNewUserPassword(e.target.value)}
+                  placeholder="Default: 123"
+                  className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:border-amber-500 font-mono"
+                />
               </div>
 
               {/* Profile Photo Input & Upload */}

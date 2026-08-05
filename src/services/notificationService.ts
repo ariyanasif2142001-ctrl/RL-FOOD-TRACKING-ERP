@@ -3,6 +3,8 @@
  * Safe, cross-browser notification handler supporting both Notification API and ServiceWorker.
  */
 
+import { sendCustomTelegramAlert } from './telegramService';
+
 export function isNotificationSupported(): boolean {
   return typeof window !== 'undefined' && 'Notification' in window;
 }
@@ -192,7 +194,7 @@ if (userAlertChannel) {
 }
 
 export function sendTargetedUserAlert(
-  targetUser: { id: string; name: string; username?: string; role?: string; phone?: string },
+  targetUser: { id: string; name: string; username?: string; role?: string; phone?: string; telegramChatId?: string },
   senderName: string = 'Super Admin',
   message?: string
 ) {
@@ -216,6 +218,15 @@ export function sendTargetedUserAlert(
   sendBrowserNotification(`🚨 Alert Sent to ${targetUser.name}`, {
     body: `Direct vibration and chime alert dispatched to ${targetUser.name} (@${targetUser.username || targetUser.role}).`,
     tag: `targeted-alert-${targetUser.id}`
+  });
+
+  // 4. Send Telegram Alert to User's specific Telegram Chat ID (or main bot channel)
+  const tgNotice = `🚨 <b>DIRECT ALERT FOR: ${targetUser.name.toUpperCase()}</b> (@${targetUser.username || targetUser.role})\n\n` +
+    `📢 <b>Notice:</b> ${message || 'Urgent attention required on RL Food ERP!'}\n` +
+    `⚡ <b>Sent By:</b> ${senderName}`;
+
+  sendCustomTelegramAlert(tgNotice, senderName, 'URGENT', targetUser.telegramChatId).catch(err => {
+    console.warn('Telegram targeted user notification skipped:', err);
   });
 }
 
