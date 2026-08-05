@@ -9,7 +9,6 @@ export interface User {
   role: UserRole;
   isSuperAdmin?: boolean;
   phone?: string;
-  telegramChatId?: string;
   active: boolean;
   status?: 'Active' | 'Inactive';
   createdDate?: string;

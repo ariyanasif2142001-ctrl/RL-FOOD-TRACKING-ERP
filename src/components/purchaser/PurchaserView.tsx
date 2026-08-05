@@ -617,7 +617,7 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 space-y-3 font-sans text-slate-900 w-full">
+    <div className="max-w-2xl mx-auto px-2.5 sm:px-4 py-3 space-y-3 font-sans text-slate-900">
       
       {/* Toast Notification */}
       {toastMessage && (

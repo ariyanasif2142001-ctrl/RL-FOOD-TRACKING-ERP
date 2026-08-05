@@ -33,16 +33,6 @@ export default function App() {
   const [appConfig, setAppConfigState] = useState(getAppConfig());
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
 
-  // View orientation mode state (portrait vs desktop)
-  const [viewOrientation, setViewOrientation] = useState<'portrait' | 'desktop'>(() => {
-    return (localStorage.getItem('rl_view_orientation') as 'portrait' | 'desktop') || 'portrait';
-  });
-
-  const handleToggleOrientation = (mode: 'portrait' | 'desktop') => {
-    setViewOrientation(mode);
-    localStorage.setItem('rl_view_orientation', mode);
-  };
-
   // Keyboard shortcut for Ctrl+K / Cmd+K Command Palette
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -121,25 +111,12 @@ export default function App() {
     }
   };
 
-  const showToast = useCallback((message: string, success: boolean = true) => {
+  const showToast = (message: string, success: boolean = true) => {
     setToast({ message, success });
     setTimeout(() => {
       setToast(null);
     }, 4000);
-  }, []);
-
-  // Listen for targeted user alerts to display popup toast and vibrate
-  useEffect(() => {
-    const handleTargetedAlert = (e: Event) => {
-      const customEv = e as CustomEvent;
-      const data = customEv.detail;
-      if (data) {
-        showToast(`🚨 URGENT ALERT from ${data.senderName || 'Admin'}: ${data.message || 'Check your tasks immediately!'}`, true);
-      }
-    };
-    window.addEventListener('ERP_TARGETED_USER_ALERT', handleTargetedAlert);
-    return () => window.removeEventListener('ERP_TARGETED_USER_ALERT', handleTargetedAlert);
-  }, [showToast]);
+  };
 
   // Helper to merge fetched POs with local state so holds, purchases, and warehouse receive data are never prematurely reset by backend syncs
   const mergePreservedHolds = (fetchedPOs: PurchaseOrder[], currentPOs: PurchaseOrder[]): PurchaseOrder[] => {
@@ -1333,11 +1310,7 @@ export default function App() {
   }, [pos]);
 
   return (
-    <div className={`min-h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased flex flex-col transition-all duration-300 ${
-      viewOrientation === 'portrait'
-        ? 'max-w-md mx-auto my-0 sm:my-3 shadow-2xl rounded-3xl border border-slate-300 overflow-hidden bg-white min-h-[96vh]'
-        : 'w-full'
-    }`}>
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased flex flex-col">
       
       {/* Navigation Header */}
       {currentUser ? (
@@ -1350,49 +1323,16 @@ export default function App() {
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
           onSelectAdminTab={(tab) => setAdminActiveTab(tab)}
           usersCount={users.length}
-          viewOrientation={viewOrientation}
-          onToggleOrientation={handleToggleOrientation}
         />
       ) : (
-        <header className="bg-gradient-to-r from-[#072417] via-[#0E3A24] to-[#072417] text-white border-b border-emerald-900/80 py-2 px-3 sm:px-4 flex items-center justify-between">
+        <header className="bg-gradient-to-r from-[#072417] via-[#0E3A24] to-[#072417] text-white border-b border-emerald-900/80 py-2 px-4 flex items-center justify-between">
           <CompanyLogo size="sm" showText={true} lightText={true} />
-          
-          <div className="flex items-center gap-2">
-            {/* Orientation Switcher for Logged Out View */}
-            <div className="flex items-center p-0.5 bg-black/40 border border-emerald-800/80 rounded-lg text-[10px] font-bold">
-              <button
-                type="button"
-                onClick={() => handleToggleOrientation('portrait')}
-                className={`px-2 py-0.5 rounded-md flex items-center gap-1 transition cursor-pointer ${
-                  viewOrientation === 'portrait'
-                    ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
-                    : 'text-emerald-300 hover:text-white'
-                }`}
-                title="Switch to Portrait Mobile View"
-              >
-                <span>📱 Portrait</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleToggleOrientation('desktop')}
-                className={`px-2 py-0.5 rounded-md flex items-center gap-1 transition cursor-pointer ${
-                  viewOrientation === 'desktop'
-                    ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
-                    : 'text-emerald-300 hover:text-white'
-                }`}
-                title="Switch to Desktop Wide View"
-              >
-                <span>💻 Desktop</span>
-              </button>
-            </div>
-
-            <button
-              onClick={() => setIsLoginOpen(true)}
-              className="px-3.5 py-1.5 bg-[#2E7D32] hover:bg-[#1B5E20] text-white rounded-xl text-xs font-bold transition shadow-xs"
-            >
-              Sign In Portal
-            </button>
-          </div>
+          <button
+            onClick={() => setIsLoginOpen(true)}
+            className="px-3.5 py-1.5 bg-[#2E7D32] hover:bg-[#1B5E20] text-white rounded-xl text-xs font-bold transition shadow-xs"
+          >
+            Sign In Portal
+          </button>
         </header>
       )}
 
@@ -1587,8 +1527,6 @@ export default function App() {
         currentUser={currentUser}
         onLogin={handleLogin}
         onAuditLog={addAuditLog}
-        viewOrientation={viewOrientation}
-        onToggleOrientation={handleToggleOrientation}
       />
     </div>
   );

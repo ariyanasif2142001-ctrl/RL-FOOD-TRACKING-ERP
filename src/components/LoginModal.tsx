@@ -17,8 +17,6 @@ interface LoginModalProps {
   currentUser: User | null;
   onLogin: (user: User, rememberMe?: boolean) => void;
   onAuditLog?: (action: string, details: string, user?: User) => void;
-  viewOrientation?: 'portrait' | 'desktop';
-  onToggleOrientation?: (mode: 'portrait' | 'desktop') => void;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({
@@ -27,9 +25,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   users,
   currentUser,
   onLogin,
-  onAuditLog,
-  viewOrientation = 'portrait',
-  onToggleOrientation
+  onAuditLog
 }) => {
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -209,62 +205,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </svg>
               </div>
 
-              {/* Top Bar Controls */}
-              <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between z-20">
-                {/* Install Mobile App Button */}
+              {/* Install Mobile App Button */}
+              <button
+                type="button"
+                onClick={() => setIsInstallModalOpen(true)}
+                className="absolute top-3.5 left-3.5 px-2.5 py-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white font-extrabold text-[10px] sm:text-xs flex items-center gap-1.5 transition backdrop-blur-xs cursor-pointer shadow-xs border border-white/20 z-20 active:scale-95"
+                title="Install RL Food Mobile App"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-emerald-200" />
+                <span>Install Mobile App</span>
+              </button>
+
+              {/* Close Button (if user logged in) */}
+              {currentUser && (
                 <button
-                  type="button"
-                  onClick={() => setIsInstallModalOpen(true)}
-                  className="px-2.5 py-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white font-extrabold text-[10px] sm:text-xs flex items-center gap-1 transition backdrop-blur-xs cursor-pointer shadow-xs border border-white/20 active:scale-95"
-                  title="Install RL Food Mobile App"
+                  onClick={onClose}
+                  className="absolute top-3.5 right-3.5 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white/80 hover:text-white transition z-20 backdrop-blur-xs"
                 >
-                  <Smartphone className="w-3.5 h-3.5 text-emerald-200" />
-                  <span className="hidden sm:inline">Install Mobile App</span>
-                  <span className="sm:hidden">Install App</span>
+                  <X className="w-4 h-4" />
                 </button>
-
-                {/* View Mode Toggle (Portrait vs Desktop) */}
-                {onToggleOrientation && (
-                  <div className="flex items-center p-1 bg-black/40 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold">
-                    <button
-                      type="button"
-                      onClick={() => onToggleOrientation('portrait')}
-                      className={`px-2.5 py-1 rounded-full flex items-center gap-1 transition cursor-pointer ${
-                        viewOrientation === 'portrait'
-                          ? 'bg-amber-400 text-slate-950 font-black shadow-md'
-                          : 'text-white/80 hover:text-white'
-                      }`}
-                      title="Set Portrait Mobile View"
-                    >
-                      <Smartphone className="w-3 h-3" />
-                      <span>Portrait</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onToggleOrientation('desktop')}
-                      className={`px-2.5 py-1 rounded-full flex items-center gap-1 transition cursor-pointer ${
-                        viewOrientation === 'desktop'
-                          ? 'bg-amber-400 text-slate-950 font-black shadow-md'
-                          : 'text-white/80 hover:text-white'
-                      }`}
-                      title="Set Desktop Wide View"
-                    >
-                      <Download className="w-3 h-3 rotate-270" />
-                      <span>Desktop</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Close Button (if user logged in) */}
-                {currentUser && (
-                  <button
-                    onClick={onClose}
-                    className="p-1.5 rounded-full bg-black/30 hover:bg-black/50 text-white transition backdrop-blur-xs cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
+              )}
 
               {/* Top Company Badge & Logo */}
               <div className="relative z-10 flex flex-col items-center text-center space-y-2.5">

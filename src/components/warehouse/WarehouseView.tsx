@@ -565,7 +565,7 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 space-y-3 font-sans text-slate-900 w-full">
+    <div className="max-w-4xl mx-auto px-2.5 sm:px-4 py-3 space-y-3 font-sans text-slate-900">
       
       {/* Top Banner - Compact ERP */}
       <div className="bg-slate-900 text-white p-3.5 rounded-xl flex items-center justify-between shadow-sm">
