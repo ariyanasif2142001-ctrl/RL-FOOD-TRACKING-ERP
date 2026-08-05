@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { User } from '../../types';
-import { Users, UserPlus, Image as ImageIcon, Trash2, X, Plus, Check, Eye, EyeOff, Key, Edit3, Shield, Lock } from 'lucide-react';
+import { Users, UserPlus, Image as ImageIcon, Trash2, X, Plus, Check, Eye, EyeOff, Key, Edit3, Shield, Lock, BellRing, Smartphone, Volume2 } from 'lucide-react';
+import { sendTargetedUserAlert } from '../../services/notificationService';
 
 interface AdminUsersSectionProps {
   users: User[];
@@ -37,6 +38,15 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
   const [editPasswordVal, setEditPasswordVal] = useState('');
   const [editRoleVal, setEditRoleVal] = useState<User['role']>('purchaser');
   const [editPhoneVal, setEditPhoneVal] = useState('');
+
+  // Target User Direct Alert Vibration State
+  const [alertFeedbackMsg, setAlertFeedbackMsg] = useState<string | null>(null);
+
+  const handleTriggerUserAlert = (targetUser: User) => {
+    sendTargetedUserAlert(targetUser, currentUser?.name || 'Super Admin');
+    setAlertFeedbackMsg(`🔔 Targeted vibration & sound alert dispatched to ${targetUser.name}! (${targetUser.role.toUpperCase()})`);
+    setTimeout(() => setAlertFeedbackMsg(null), 5000);
+  };
 
   const newUserAvatarFileRef = useRef<HTMLInputElement>(null);
   const editUserAvatarFileRef = useRef<HTMLInputElement>(null);
@@ -169,6 +179,24 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
           </div>
         )}
 
+        {alertFeedbackMsg && (
+          <div className="p-3 bg-gradient-to-r from-slate-900 via-rose-950 to-slate-900 border border-rose-500/50 text-white rounded-xl text-xs font-bold flex items-center justify-between shadow-lg animate-fade-in">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-rose-600 rounded-lg animate-bounce">
+                <BellRing className="w-4 h-4 text-white" />
+              </div>
+              <span>{alertFeedbackMsg}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAlertFeedbackMsg(null)}
+              className="text-rose-300 hover:text-white text-xs font-bold p-1 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Users Roster Table */}
         <div className="overflow-x-auto border border-slate-200 rounded-xl">
           <table className="w-full text-left border-collapse text-xs">
@@ -273,7 +301,18 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                     </button>
                   </td>
                   <td className="p-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleTriggerUserAlert(u)}
+                        className="px-2.5 py-1 bg-gradient-to-r from-rose-600 via-amber-600 to-rose-600 hover:from-rose-700 hover:to-amber-700 text-white rounded-lg text-[10px] font-black flex items-center gap-1 shadow-xs transition active:scale-95 cursor-pointer shrink-0"
+                        title={`Send Urgent Phone Vibration & Sound Chime Alert to ${u.name}`}
+                      >
+                        <BellRing className="w-3 h-3 animate-bounce" />
+                        <span className="hidden sm:inline">Vibrate & Alert</span>
+                        <span className="sm:hidden">Alert</span>
+                      </button>
+
                       {isSuperAdmin && (
                         <button
                           type="button"

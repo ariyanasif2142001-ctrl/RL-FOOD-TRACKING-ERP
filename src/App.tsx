@@ -111,12 +111,25 @@ export default function App() {
     }
   };
 
-  const showToast = (message: string, success: boolean = true) => {
+  const showToast = useCallback((message: string, success: boolean = true) => {
     setToast({ message, success });
     setTimeout(() => {
       setToast(null);
     }, 4000);
-  };
+  }, []);
+
+  // Listen for targeted user alerts to display popup toast and vibrate
+  useEffect(() => {
+    const handleTargetedAlert = (e: Event) => {
+      const customEv = e as CustomEvent;
+      const data = customEv.detail;
+      if (data) {
+        showToast(`🚨 URGENT ALERT from ${data.senderName || 'Admin'}: ${data.message || 'Check your tasks immediately!'}`, true);
+      }
+    };
+    window.addEventListener('ERP_TARGETED_USER_ALERT', handleTargetedAlert);
+    return () => window.removeEventListener('ERP_TARGETED_USER_ALERT', handleTargetedAlert);
+  }, [showToast]);
 
   // Helper to merge fetched POs with local state so holds, purchases, and warehouse receive data are never prematurely reset by backend syncs
   const mergePreservedHolds = (fetchedPOs: PurchaseOrder[], currentPOs: PurchaseOrder[]): PurchaseOrder[] => {

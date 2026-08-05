@@ -116,3 +116,106 @@ export function notifyBrowserPODispatched(poNumber: string, customerName: string
     tag: `po-dispatch-${poNumber}`
   });
 }
+
+/**
+ * Triggers device vibration pattern (supported on Mobile Browsers)
+ */
+export function triggerDeviceVibration(pattern = [400, 150, 400, 150, 600, 200, 800]) {
+  if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+    try {
+      navigator.vibrate(pattern);
+    } catch (e) {
+      console.warn('Vibration API error:', e);
+    }
+  }
+}
+
+/**
+ * Plays an urgent audio alert chime tone via Web Audio API synthesizer
+ */
+export function playEmergencyAlertSound() {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    
+    const playTone = (freq: number, startTime: number, duration: number, type: OscillatorType = 'triangle') => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime + startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + startTime);
+      osc.stop(ctx.currentTime + startTime + duration);
+    };
+
+    // Loud 4-step emergency chime ring
+    playTone(880, 0, 0.2, 'sawtooth');   // A5
+    playTone(1174.66, 0.22, 0.2, 'sawtooth'); // D6
+    playTone(1396.91, 0.44, 0.2, 'sawtooth'); // F6
+    playTone(1760, 0.66, 0.4, 'triangle'); // A6
+  } catch (err) {
+    console.warn('Audio alert sound error:', err);
+  }
+}
+
+// Global BroadcastChannel for real-time user ping alerts across devices/tabs
+const userAlertChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
+  ? new BroadcastChannel('erp_targeted_user_alerts')
+  : null;
+
+if (userAlertChannel) {
+  userAlertChannel.onmessage = (event) => {
+    const data = event.data;
+    if (data && data.type === 'TARGETED_USER_ALERT') {
+      const currentLoggedInUserId = localStorage.getItem('rl_food_current_user_id') || '';
+      const currentLoggedInUserName = localStorage.getItem('rl_food_current_user_name') || '';
+      
+      // If alert is directed to current user or broadcast all
+      if (!data.targetUserId || data.targetUserId === currentLoggedInUserId || data.targetUserName === currentLoggedInUserName) {
+        triggerDeviceVibration([500, 200, 500, 200, 1000]);
+        playEmergencyAlertSound();
+        sendBrowserNotification(`🚨 URGENT ALERT from ${data.senderName || 'Admin'}`, {
+          body: data.message || 'You have received an urgent alert signal! Please check your ERP task queue.',
+          tag: `user-alert-${Date.now()}`
+        });
+
+        // Trigger custom DOM event for on-screen popup alert toast
+        window.dispatchEvent(new CustomEvent('ERP_TARGETED_USER_ALERT', { detail: data }));
+      }
+    }
+  };
+}
+
+export function sendTargetedUserAlert(
+  targetUser: { id: string; name: string; username?: string; role?: string; phone?: string },
+  senderName: string = 'Super Admin',
+  message?: string
+) {
+  // 1. Local vibration & audio for instant test feedback
+  triggerDeviceVibration([400, 150, 400, 150, 600, 200, 800]);
+  playEmergencyAlertSound();
+
+  // 2. Broadcast to other open browser windows / tabs
+  if (userAlertChannel) {
+    userAlertChannel.postMessage({
+      type: 'TARGETED_USER_ALERT',
+      targetUserId: targetUser.id,
+      targetUserName: targetUser.name,
+      senderName,
+      message: message || `🚨 High Priority Alert from ${senderName}! Immediate attention required.`,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // 3. Browser notification
+  sendBrowserNotification(`🚨 Alert Sent to ${targetUser.name}`, {
+    body: `Direct vibration and chime alert dispatched to ${targetUser.name} (@${targetUser.username || targetUser.role}).`,
+    tag: `targeted-alert-${targetUser.id}`
+  });
+}
+

@@ -188,7 +188,7 @@ export const DispatchView: React.FC<DispatchViewProps> = ({ pos, currentUser }) 
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-2.5 sm:px-4 py-3 space-y-3 font-sans text-slate-900">
+    <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 space-y-3 font-sans text-slate-900 w-full">
       
       {/* Banner */}
       <div className="bg-gradient-to-r from-[#072417] via-[#0E3A24] to-[#072417] border border-emerald-900/60 text-white p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
