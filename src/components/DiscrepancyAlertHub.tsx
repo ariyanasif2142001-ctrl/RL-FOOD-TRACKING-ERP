@@ -13,15 +13,14 @@ export const DiscrepancyAlertHub: React.FC<DiscrepancyAlertHubProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
-  // 1. Gather Damaged Goods & Excess Receipts (Excluding normal partial pending items)
+  // 1. Gather Stock Mismatch Discrepancies
   const stockMismatches: Array<{
     po: PurchaseOrder;
     item: POItem;
     ordered: number;
     received: number;
     difference: number;
-    type: 'damaged' | 'excess';
-    damagedQty?: number;
+    type: 'shortage' | 'excess';
   }> = [];
 
   // 2. Gather Delivery Returns
@@ -33,31 +32,20 @@ export const DiscrepancyAlertHub: React.FC<DiscrepancyAlertHubProps> = ({
   }> = [];
 
   pos.forEach(po => {
-    // Check items for QC damaged or excess receipts (Normal partial receipts stay pending without warning)
+    // Check items for stock discrepancies
     po.items?.forEach(item => {
       const ord = item.requestedQty || item.orderedQty || 0;
       const recv = item.receivedQty || 0;
-      const dmg = item.damagedQty || 0;
 
-      // Log warning ONLY if items are damaged or excess received
-      if (dmg > 0) {
+      // If warehouse has logged receipts and there's a discrepancy
+      if (recv > 0 && recv !== ord) {
         stockMismatches.push({
           po,
           item,
           ordered: ord,
           received: recv,
-          difference: dmg,
-          type: 'damaged',
-          damagedQty: dmg
-        });
-      } else if (recv > ord && ord > 0) {
-        stockMismatches.push({
-          po,
-          item,
-          ordered: ord,
-          received: recv,
-          difference: recv - ord,
-          type: 'excess'
+          difference: Math.abs(ord - recv),
+          type: recv < ord ? 'shortage' : 'excess'
         });
       }
     });
@@ -107,7 +95,7 @@ export const DiscrepancyAlertHub: React.FC<DiscrepancyAlertHubProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-rose-800/80 dark:text-rose-300 font-medium">
-              Real-time alerts for customer delivery returns & QC damaged goods (Partial receipts remain pending)
+              Real-time alerts for stock mismatches (Ordered vs Received) & customer delivery returns
             </p>
           </div>
         </div>
@@ -124,18 +112,18 @@ export const DiscrepancyAlertHub: React.FC<DiscrepancyAlertHubProps> = ({
       {/* Expanded Content */}
       {isExpanded && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-          {/* 1. QC Damaged & Inventory Exceptions Column */}
+          {/* 1. Stock Mismatch Column */}
           <div className="bg-white/80 dark:bg-slate-900/80 rounded-2xl p-3 border border-rose-200/60 dark:border-rose-900/60 space-y-2">
             <div className="flex items-center justify-between pb-1.5 border-b border-rose-100 dark:border-rose-900/40 text-xs font-bold text-rose-900 dark:text-rose-200">
               <span className="flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                QC Damaged & Exceptions ({stockMismatches.length})
+                Stock Mismatch Warnings ({stockMismatches.length})
               </span>
-              <span className="text-[10px] text-slate-400">Damaged / Excess</span>
+              <span className="text-[10px] text-slate-400">Ordered ≠ Received</span>
             </div>
 
             {stockMismatches.length === 0 ? (
-              <p className="text-[11px] text-slate-400 py-2 text-center">No QC damaged or excess inventory issues found.</p>
+              <p className="text-[11px] text-slate-400 py-2 text-center">No inventory quantity mismatches found.</p>
             ) : (
               <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
                 {stockMismatches.map(({ po, item, ordered, received, difference, type }, idx) => (
@@ -155,11 +143,11 @@ export const DiscrepancyAlertHub: React.FC<DiscrepancyAlertHubProps> = ({
 
                     <div className="text-right shrink-0">
                       <span className={`px-2 py-0.5 rounded-md font-black text-[10px] border ${
-                        type === 'damaged' 
+                        type === 'shortage' 
                           ? 'bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-900 dark:text-rose-100' 
                           : 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900 dark:text-amber-100'
                       }`}>
-                        {type === 'damaged' ? `Damaged -${difference}` : `Excess +${difference}`} {item.unit}
+                        {type === 'shortage' ? `Shortage -${difference}` : `Excess +${difference}`} {item.unit}
                       </span>
                       <p className="text-[9px] text-slate-400 mt-0.5 font-semibold">
                         Ord: {ordered} | Recv: {received}
