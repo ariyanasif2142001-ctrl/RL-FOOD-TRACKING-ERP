@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, PurchaseOrder, AuditLog, POItem, MasterStatus, ItemPurchaseStatus, getNormalizedItemStatus, ReceiveBatchLog } from './types';
+import { User, UserRole, PurchaseOrder, AuditLog, POItem, MasterStatus, ItemPurchaseStatus, getNormalizedItemStatus, ReceiveBatchLog } from './types';
 import { 
   getCurrentUser, saveCurrentUser, 
   getLocalUsers, saveLocalUsers, sanitizeAndMergeAdmins,
@@ -18,6 +18,7 @@ import { Header } from './components/Header';
 import { CompanyLogo } from './components/CompanyLogo';
 import { LoginModal } from './components/LoginModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { notifyItemHold, notifyItemPurchased, notifyWarehouseReceived, notifyPODispatched, notifyActivityLog, processTelegramUpdates, notifyDailySummaryReport, notifyPendingPurchasesReport, notifyHoldItemsReport, notifyDiscrepancyAlert } from './services/telegramService';
 import { reMatchPOsWithMasterSKU } from './services/skuService';
 import { getNotificationPermission, requestNotificationPermission, sendBrowserNotification } from './services/notificationService';
@@ -86,6 +87,13 @@ export default function App() {
   const [isNoticeDismissed, setIsNoticeDismissed] = useState<boolean>(false);
   const [isLoginOpen, setIsLoginOpen] = useState<boolean>(!currentUser);
   const [adminActiveTab, setAdminActiveTab] = useState<'dashboard' | 'import' | 'users' | 'sheets' | 'telegram' | 'tests' | 'docs' | 'logs'>('dashboard');
+  const [activeRoleView, setActiveRoleView] = useState<UserRole>(currentUser?.role || 'purchaser');
+
+  useEffect(() => {
+    if (currentUser) {
+      setActiveRoleView(currentUser.role);
+    }
+  }, [currentUser?.role]);
 
   const [toast, setToast] = useState<{ message: string; success: boolean } | null>(null);
 
@@ -1421,7 +1429,7 @@ export default function App() {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 pb-12 w-full overflow-y-auto min-h-screen">
+      <main className="flex-1 pb-24 md:pb-12 w-full overflow-y-auto min-h-screen">
         {isLoading ? (
           <div className="max-w-md mx-auto my-24 p-8 text-center space-y-4">
             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -1451,7 +1459,7 @@ export default function App() {
             </motion.button>
           </motion.div>
         ) : (
-          <div className="pt-4 px-2 sm:px-6 max-w-7xl mx-auto">
+          <div className="pt-2 sm:pt-4 px-2 sm:px-6 max-w-7xl mx-auto">
             {/* Role Specific Dashboard */}
             <Suspense fallback={
               <div className="flex items-center justify-center py-20">
@@ -1460,13 +1468,13 @@ export default function App() {
             }>
               <AnimatePresence mode="wait">
                 <motion.div
-                  key={currentUser.role}
+                  key={activeRoleView || currentUser.role}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {(currentUser.role === 'admin' || currentUser.role === 'super_admin') && (
+                  {(activeRoleView === 'admin' || currentUser.role === 'admin' || currentUser.role === 'super_admin') && activeRoleView === 'admin' && (
                     <AdminDashboard
                       pos={pos}
                       users={users}
@@ -1486,7 +1494,7 @@ export default function App() {
                     />
                   )}
 
-                  {currentUser.role === 'purchaser' && (
+                  {activeRoleView === 'purchaser' && (
                     <PurchaserView
                       pos={pos}
                       currentUser={currentUser}
@@ -1497,7 +1505,7 @@ export default function App() {
                     />
                   )}
 
-                  {currentUser.role === 'warehouse' && (
+                  {activeRoleView === 'warehouse' && (
                     <WarehouseView
                       pos={warehousePos}
                       currentUser={currentUser}
@@ -1505,7 +1513,7 @@ export default function App() {
                     />
                   )}
 
-                  {currentUser.role === 'dispatch' && (
+                  {activeRoleView === 'dispatch' && (
                     <DispatchView
                       pos={pos}
                       currentUser={currentUser}
@@ -1518,6 +1526,19 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Mobile Bottom Dock Navigation Bar */}
+      {currentUser && (
+        <MobileBottomNav
+          currentUser={currentUser}
+          isSyncing={isSyncing}
+          onSync={() => loadMasterData(true)}
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          onOpenLogin={() => setIsLoginOpen(true)}
+          onSelectRole={(r) => setActiveRoleView(r)}
+          activeRole={activeRoleView}
+        />
+      )}
 
       {/* Login Authentication Modal */}
       <LoginModal
