@@ -19,9 +19,8 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
   sendingPoNumber,
   handlePrintPoReport,
   handleExportSinglePoExcel,
-  setPdfModalPo
 }) => {
-  const [activeFilter, setActiveFilter] = React.useState<'all' | 'complete' | 'partial' | 'hold' | 'received' | 'pending'>('all');
+  const [activeFilter, setActiveFilter] = React.useState<'all' | 'complete' | 'partial' | 'balance' | 'hold'>('all');
 
   React.useEffect(() => {
     setActiveFilter('all');
@@ -48,22 +47,18 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
     i.purchaseStatus === 'Held' || i.purchaseStatus === 'Hold' || (i as any).isHeld
   ).length;
 
-  const receivedCount = items.filter(i => (i.warehouseQty || 0) > 0).length;
-
-  const pendingReceiveCount = items.filter(i => {
-    const req = i.requestedQty || i.orderedQty || 0;
+  const balanceCount = items.filter(i => {
     const pur = i.purchasedQty || 0;
-    const target = pur > 0 ? pur : req;
-    return (i.warehouseQty || 0) < target;
+    const isHold = i.purchaseStatus === 'Held' || i.purchaseStatus === 'Hold' || (i as any).isHeld;
+    return pur === 0 && !isHold;
   }).length;
 
-  const progressPct = totalItems > 0 ? Math.round((receivedCount / totalItems) * 100) : 0;
+  const progressPct = totalItems > 0 ? Math.round((completeCount / totalItems) * 100) : 0;
 
   const filteredItems = items.filter(item => {
     if (activeFilter === 'all') return true;
     const req = item.requestedQty || item.orderedQty || 0;
     const pur = item.purchasedQty || 0;
-    const rec = item.warehouseQty || 0;
     const isHold = item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' || (item as any).isHeld;
 
     if (activeFilter === 'complete') {
@@ -72,15 +67,11 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
     if (activeFilter === 'partial') {
       return pur > 0 && pur < req;
     }
+    if (activeFilter === 'balance') {
+      return pur === 0 && !isHold;
+    }
     if (activeFilter === 'hold') {
       return isHold;
-    }
-    if (activeFilter === 'received') {
-      return rec > 0;
-    }
-    if (activeFilter === 'pending') {
-      const target = pur > 0 ? pur : req;
-      return rec < target;
     }
     return true;
   });
@@ -93,9 +84,8 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
     const filterLabelMap: Record<string, string> = {
       complete: 'Complete Purchase',
       partial: 'Partial Items',
-      hold: 'Hold Items',
-      received: 'Warehouse Received',
-      pending: 'Pending Receive'
+      balance: 'Balance / Pending Items',
+      hold: 'Hold Items'
     };
 
     const filterLabel = filterLabelMap[activeFilter] || 'Filtered Items';
@@ -204,7 +194,7 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
           {/* Progress Summary Cards */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-              <span>Overall Order Completion Progress</span>
+              <span>Overall Purchase Completion Progress</span>
               <span className="text-blue-700">{progressPct}% Complete</span>
             </div>
             <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
@@ -216,7 +206,7 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1 text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-1 text-center">
               {/* Total Items */}
               <button
                 type="button"
@@ -268,6 +258,23 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
                 </span>
               </button>
 
+              {/* Balance Items */}
+              <button
+                type="button"
+                onClick={() => setActiveFilter(prev => prev === 'balance' ? 'all' : 'balance')}
+                className={`p-2.5 rounded-xl transition-all cursor-pointer shadow-xs text-center flex flex-col justify-between select-none ${
+                  activeFilter === 'balance'
+                    ? 'bg-sky-600 text-white ring-4 ring-sky-300 ring-offset-2 scale-[1.02] shadow-md font-bold'
+                    : 'bg-sky-600 text-white hover:bg-sky-700 opacity-90 hover:opacity-100 font-medium'
+                }`}
+              >
+                <span className="text-[9px] font-extrabold uppercase tracking-wider text-sky-100">Balance Items</span>
+                <p className="text-xl font-black text-white mt-1">{balanceCount}</p>
+                <span className="text-[9px] font-semibold text-sky-200 mt-0.5">
+                  {activeFilter === 'balance' ? '● Filtered' : 'Filter Items'}
+                </span>
+              </button>
+
               {/* Hold Items */}
               <button
                 type="button"
@@ -282,40 +289,6 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
                 <p className="text-xl font-black text-white mt-1">{holdCount}</p>
                 <span className="text-[9px] font-semibold text-purple-200 mt-0.5">
                   {activeFilter === 'hold' ? '● Filtered' : 'Filter Items'}
-                </span>
-              </button>
-
-              {/* Warehouse Received */}
-              <button
-                type="button"
-                onClick={() => setActiveFilter(prev => prev === 'received' ? 'all' : 'received')}
-                className={`p-2.5 rounded-xl transition-all cursor-pointer shadow-xs text-center flex flex-col justify-between select-none ${
-                  activeFilter === 'received'
-                    ? 'bg-teal-600 text-white ring-4 ring-teal-300 ring-offset-2 scale-[1.02] shadow-md font-bold'
-                    : 'bg-teal-600 text-white hover:bg-teal-700 opacity-90 hover:opacity-100 font-medium'
-                }`}
-              >
-                <span className="text-[9px] font-extrabold uppercase tracking-wider text-teal-100">Warehouse Received</span>
-                <p className="text-xl font-black text-white mt-1">{receivedCount}</p>
-                <span className="text-[9px] font-semibold text-teal-200 mt-0.5">
-                  {activeFilter === 'received' ? '● Filtered' : 'Filter Items'}
-                </span>
-              </button>
-
-              {/* Pending Receive */}
-              <button
-                type="button"
-                onClick={() => setActiveFilter(prev => prev === 'pending' ? 'all' : 'pending')}
-                className={`p-2.5 rounded-xl transition-all cursor-pointer shadow-xs text-center flex flex-col justify-between select-none ${
-                  activeFilter === 'pending'
-                    ? 'bg-amber-600 text-white ring-4 ring-amber-300 ring-offset-2 scale-[1.02] shadow-md font-bold'
-                    : 'bg-amber-600 text-white hover:bg-amber-700 opacity-90 hover:opacity-100 font-medium'
-                }`}
-              >
-                <span className="text-[9px] font-extrabold uppercase tracking-wider text-amber-100">Pending Receive</span>
-                <p className="text-xl font-black text-white mt-1">{pendingReceiveCount}</p>
-                <span className="text-[9px] font-semibold text-amber-200 mt-0.5">
-                  {activeFilter === 'pending' ? '● Filtered' : 'Filter Items'}
                 </span>
               </button>
             </div>
@@ -336,7 +309,7 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
                   </button>
                 )}
               </div>
-              <span className="text-[10px] text-slate-400 font-normal">Dispatch & Receive Status</span>
+              <span className="text-[10px] text-slate-400 font-normal">Purchase Status</span>
             </h4>
 
             <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -348,10 +321,8 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
                     <th className="p-2.5">Brand</th>
                     <th className="p-2.5 text-center">Requested</th>
                     <th className="p-2.5 text-center">Purchased</th>
-                    <th className="p-2.5 text-center">Received</th>
-                    <th className="p-2.5 text-center">Remaining</th>
+                    <th className="p-2.5 text-center">Balance</th>
                     <th className="p-2.5 text-center">Purchase Status</th>
-                    <th className="p-2.5 text-center">Receive Status</th>
                     <th className="p-2.5">Notes / Hold</th>
                   </tr>
                 </thead>
@@ -359,8 +330,7 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
                   {filteredItems.map((item, idx) => {
                     const req = item.requestedQty || item.orderedQty || 0;
                     const pur = item.purchasedQty || 0;
-                    const rec = item.warehouseQty || 0;
-                    const rem = Math.max(0, req - rec);
+                    const rem = Math.max(0, req - pur);
 
                     return (
                       <tr key={item.id ? `${item.id}-${idx}` : `poitem-${idx}`} className="hover:bg-slate-50 transition">
@@ -369,24 +339,15 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
                         <td className="p-2.5 text-slate-600">{item.brand || 'N/A'}</td>
                         <td className="p-2.5 text-center font-bold text-slate-800">{req} {item.unit || 'pcs'}</td>
                         <td className="p-2.5 text-center font-bold text-blue-700">{pur} {item.unit || 'pcs'}</td>
-                        <td className="p-2.5 text-center font-bold text-emerald-700">{rec} {item.unit || 'pcs'}</td>
                         <td className="p-2.5 text-center font-bold text-amber-700">{rem} {item.unit || 'pcs'}</td>
                         <td className="p-2.5 text-center">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             item.purchaseStatus === 'Purchased' ? 'bg-emerald-100 text-emerald-800' :
                             item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' ? 'bg-purple-100 text-purple-800' :
+                            item.purchaseStatus === 'Partial Purchased' ? 'bg-orange-100 text-orange-800' :
                             'bg-amber-100 text-amber-800'
                           }`}>
                             {item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' ? 'Hold' : (item.purchaseStatus || 'Pending')}
-                          </span>
-                        </td>
-                        <td className="p-2.5 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            rec >= req && req > 0 ? 'bg-purple-100 text-purple-800' :
-                            rec > 0 ? 'bg-blue-100 text-blue-800' :
-                            'bg-slate-100 text-slate-600'
-                          }`}>
-                            {rec >= req && req > 0 ? 'Ready/Received' : rec > 0 ? 'Partial Rec' : 'Pending Rec'}
                           </span>
                         </td>
                         <td className="p-2.5 text-slate-500 text-[11px]">
@@ -401,7 +362,7 @@ export const AdminPoDetailModal: React.FC<AdminPoDetailModalProps> = ({
                   })}
                   {filteredItems.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="p-6 text-center text-slate-400 text-xs italic bg-slate-50/50">
+                      <td colSpan={8} className="p-6 text-center text-slate-400 text-xs italic bg-slate-50/50">
                         No line items match the selected filter ({activeFilter}).
                       </td>
                     </tr>

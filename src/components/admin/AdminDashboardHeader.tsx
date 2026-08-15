@@ -1,15 +1,16 @@
 import React from 'react';
-import { LayoutDashboard, FileSpreadsheet, Crown, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Crown, RefreshCw, Search } from 'lucide-react';
 
 interface AdminDashboardHeaderProps {
   activeTab: 'dashboard' | 'import' | 'users' | 'telegram' | 'tests' | 'docs' | 'logs';
   setActiveTab: (tab: 'dashboard' | 'import' | 'users' | 'telegram' | 'tests' | 'docs' | 'logs') => void;
   setIsCustomAlertModalOpen: (open: boolean) => void;
+  onOpenGlobalSearch: () => void;
   isSendingTelegramSummary: boolean;
   isSendingCustomAlert: boolean;
   onSync: () => void;
   isSyncing: boolean;
-  handleSendTelegramReport: (type: 'master' | 'pending' | 'hold' | 'transit' | 'warehouse') => void;
+  handleSendTelegramReport: (type: 'master' | 'pending' | 'hold') => void;
   usersCount: number;
 }
 
@@ -17,6 +18,7 @@ export const AdminDashboardHeader: React.FC<AdminDashboardHeaderProps> = ({
   activeTab,
   setActiveTab,
   setIsCustomAlertModalOpen,
+  onOpenGlobalSearch,
   isSendingTelegramSummary,
   isSendingCustomAlert,
   onSync,
@@ -26,7 +28,7 @@ export const AdminDashboardHeader: React.FC<AdminDashboardHeaderProps> = ({
 }) => {
   return (
     <div className="bg-gradient-to-r from-[#072417] via-[#0E3A24] to-[#072417] border border-emerald-900/60 text-white p-3.5 sm:p-4 rounded-xl space-y-3 shadow-md">
-      {/* Line 1: Header Title & Main Tab Navigation */}
+      {/* Line 1: Header Title & Main Tab Navigation + Global Search */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-emerald-800/60 pb-2.5">
         <div className="flex flex-wrap items-center gap-3">
           <div>
@@ -35,8 +37,23 @@ export const AdminDashboardHeader: React.FC<AdminDashboardHeaderProps> = ({
           </div>
         </div>
 
-        {/* Navigation Tab Buttons */}
+        {/* Search Bar & Tab Navigation */}
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          {/* Prominent Global Search Trigger */}
+          <button
+            type="button"
+            onClick={onOpenGlobalSearch}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-700/80 hover:border-emerald-500 text-slate-200 hover:text-white text-xs font-semibold shadow-inner transition cursor-pointer group active:scale-95"
+            title="Universal Search across all POs, items, brands, departments & purchasers (Ctrl+K)"
+          >
+            <Search className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+            <span className="hidden md:inline">Global Search...</span>
+            <span className="inline md:hidden">Search</span>
+            <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[9.5px] font-mono text-emerald-300 bg-emerald-900/90 border border-emerald-700 rounded">
+              Ctrl+K
+            </kbd>
+          </button>
+
           <button
             type="button"
             onClick={() => setActiveTab('dashboard')}
@@ -144,29 +161,6 @@ export const AdminDashboardHeader: React.FC<AdminDashboardHeaderProps> = ({
         >
           <span className="text-sm leading-none">⏸️</span>
           <span>On-Hold Digest</span>
-        </button>
-
-        {/* Operational / Neutral Group */}
-        <button
-          type="button"
-          onClick={() => handleSendTelegramReport('transit')}
-          disabled={isSendingTelegramSummary}
-          className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700/90 text-slate-200 border border-slate-700/60 hover:border-slate-600 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all duration-150 ease-in-out hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
-          title="Send In-Transit Goods Report to Telegram"
-        >
-          <span className="text-sm leading-none">🚚</span>
-          <span>In-Transit Goods</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleSendTelegramReport('warehouse')}
-          disabled={isSendingTelegramSummary}
-          className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700/90 text-slate-200 border border-slate-700/60 hover:border-slate-600 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all duration-150 ease-in-out hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
-          title="Send Warehouse Staging Stock to Telegram"
-        >
-          <span className="text-sm leading-none">🏬</span>
-          <span>Warehouse Staging</span>
         </button>
       </div>
     </div>

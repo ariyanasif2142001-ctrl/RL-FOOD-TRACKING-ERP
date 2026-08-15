@@ -7,13 +7,10 @@ import {
   notifyDailySummaryReport, 
   notifyPendingPurchasesReport, 
   notifyHoldItemsReport, 
-  notifyPurchasedInTransitReport, 
-  notifyWarehouseInventoryReport,
   notifySinglePOReport,
   sendCustomTelegramAlert
 } from '../../services/telegramService';
 import { RunningPoList } from '../RunningPoList';
-import { OfficialPdfInvoiceModal } from '../OfficialPdfInvoiceModal';
 import { DiscrepancyAlertHub } from '../DiscrepancyAlertHub';
 import { AdminPoSlider } from './AdminPoSlider';
 import { FruitOrbitStats } from './FruitOrbitStats';
@@ -25,6 +22,7 @@ import { AdminAuditLogsSection } from './AdminAuditLogsSection';
 import { AdminReportModal } from './AdminReportModal';
 import { AdminPoDetailModal } from './AdminPoDetailModal';
 import { AdminCustomAlertModal } from './AdminCustomAlertModal';
+import { AdminGlobalSearchModal } from './AdminGlobalSearchModal';
 import { 
   Trash2, X, AlertCircle, Zap, Eye, Printer, ChevronDown, ChevronUp, Download, Layers
 } from 'lucide-react';
@@ -32,11 +30,9 @@ import {
 interface AdminDashboardProps {
   pos: PurchaseOrder[];
   users: User[];
-  sheetsConfig?: any;
   auditLogs: AuditLog[];
   onImportPOs: (newPOs: PurchaseOrder[]) => void;
   onUpdateUsers: (users: User[]) => void;
-  onSaveSheetsConfig?: (config: any) => void;
   onSync: () => void;
   onDeletePO?: (poNumber: string) => void;
   onClearAllPOs?: () => void;
@@ -52,11 +48,9 @@ interface AdminDashboardProps {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   pos,
   users,
-  sheetsConfig,
   auditLogs,
   onImportPOs,
   onUpdateUsers,
-  onSaveSheetsConfig,
   onSync,
   onDeletePO,
   onClearAllPOs,
@@ -80,6 +74,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Instant Search & Status Filter state
   const [healthMsg, setHealthMsg] = useState<string | null>(null);
   const [isSendingTelegramSummary, setIsSendingTelegramSummary] = useState<boolean>(false);
+  const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState<boolean>(false);
+
+  // Keyboard shortcut Ctrl+K / Cmd+K to open Global Search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setIsGlobalSearchOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Custom Telegram Broadcast Alert State
   const [isCustomAlertModalOpen, setIsCustomAlertModalOpen] = useState<boolean>(false);
@@ -110,7 +117,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  const handleSendTelegramReport = async (type: 'master' | 'pending' | 'hold' | 'transit' | 'warehouse') => {
+  const handleSendTelegramReport = async (type: 'master' | 'pending' | 'hold') => {
     setIsSendingTelegramSummary(true);
 
     let res: { success: boolean; error?: string } | null = null;
@@ -125,12 +132,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     } else if (type === 'hold') {
       title = '⏸️ On-Hold Items Report';
       res = await notifyHoldItemsReport(pos, currentUser.name);
-    } else if (type === 'transit') {
-      title = '🚚 Purchased & In-Transit Goods Report';
-      res = await notifyPurchasedInTransitReport(pos, currentUser.name);
-    } else if (type === 'warehouse') {
-      title = '🏬 Warehouse Staging & Stock Report';
-      res = await notifyWarehouseInventoryReport(pos, currentUser.name);
     }
 
     setIsSendingTelegramSummary(false);
@@ -199,7 +200,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [poToDelete, setPoToDelete] = useState<string | null>(null);
   const [isClearAllOpen, setIsClearAllOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
-  const [pdfModalPo, setPdfModalPo] = useState<PurchaseOrder | null>(null);
 
   // METRICS CALCULATIONS
   const allItems = pos.flatMap(p => {
@@ -292,8 +292,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const r = roleStr.toLowerCase().trim();
     if (r === 'super_admin' || r === 'superadmin') return 'Super Admin';
     if (r === 'purchaser') return 'Purchaser';
-    if (r === 'warehouse') return 'Warehouse';
-    if (r === 'dispatch') return 'Dispatch';
     if (r === 'admin') return 'Admin';
     return r.charAt(0).toUpperCase() + r.slice(1);
   };
@@ -721,6 +719,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         setIsCustomAlertModalOpen={setIsCustomAlertModalOpen}
+        onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
         isSendingTelegramSummary={isSendingTelegramSummary}
         isSendingCustomAlert={isSendingCustomAlert}
         onSync={onSync}
@@ -1139,16 +1138,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         sendingPoNumber={sendingPoNumber}
         handlePrintPoReport={handlePrintPoReport}
         handleExportSinglePoExcel={handleExportSinglePoExcel}
-        setPdfModalPo={setPdfModalPo}
       />
-
-      {/* Official RADIANT LIGHTNING Delivery Note & Digital Signature Modal */}
-      {pdfModalPo && (
-        <OfficialPdfInvoiceModal
-          po={pdfModalPo}
-          onClose={() => setPdfModalPo(null)}
-        />
-      )}
 
       {/* Custom Telegram Broadcast Alert Modal */}
       <AdminCustomAlertModal
@@ -1160,6 +1150,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setCustomAlertPriority={setCustomAlertPriority}
         isSendingCustomAlert={isSendingCustomAlert}
         handleSendCustomAlert={handleSendCustomAlert}
+      />
+
+      {/* Global Universal Search Across All POs & Items Modal */}
+      <AdminGlobalSearchModal
+        isOpen={isGlobalSearchOpen}
+        onClose={() => setIsGlobalSearchOpen(false)}
+        pos={pos}
+        onSelectPO={(po) => setSelectedPoForDetail(po)}
       />
 
     </div>

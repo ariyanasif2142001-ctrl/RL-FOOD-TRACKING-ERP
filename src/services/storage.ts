@@ -157,106 +157,6 @@ export const INITIAL_USERS: User[] = [
     active: true,
     status: 'Active',
     createdDate: '2026-01-01'
-  },
-  {
-    id: 'u-alamin',
-    name: 'RL AL AMIN',
-    email: 'alamin@rlfood.com',
-    username: 'RL AL AMIN',
-    role: 'warehouse',
-    active: true,
-    status: 'Active',
-    createdDate: '2026-01-01'
-  },
-  {
-    id: 'u-asiq',
-    name: 'RL ASIQ',
-    email: 'asiq@rlfood.com',
-    username: 'RL ASIQ',
-    role: 'warehouse',
-    active: true,
-    status: 'Active',
-    createdDate: '2026-01-01'
-  },
-  {
-    id: 'u-emdadul',
-    name: 'RL EMDADUL',
-    email: 'emdadul@rlfood.com',
-    username: 'RL EMDADUL',
-    role: 'warehouse',
-    active: true,
-    status: 'Active',
-    createdDate: '2026-01-01'
-  },
-  {
-    id: 'u-opu',
-    name: 'RL OPU',
-    email: 'opu@rlfood.com',
-    username: 'RL OPU',
-    role: 'warehouse',
-    active: true,
-    status: 'Active',
-    createdDate: '2026-01-01'
-  },
-  {
-    id: 'u-nahid',
-    name: 'RL NAHID',
-    email: 'nahid@rlfood.com',
-    username: 'RL NAHID',
-    role: 'dispatch',
-    active: true,
-    status: 'Active',
-    createdDate: '2026-01-01'
-  },
-  {
-    id: 'u-ismail',
-    name: 'RL ISMAIL',
-    email: 'ismail@rlfood.com',
-    username: 'RL ISMAIL',
-    role: 'dispatch',
-    active: true,
-    status: 'Active',
-    createdDate: '2026-01-01'
-  },
-  {
-    id: 'u-atiq',
-    name: 'RL ATIQ',
-    email: 'atiq@rlfood.com',
-    username: 'RL ATIQ',
-    role: 'dispatch',
-    active: true,
-    status: 'Active',
-    createdDate: '2026-01-01'
-  },
-  {
-    id: 'u-obaidul',
-    name: 'RL OBAIDUL',
-    email: 'obaidul@rlfood.com',
-    username: 'RL OBAIDUL',
-    role: 'dispatch',
-    active: true,
-    status: 'Active',
-    createdDate: '2026-01-01'
-  },
-  {
-    id: 'u-tamim',
-    name: 'RL TAMIM',
-    email: 'tamim@rlfood.com',
-    username: 'RL TAMIM',
-    role: 'dispatch',
-    active: true,
-    status: 'Active',
-    createdDate: '2026-01-01'
-  },
-  {
-    id: 'u-rakib',
-    name: 'RL RAKIB',
-    email: 'rakib@rlfood.com',
-    username: 'RL RAKIB',
-    role: 'dispatch',
-    active: true,
-    status: 'Active',
-    createdDate: '2026-01-01'
   }
 ];
 
@@ -390,16 +290,12 @@ export function sanitizeAndMergeAdmins(rawUsers: User[]): User[] {
     'RL IQBAL', 'RL MINHAZ', 'RL ASRAF', 'RL ASIF',
     'RL SADAKA', 'RL SAHER', 'RL NIYAS', 'RL NADIR', 'RL MANOJ'
   ];
-  const allowedReceivers = ['RL AL AMIN', 'RL ASIQ', 'RL EMDADUL', 'RL OPU'];
-  const allowedDispatchers = ['RL NAHID', 'RL ISMAIL', 'RL ATIQ', 'RL OBAIDUL', 'RL TAMIM', 'RL RAKIB'];
 
   const adminDefaults = INITIAL_USERS.filter(u => u.role === 'admin');
   const purchaserDefaults = INITIAL_USERS.filter(u => u.role === 'purchaser');
-  const receiverDefaults = INITIAL_USERS.filter(u => u.role === 'warehouse');
-  const dispatchDefaults = INITIAL_USERS.filter(u => u.role === 'dispatch');
 
-  // Filter out any admin, purchaser, receiver, or dispatcher that is NOT in official list
-  const otherUsers = rawUsers.filter(u => u.role !== 'admin' && u.role !== 'purchaser' && u.role !== 'warehouse' && u.role !== 'dispatch');
+  // Filter out any user with deprecated roles or non-allowed roles
+  const otherUsers = rawUsers.filter(u => u.role === 'admin' || u.role === 'purchaser' || u.role === 'super_admin');
 
   const officialAdmins = adminDefaults.map(defaultAdmin => {
     const existing = rawUsers.find(u => u.name === defaultAdmin.name);
@@ -430,35 +326,7 @@ export function sanitizeAndMergeAdmins(rawUsers: User[]): User[] {
     return defaultPurchaser;
   });
 
-  const officialReceivers = receiverDefaults.map(defaultReceiver => {
-    const existing = rawUsers.find(u => u.name === defaultReceiver.name);
-    if (existing) {
-      return {
-        ...existing,
-        username: defaultReceiver.username,
-        role: 'warehouse' as const,
-        active: true,
-        status: 'Active' as const
-      };
-    }
-    return defaultReceiver;
-  });
-
-  const officialDispatchers = dispatchDefaults.map(defaultDispatch => {
-    const existing = rawUsers.find(u => u.name === defaultDispatch.name);
-    if (existing) {
-      return {
-        ...existing,
-        username: defaultDispatch.username,
-        role: 'dispatch' as const,
-        active: true,
-        status: 'Active' as const
-      };
-    }
-    return defaultDispatch;
-  });
-
-  return [...officialAdmins, ...officialPurchasers, ...officialReceivers, ...officialDispatchers, ...otherUsers];
+  return [...officialAdmins, ...officialPurchasers, ...otherUsers];
 }
 
 export function getCurrentUser(): User | null {

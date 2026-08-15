@@ -7,7 +7,9 @@ import {
   PurchaseOrder,
   POItem,
   MasterStatus,
-  ItemPurchaseStatus
+  ItemPurchaseStatus,
+  User,
+  MasterSKUEntry
 } from '../types';
 import { getCurrentUser } from './storage';
 import { notifyNewPOImported, notifyBulkPOImported } from './telegramService';
@@ -557,41 +559,23 @@ export function validateAndAnalyzePOImport(rows: RawPOImportRow[], existingPOs: 
 }
 
 /**
- * Executes the PO Import with transaction & duplicate merging rules
+ * Pure function: Executes PO item merging, quantity updates, and bundle generation
+ * against a given base array of POs without side-effecting remote database queries.
  */
-export async function executePOImport(
+export function processPOMergeAndImport(
   rawRows: RawPOImportRow[],
-  existingPOs: PurchaseOrder[]
-): Promise<ImportExecutionResult> {
+  basePOs: PurchaseOrder[],
+  options?: {
+    currentUser?: User;
+    masterSKUMappings?: MasterSKUEntry[];
+    notify?: boolean;
+  }
+): ImportExecutionResult {
   const startTime = performance.now();
   const warnings: string[] = [];
-  const currentUser = getCurrentUser() || { id: 'u1', name: 'Admin', role: 'admin' as const };
-  const masterSKUMappings = getMasterSKUMappings();
-
-  // Always fetch current/fresh PO data from Supabase if available
-  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
-  const isSupabaseConfigured = Boolean(supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co');
-
-  let basePOs: PurchaseOrder[] = [];
-  if (isSupabaseConfigured) {
-    const freshPOsFromDb = await fetchPOsFromSupabase();
-    if (freshPOsFromDb === null) {
-      return {
-        success: false,
-        totalPOsImported: 0,
-        totalPOsUpdated: 0,
-        totalItemsImported: 0,
-        totalItemsUpdated: 0,
-        timeTakenMs: 0,
-        warnings: ['Database connection error. Failed to load fresh records from Supabase for import.'],
-        timestamp: new Date().toISOString(),
-        updatedPOs: []
-      };
-    }
-    basePOs = freshPOsFromDb;
-  } else {
-    basePOs = existingPOs || [];
-  }
+  const currentUser: User = options?.currentUser || getCurrentUser() || { id: 'u1', name: 'Admin', email: 'admin@system.local', role: 'admin', active: true };
+  const masterSKUMappings = options?.masterSKUMappings || getMasterSKUMappings();
+  const shouldNotify = options?.notify ?? true;
 
   // Map of existing POs by PO Number (case insensitive)
   const poMap = new Map<string, PurchaseOrder>();
@@ -812,7 +796,7 @@ export async function executePOImport(
       updatedPOsList.push(newPO);
 
       // Trigger individual Telegram notification only if single or small import (<3 POs)
-      if (rowsByPO.size <= 2) {
+      if (shouldNotify && rowsByPO.size <= 2) {
         notifyNewPOImported(
           newPO.poNumber,
           newPO.department || 'General',
@@ -826,7 +810,7 @@ export async function executePOImport(
   });
 
   // If bulk import (>2 POs or bulk mode), send 1 aggregated bulk notification
-  if (rowsByPO.size > 2 && totalPOsImported > 0) {
+  if (shouldNotify && rowsByPO.size > 2 && totalPOsImported > 0) {
     notifyBulkPOImported(
       totalPOsImported,
       totalItemsImported + totalItemsUpdated,
@@ -849,4 +833,48 @@ export async function executePOImport(
     timestamp: new Date().toISOString(),
     updatedPOs: updatedPOsList
   };
+}
+
+/**
+ * Executes the PO Import with transaction & duplicate merging rules.
+ * In production when Supabase is configured, it ALWAYS fetches fresh records
+ * from Supabase to prevent stale state overwrites.
+ */
+export async function executePOImport(
+  rawRows: RawPOImportRow[],
+  existingPOs?: PurchaseOrder[]
+): Promise<ImportExecutionResult> {
+  const currentUser: User = getCurrentUser() || { id: 'u1', name: 'Admin', email: 'admin@system.local', role: 'admin', active: true };
+  const masterSKUMappings = getMasterSKUMappings();
+
+  // Always fetch current/fresh PO data from Supabase if available
+  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+  const isSupabaseConfigured = Boolean(supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co');
+
+  let basePOs: PurchaseOrder[] = [];
+  if (isSupabaseConfigured) {
+    const freshPOsFromDb = await fetchPOsFromSupabase();
+    if (freshPOsFromDb === null) {
+      return {
+        success: false,
+        totalPOsImported: 0,
+        totalPOsUpdated: 0,
+        totalItemsImported: 0,
+        totalItemsUpdated: 0,
+        timeTakenMs: 0,
+        warnings: ['Database connection error. Failed to load fresh records from Supabase for import.'],
+        timestamp: new Date().toISOString(),
+        updatedPOs: []
+      };
+    }
+    basePOs = freshPOsFromDb || [];
+  } else {
+    basePOs = existingPOs || [];
+  }
+
+  return processPOMergeAndImport(rawRows, basePOs, {
+    currentUser,
+    masterSKUMappings,
+    notify: true
+  });
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PurchaseOrder, User, POItem, AuditLog } from '../../types';
-import { validateAndAnalyzePOImport, parsePOText, executePOImport } from '../../services/poImportService';
+import { validateAndAnalyzePOImport, parsePOText, processPOMergeAndImport } from '../../services/poImportService';
 import { CheckCircle2, XCircle, Play, ShieldCheck, RefreshCw, Sparkles, Check, AlertTriangle } from 'lucide-react';
 
 interface TestResult {
@@ -89,13 +89,20 @@ export const SystemTestsRunner: React.FC<SystemTestsRunnerProps> = ({
       't2',
       'Role Permissions & Access Control',
       'Security & Auth',
-      'Verifies role separation (Admin, Purchaser, Warehouse, Dispatch)',
+      'Verifies role separation (Admin, Super Admin, Purchaser)',
       async () => {
-        const roles = ['admin', 'purchaser', 'warehouse', 'dispatch'];
-        const currentRoleValid = roles.includes(currentUser.role);
+        const validRoles = ['admin', 'super_admin', 'purchaser'];
+        const currentRoleValid = validRoles.includes(currentUser.role);
+        const hasAdminAccess = currentUser.role === 'admin' || currentUser.role === 'super_admin';
+        const hasPurchaserAccess = currentUser.role === 'purchaser' || hasAdminAccess;
+
+        if (!currentRoleValid) {
+          return { passed: false, details: `Invalid or deprecated role '${currentUser.role}' detected` };
+        }
+
         return {
-          passed: currentRoleValid,
-          details: `Active role '${currentUser.role}' strictly mapped to portal view`
+          passed: true,
+          details: `Role '${currentUser.role}' verified: Admin Access=${hasAdminAccess ? 'Yes' : 'No'}, Purchaser Access=${hasPurchaserAccess ? 'Yes' : 'No'}`
         };
       }
     );
@@ -173,9 +180,14 @@ export const SystemTestsRunner: React.FC<SystemTestsRunnerProps> = ({
           return { passed: false, details: 'Duplicate PO detection failed' };
         }
 
-        const res = await executePOImport(rows, mockExisting);
+        const res = processPOMergeAndImport(rows, mockExisting, { notify: false });
         if (res.totalPOsUpdated !== 1) {
           return { passed: false, details: 'Failed to update existing PO in merge' };
+        }
+
+        const mergedItem = res.updatedPOs[0]?.items.find(i => i.itemName === 'Organic Carrots');
+        if (!mergedItem || mergedItem.requestedQty !== 150) {
+          return { passed: false, details: `Merged item quantity mismatch: expected 150, got ${mergedItem?.requestedQty}` };
         }
 
         return { passed: true, details: 'Successfully merged duplicate PO and updated quantity to 150' };
@@ -286,12 +298,12 @@ export const SystemTestsRunner: React.FC<SystemTestsRunnerProps> = ({
       }
     );
 
-    // 9. Receive Complete Test
+    // 9. PO Item Full Purchase & Fulfillment Test
     await executeTest(
       't9',
-      'Warehouse Receive Verification & Summary Update',
-      'Warehouse Engine',
-      'Verifies warehouse receive verifies item and updates Receive Status',
+      'PO Fulfillment & Item Completion Status',
+      'Purchaser Engine',
+      'Verifies all items in PO are fully purchased to trigger PO Completion',
       async () => {
         const item: POItem = {
           id: 'i-rec',
@@ -315,13 +327,12 @@ export const SystemTestsRunner: React.FC<SystemTestsRunnerProps> = ({
           updatedDate: '2026-07-22'
         };
 
-        const receivedQty = item.purchasedQty;
-        const isCompleted = receivedQty >= item.requestedQty;
+        const isCompleted = item.purchasedQty >= item.requestedQty && item.purchaseStatus === 'Purchased';
 
-        if (receivedQty !== 50 || !isCompleted) {
-          return { passed: false, details: 'Receive quantity calculation error' };
+        if (!isCompleted) {
+          return { passed: false, details: 'Purchase fulfillment calculation error' };
         }
-        return { passed: true, details: 'Warehouse receive verified 50/50 units completed' };
+        return { passed: true, details: 'Full purchase verified 50/50 units completed' };
       }
     );
 
@@ -439,7 +450,7 @@ export const SystemTestsRunner: React.FC<SystemTestsRunnerProps> = ({
             </div>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight">System Test & Logic Verification Suite</h2>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Automatically verifies all 14 core business logic modules: Authentication, Permissions, PO Import, Duplicate Merging, Purchaser Holds, Auto Hold Release, Purchases, Warehouse Receives, KPI Calculations, and Database API schemas.
+              Automatically verifies all 14 core business logic modules: Authentication, Permissions, PO Import, Duplicate Merging, Purchaser Holds, Auto Hold Release, Purchases, PO Completion, KPI Calculations, and Database API schemas.
             </p>
           </div>
 

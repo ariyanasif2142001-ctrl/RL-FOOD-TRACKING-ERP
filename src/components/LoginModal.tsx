@@ -4,7 +4,7 @@ import { User, UserRole } from '../types';
 import { apiLogin } from '../services/apiClient';
 import { INITIAL_USERS } from '../services/storage';
 import { 
-  Shield, ShoppingBag, Warehouse, Truck, User as UserIcon, AlertCircle, X, 
+  Shield, ShoppingBag, User as UserIcon, AlertCircle, X, 
   Loader2, Eye, EyeOff, Lock, CheckCircle2, Sparkles, Leaf, ArrowRight,
   Utensils, Check, Smartphone, Download, Share, Crown
 } from 'lucide-react';
@@ -148,8 +148,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       case 'super_admin': return <Crown className="w-5 h-5 text-amber-600" />;
       case 'admin': return <Shield className="w-5 h-5 text-purple-600" />;
       case 'purchaser': return <ShoppingBag className="w-5 h-5 text-blue-600" />;
-      case 'warehouse': return <Warehouse className="w-5 h-5 text-amber-600" />;
-      case 'dispatch': return <Truck className="w-5 h-5 text-emerald-600" />;
+      default: return <UserIcon className="w-5 h-5 text-slate-600" />;
     }
   };
 
@@ -501,22 +500,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       }`}
                     >
                       Purchaser
-                    </button>
-                    <button
-                      onClick={() => setRoleFilter('warehouse')}
-                      className={`px-2.5 py-1 rounded-xl transition whitespace-nowrap ${
-                        roleFilter === 'warehouse' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
-                      }`}
-                    >
-                      Receiver
-                    </button>
-                    <button
-                      onClick={() => setRoleFilter('dispatch')}
-                      className={`px-2.5 py-1 rounded-xl transition whitespace-nowrap ${
-                        roleFilter === 'dispatch' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                      }`}
-                    >
-                      Dispatch
                     </button>
                   </div>
 

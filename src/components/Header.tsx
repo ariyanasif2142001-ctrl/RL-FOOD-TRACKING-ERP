@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User } from '../types';
-import { RefreshCw, UserCheck, Shield, ShoppingBag, Warehouse, Truck, LogOut, Crown, Camera, Upload, X, Check, Smartphone, Download, Share, PlusSquare, ExternalLink, Search, Command, ChevronDown, User as UserIcon, Mail, Sparkles, Key, Users, Database, Send, CheckCircle2, BookOpen, FileSpreadsheet, Settings, Bell } from 'lucide-react';
+import { RefreshCw, UserCheck, Shield, ShoppingBag, LogOut, Crown, Camera, Upload, X, Check, Smartphone, Download, Share, PlusSquare, ExternalLink, Search, Command, ChevronDown, User as UserIcon, Mail, Sparkles, Key, Users, Database, Send, CheckCircle2, BookOpen, FileSpreadsheet, Settings, Bell } from 'lucide-react';
 import { CompanyLogo } from './CompanyLogo';
 import { getNotificationPermission, requestNotificationPermission, sendBrowserNotification } from '../services/notificationService';
 
@@ -9,7 +9,6 @@ interface HeaderProps {
   onOpenLogin: () => void;
   onSync: () => void;
   isSyncing: boolean;
-  sheetsConfig?: any;
   onUpdateUserAvatar?: (userId: string, avatarUrl: string) => void;
   onOpenCommandPalette?: () => void;
   onSelectAdminTab?: (tab: 'dashboard' | 'import' | 'users' | 'telegram' | 'tests' | 'docs' | 'logs') => void;
@@ -21,7 +20,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenLogin,
   onSync,
   isSyncing,
-  sheetsConfig,
   onUpdateUserAvatar,
   onOpenCommandPalette,
   onSelectAdminTab,
@@ -112,18 +110,6 @@ export const Header: React.FC<HeaderProps> = ({
           label: 'Purchaser',
           bg: 'bg-blue-900 text-blue-100 border-blue-700',
           icon: ShoppingBag
-        };
-      case 'warehouse':
-        return {
-          label: 'Warehouse',
-          bg: 'bg-amber-900 text-amber-100 border-amber-700',
-          icon: Warehouse
-        };
-      case 'dispatch':
-        return {
-          label: 'Dispatch',
-          bg: 'bg-emerald-900 text-emerald-100 border-emerald-700',
-          icon: Truck
         };
       default:
         return {

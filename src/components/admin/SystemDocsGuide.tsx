@@ -119,7 +119,7 @@ export const SystemDocsGuide: React.FC = () => {
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
           <div>
             <h3 className="text-base font-bold text-slate-900">Role-Based User Operational Guide</h3>
-            <p className="text-xs text-slate-500">Step-by-step instructions for Purchaser, Warehouse, and Dispatch teams</p>
+            <p className="text-xs text-slate-500">Step-by-step instructions for Purchaser and Administration teams</p>
           </div>
 
           <div className="space-y-4 text-xs text-slate-700">
@@ -129,24 +129,7 @@ export const SystemDocsGuide: React.FC = () => {
                 <li>Log in with Purchaser credentials. Filter or search by PO Number or Item Name.</li>
                 <li>Click <strong>Hold Item</strong> on any Pending item to lock it for 10 minutes while verifying supplier availability.</li>
                 <li>Click <strong>Record Purchase</strong>, enter purchased quantity & notes, and click Save.</li>
-                <li>If full quantity is purchased, status updates to <strong>Purchased</strong>; if partial, status becomes <strong>Partial Purchased</strong>.</li>
-              </ol>
-            </div>
-
-            <div className="p-4 bg-amber-50/50 border border-amber-200 rounded-2xl space-y-2">
-              <h4 className="font-bold text-amber-900 text-sm">📦 Warehouse Portal Workflow</h4>
-              <ol className="list-decimal pl-5 space-y-1">
-                <li>Log in with Warehouse credentials to view incoming purchased items.</li>
-                <li>Inspect physical delivery against purchased quantity.</li>
-                <li>Click <strong>Confirm Receive</strong> to verify goods and log receive verification in the system database.</li>
-              </ol>
-            </div>
-
-            <div className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-2">
-              <h4 className="font-bold text-emerald-900 text-sm">🚚 Dispatch Portal Workflow</h4>
-              <ol className="list-decimal pl-5 space-y-1">
-                <li>Log in with Dispatch credentials to monitor completed orders ready for customer delivery.</li>
-                <li>View live customer locations, order status, item counts, and dispatch verification logs.</li>
+                <li>If full quantity is purchased (purchased_qty &ge; requested_qty), status becomes <strong>Purchased</strong>. When all items in a PO are purchased, the PO is automatically marked <strong>Completed</strong>.</li>
               </ol>
             </div>
           </div>
@@ -164,7 +147,7 @@ export const SystemDocsGuide: React.FC = () => {
           <div className="space-y-4 text-xs text-slate-700">
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
               <h4 className="font-bold text-slate-900 text-sm">1. User Roster & Role Security</h4>
-              <p>In Admin Dashboard -&gt; User Roster tab, administrators can create new user accounts, change user roles (Admin, Purchaser, Warehouse, Dispatch), and toggle active/inactive status.</p>
+              <p>In Admin Dashboard -&gt; User Roster tab, administrators can create new user accounts, change user roles (Super Admin, Admin, Purchaser), and toggle active/inactive status.</p>
             </div>
 
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
@@ -174,7 +157,7 @@ export const SystemDocsGuide: React.FC = () => {
 
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
               <h4 className="font-bold text-slate-900 text-sm">3. Audit Activity Trail</h4>
-              <p>Every transaction (Login, Hold, Purchase, Receive, Import, Roster Change) is logged in real-time in the system database and displayed under Audit Activity Log.</p>
+              <p>Every transaction (Login, Hold, Purchase, Import, Roster Change) is logged in real-time in the system database and displayed under Audit Activity Log.</p>
             </div>
           </div>
         </div>
@@ -198,10 +181,6 @@ export const SystemDocsGuide: React.FC = () => {
 │   │   │   └── SystemDocsGuide.tsx     # Deployment Manual & Documentation
 │   │   ├── purchaser/
 │   │   │   └── PurchaserView.tsx       # Item Hold & Purchase Recording Portal
-│   │   ├── warehouse/
-│   │   │   └── WarehouseView.tsx       # Goods Receiving & Verification Portal
-│   │   ├── dispatch/
-│   │   │   └── DispatchView.tsx        # Delivery & Dispatch Status Portal
 │   │   ├── Header.tsx                  # Global App Header & Live Connection Indicator
 │   │   └── LoginModal.tsx              # System Authentication Dialog
 │   ├── config/

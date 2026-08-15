@@ -1,8 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { PurchaseOrder, getNormalizedItemStatus } from '../types';
 import { notifySinglePOReport } from '../services/telegramService';
-import { OfficialPdfInvoiceModal } from './OfficialPdfInvoiceModal';
-import { DeliveryChallanModal } from './dispatch/DeliveryChallanModal';
 import { printPurchaseOrderReport } from '../services/officialPdfService';
 import { DepartmentPieChart } from './admin/DepartmentPieChart';
 import { 
@@ -231,9 +229,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
 
   // Selected PO Modal for detailed report view
   const [selectedPoForDetail, setSelectedPoForDetail] = useState<PurchaseOrder | null>(null);
-  const [poDetailFilter, setPoDetailFilter] = useState<'all' | 'complete' | 'partial' | 'hold' | 'received' | 'pending'>('all');
-  const [pdfModalPo, setPdfModalPo] = useState<PurchaseOrder | null>(null);
-  const [challanModalPo, setChallanModalPo] = useState<PurchaseOrder | null>(null);
+  const [poDetailFilter, setPoDetailFilter] = useState<'all' | 'complete' | 'partial' | 'hold' | 'pending'>('all');
   const [sendingPoNumber, setSendingPoNumber] = useState<string | null>(null);
 
   useEffect(() => {
@@ -248,7 +244,6 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
     const filteredItems = items.filter(item => {
       const req = item.requestedQty || item.orderedQty || 0;
       const pur = item.purchasedQty || 0;
-      const rec = item.warehouseQty || 0;
       const isHold = item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' || (item as any).isHeld;
 
       if (poDetailFilter === 'complete') {
@@ -260,12 +255,8 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
       if (poDetailFilter === 'hold') {
         return isHold;
       }
-      if (poDetailFilter === 'received') {
-        return rec > 0;
-      }
       if (poDetailFilter === 'pending') {
-        const target = pur > 0 ? pur : req;
-        return rec < target;
+        return pur === 0 && !isHold;
       }
       return true;
     });
@@ -274,8 +265,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
       complete: 'Complete Purchase',
       partial: 'Partial Items',
       hold: 'Hold Items',
-      received: 'Warehouse Received',
-      pending: 'Pending Receive'
+      pending: 'Pending Purchase'
     };
 
     const filterLabel = filterLabelMap[poDetailFilter] || 'Filtered Items';
@@ -1564,20 +1554,16 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                   i.purchaseStatus === 'Held' || i.purchaseStatus === 'Hold' || (i as any).isHeld
                 ).length;
 
-                const receivedCount = items.filter(i => (i.warehouseQty || 0) > 0).length;
-
-                const pendingReceiveCount = items.filter(i => {
-                  const req = i.requestedQty || i.orderedQty || 0;
+                const pendingCount = items.filter(i => {
                   const pur = i.purchasedQty || 0;
-                  const target = pur > 0 ? pur : req;
-                  return (i.warehouseQty || 0) < target;
+                  const isHold = i.purchaseStatus === 'Held' || i.purchaseStatus === 'Hold' || (i as any).isHeld;
+                  return pur === 0 && !isHold;
                 }).length;
 
                 const filteredItems = items.filter(item => {
                   if (poDetailFilter === 'all') return true;
                   const req = item.requestedQty || item.orderedQty || 0;
                   const pur = item.purchasedQty || 0;
-                  const rec = item.warehouseQty || 0;
                   const isHold = item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' || (item as any).isHeld;
 
                   if (poDetailFilter === 'complete') {
@@ -1589,12 +1575,8 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                   if (poDetailFilter === 'hold') {
                     return isHold;
                   }
-                  if (poDetailFilter === 'received') {
-                    return rec > 0;
-                  }
                   if (poDetailFilter === 'pending') {
-                    const target = pur > 0 ? pur : req;
-                    return rec < target;
+                    return pur === 0 && !isHold;
                   }
                   return true;
                 });
@@ -1608,8 +1590,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                     complete: 'Complete Purchase',
                     partial: 'Partial Items',
                     hold: 'Hold Items',
-                    received: 'Warehouse Received',
-                    pending: 'Pending Receive'
+                    pending: 'Pending Purchase'
                   };
 
                   const filterLabel = filterLabelMap[poDetailFilter] || 'Filtered Items';
@@ -1624,7 +1605,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
 
                 return (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-center">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-center">
                       {/* Total Items */}
                       <button
                         type="button"
@@ -1693,24 +1674,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                         </span>
                       </button>
 
-                      {/* Warehouse Received */}
-                      <button
-                        type="button"
-                        onClick={() => setPoDetailFilter(prev => prev === 'received' ? 'all' : 'received')}
-                        className={`p-2.5 rounded-xl transition-all cursor-pointer shadow-xs text-center flex flex-col justify-between select-none ${
-                          poDetailFilter === 'received'
-                            ? 'bg-teal-600 text-white ring-4 ring-teal-300 ring-offset-2 scale-[1.02] shadow-md font-bold'
-                            : 'bg-teal-600 text-white hover:bg-teal-700 opacity-90 hover:opacity-100 font-medium'
-                        }`}
-                      >
-                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-teal-100">Warehouse Received</span>
-                        <p className="text-xl font-black text-white mt-1">{receivedCount}</p>
-                        <span className="text-[9px] font-semibold text-teal-200 mt-0.5">
-                          {poDetailFilter === 'received' ? '● Filtered' : 'Filter Items'}
-                        </span>
-                      </button>
-
-                      {/* Pending Receive */}
+                      {/* Pending Purchase */}
                       <button
                         type="button"
                         onClick={() => setPoDetailFilter(prev => prev === 'pending' ? 'all' : 'pending')}
@@ -1720,8 +1684,8 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                             : 'bg-amber-600 text-white hover:bg-amber-700 opacity-90 hover:opacity-100 font-medium'
                         }`}
                       >
-                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-amber-100">Pending Receive</span>
-                        <p className="text-xl font-black text-white mt-1">{pendingReceiveCount}</p>
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-amber-100">Pending Purchase</span>
+                        <p className="text-xl font-black text-white mt-1">{pendingCount}</p>
                         <span className="text-[9px] font-semibold text-amber-200 mt-0.5">
                           {poDetailFilter === 'pending' ? '● Filtered' : 'Filter Items'}
                         </span>
@@ -1743,7 +1707,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                             </button>
                           )}
                         </div>
-                        <span className="text-[10px] text-slate-400 font-normal">Dispatch & Receive Status</span>
+                        <span className="text-[10px] text-slate-400 font-normal">Purchase Status</span>
                       </h4>
 
                       <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -1755,10 +1719,8 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                               <th className="p-2.5">Brand</th>
                               <th className="p-2.5 text-center">Requested</th>
                               <th className="p-2.5 text-center">Purchased</th>
-                              <th className="p-2.5 text-center">Received</th>
                               <th className="p-2.5 text-center">Remaining</th>
                               <th className="p-2.5 text-center">Purchase Status</th>
-                              <th className="p-2.5 text-center">Receive Status</th>
                               <th className="p-2.5">Notes / Hold</th>
                             </tr>
                           </thead>
@@ -1766,8 +1728,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                             {filteredItems.map((item, idx) => {
                               const req = item.requestedQty || item.orderedQty || 0;
                               const pur = item.purchasedQty || 0;
-                              const rec = item.warehouseQty || 0;
-                              const rem = Math.max(0, req - rec);
+                              const rem = Math.max(0, req - pur);
 
                               return (
                                 <tr key={item.id ? `${item.id}-${idx}` : `poitem-${idx}`} className="hover:bg-slate-50 transition">
@@ -1776,7 +1737,6 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                                   <td className="p-2.5 text-slate-600">{item.brand || 'N/A'}</td>
                                   <td className="p-2.5 text-center font-bold text-slate-800">{req} {item.unit || 'pcs'}</td>
                                   <td className="p-2.5 text-center font-bold text-blue-700">{pur} {item.unit || 'pcs'}</td>
-                                  <td className="p-2.5 text-center font-bold text-emerald-700">{rec} {item.unit || 'pcs'}</td>
                                   <td className="p-2.5 text-center font-bold text-amber-700">{rem} {item.unit || 'pcs'}</td>
                                   <td className="p-2.5 text-center">
                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -1785,15 +1745,6 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                                       'bg-amber-100 text-amber-800'
                                     }`}>
                                       {item.purchaseStatus === 'Held' || item.purchaseStatus === 'Hold' ? 'Hold' : (item.purchaseStatus || 'Pending')}
-                                    </span>
-                                  </td>
-                                  <td className="p-2.5 text-center">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                      rec >= req && req > 0 ? 'bg-purple-100 text-purple-800' :
-                                      rec > 0 ? 'bg-blue-100 text-blue-800' :
-                                      'bg-slate-100 text-slate-600'
-                                    }`}>
-                                      {rec >= req && req > 0 ? 'Ready/Received' : rec > 0 ? 'Partial Rec' : 'Pending Rec'}
                                     </span>
                                   </td>
                                   <td className="p-2.5 text-slate-500 text-[11px]">
@@ -1808,7 +1759,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
                             })}
                             {filteredItems.length === 0 && (
                               <tr>
-                                <td colSpan={10} className="p-6 text-center text-slate-400 text-xs italic bg-slate-50/50">
+                                <td colSpan={8} className="p-6 text-center text-slate-400 text-xs italic bg-slate-50/50">
                                   No line items match the selected filter ({poDetailFilter}).
                                 </td>
                               </tr>
@@ -1836,24 +1787,6 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setChallanModalPo(selectedPoForDetail)}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-xs"
-                  title="Official Delivery Challan (Quantity Only, No Price)"
-                >
-                  <Printer className="w-3.5 h-3.5 text-indigo-200" />
-                  <span>Delivery Challan (No Price)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPdfModalPo(selectedPoForDetail)}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-xs"
-                  title="Official RADIANT LIGHTNING Delivery Note & Digital Signature Generator"
-                >
-                  <span>✍️</span>
-                  <span>Official PDF Invoice</span>
-                </button>
-                <button
-                  type="button"
                   onClick={() => handlePrintPoReport(getFilteredPoForExport())}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-xs"
                 >
@@ -1871,22 +1804,6 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
             </div>
           </div>
         </div>
-      )}
-
-      {/* Official RADIANT LIGHTNING Delivery Note & Digital Signature Modal */}
-      {pdfModalPo && (
-        <OfficialPdfInvoiceModal
-          po={pdfModalPo}
-          onClose={() => setPdfModalPo(null)}
-        />
-      )}
-
-      {/* Official Delivery Challan (No Price) Modal */}
-      {challanModalPo && (
-        <DeliveryChallanModal
-          po={challanModalPo}
-          onClose={() => setChallanModalPo(null)}
-        />
       )}
 
       {/* Delete Single PO Modal */}

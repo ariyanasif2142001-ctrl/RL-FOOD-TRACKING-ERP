@@ -12,21 +12,19 @@ import {
   apiFetchPOs, apiFetchUsers, apiFetchActivityLogs,
   apiLogin, apiUpdateUsers, apiImportPOs,
   apiHoldItem, apiReleaseHold, apiSavePurchase, apiReturnItem,
-  apiReceiveItem, apiDeletePO, apiClearAllPOs, apiHoldPO, apiReleasePO
+  apiDeletePO, apiClearAllPOs, apiHoldPO, apiReleasePO
 } from './services/apiClient';
 import { Header } from './components/Header';
 import { CompanyLogo } from './components/CompanyLogo';
 import { LoginModal } from './components/LoginModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
-import { notifyItemHold, notifyItemPurchased, notifyWarehouseReceived, notifyPODispatched, notifyActivityLog, processTelegramUpdates, notifyDailySummaryReport, notifyPendingPurchasesReport, notifyHoldItemsReport, notifyDiscrepancyAlert } from './services/telegramService';
+import { notifyItemHold, notifyItemPurchased, notifyActivityLog, processTelegramUpdates, notifyDailySummaryReport, notifyPendingPurchasesReport, notifyHoldItemsReport, notifyDiscrepancyAlert } from './services/telegramService';
 import { reMatchPOsWithMasterSKU } from './services/skuService';
 import { getNotificationPermission, requestNotificationPermission, sendBrowserNotification } from './services/notificationService';
 import { RefreshCw, AlertCircle, Database, CheckCircle, Loader2, Sparkles, X, Bell } from 'lucide-react';
 
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 const PurchaserView = lazy(() => import('./components/purchaser/PurchaserView').then(m => ({ default: m.PurchaserView })));
-const WarehouseView = lazy(() => import('./components/warehouse/WarehouseView').then(m => ({ default: m.WarehouseView })));
-const DispatchView = lazy(() => import('./components/dispatch/DispatchView').then(m => ({ default: m.DispatchView })));
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(getCurrentUser());
@@ -45,7 +43,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Listen for global configuration updates (e.g. when Super Admin updates Google Sheets Web App URL)
+  // Listen for global configuration updates
   useEffect(() => {
     const handleConfigUpdate = () => {
       const updated = getAppConfig();
@@ -225,7 +223,7 @@ export default function App() {
     });
   };
 
-  // Load all master data directly from Google Sheets API with Local Storage fallback
+  // Load all master data directly from Supabase API with Local Storage fallback
   const loadMasterData = useCallback(async (isManualSync: boolean = false) => {
     if (isManualSync) setIsSyncing(true);
     else setIsLoading(true);
@@ -236,17 +234,16 @@ export default function App() {
     const localPOs = getLocalPOs();
     const localLogs = getLocalAuditLogs();
 
-    const hasSheetsUrl = Boolean(appConfig.webAppUrl && appConfig.webAppUrl.trim() !== '');
     const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
     const hasSupabase = Boolean(supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co');
 
-    if (!hasSheetsUrl && !hasSupabase) {
+    if (!hasSupabase) {
       setPOs(localPOs);
       setUsers(localUsers);
       setAuditLogs(localLogs);
       setIsLoading(false);
       setIsSyncing(false);
-      setApiError('Google Apps Script Web App URL or Supabase credentials are not configured. Operating on local memory.');
+      setApiError('Supabase credentials are not configured. Operating on local memory.');
       return;
     }
 
@@ -284,9 +281,9 @@ export default function App() {
       }
 
       if (hasSuccess) {
-        showToast(isManualSync ? 'Synchronized live with Google Sheets Database' : 'Database loaded from Google Sheets', true);
+        showToast(isManualSync ? 'Synchronized live with Supabase Database' : 'Database loaded from Supabase', true);
       } else {
-        setApiError('Notice: Unable to fetch live Google Sheets data. Displaying cached local data. Check Web App deployment URL.');
+        setApiError('Notice: Unable to fetch live Supabase data. Displaying cached local data.');
       }
     } catch (err: unknown) {
       setPOs(localPOs);
@@ -297,7 +294,7 @@ export default function App() {
       setIsLoading(false);
       setIsSyncing(false);
     }
-  }, [appConfig.webAppUrl]);
+  }, []);
 
   useEffect(() => {
     loadMasterData();
@@ -313,16 +310,10 @@ export default function App() {
       });
     };
 
-    const handleDeliveryNotesUpdated = () => {
-      loadMasterData();
-    };
-
     window.addEventListener('master_sku_updated', handleSkuUpdated);
-    window.addEventListener('delivery_notes_updated', handleDeliveryNotesUpdated);
 
     return () => {
       window.removeEventListener('master_sku_updated', handleSkuUpdated);
-      window.removeEventListener('delivery_notes_updated', handleDeliveryNotesUpdated);
     };
   }, []);
 
@@ -810,165 +801,6 @@ export default function App() {
     return { success: true, message: 'Item returned to pending list' };
   };
 
-  // Warehouse Actions with QC, Partial Receiving & Discrepancy Alert
-  const handleReceiveComplete = async (
-    itemId: string,
-    receivedBatchQty?: number,
-    passedBatchQty?: number,
-    damagedBatchQty?: number,
-    qcNotes?: string
-  ) => {
-    if (!currentUser) return { success: false, message: 'User not logged in.' };
-
-    const targetItem = pos.flatMap(p => p.items || []).find(i => String(i.id).trim() === String(itemId).trim());
-    if (!targetItem) return { success: false, message: 'Item not found' };
-
-    const purchased = targetItem.purchasedQty || 0;
-    const existingReceived = targetItem.warehouseQty || 0;
-    const isQuickPass = receivedBatchQty === undefined;
-
-    // Idempotency check for Quick Pass: if already received, no-op
-    if (isQuickPass && existingReceived >= purchased && purchased > 0) {
-      return { success: true, message: `Item "${targetItem.itemName}" is already fully received (${existingReceived}/${purchased}).` };
-    }
-
-    const remainingToReceive = Math.max(0, purchased - existingReceived);
-
-    const actualReceivedBatch = isQuickPass ? remainingToReceive : (typeof receivedBatchQty === 'number' ? receivedBatchQty : remainingToReceive);
-    const actualPassedBatch = isQuickPass ? remainingToReceive : (typeof passedBatchQty === 'number' ? passedBatchQty : actualReceivedBatch);
-    const actualDamagedBatch = isQuickPass ? 0 : (typeof damagedBatchQty === 'number' ? damagedBatchQty : 0);
-
-    const newTotalPassed = isQuickPass ? purchased : ((targetItem.passedQty || existingReceived) + actualPassedBatch);
-    const newTotalDamaged = (targetItem.damagedQty || 0) + actualDamagedBatch;
-    const newTotalReceived = newTotalPassed;
-
-    // Damaged units during QC subtract from purchasedQty and return to remaining unpurchased balance
-    let newPurchasedQty = purchased;
-    let newRemainingQty = targetItem.remainingQty !== undefined ? targetItem.remainingQty : Math.max(0, (targetItem.requestedQty || targetItem.orderedQty || 0) - purchased);
-    let newPurchaseStatus = targetItem.purchaseStatus;
-
-    if (actualDamagedBatch > 0) {
-      newPurchasedQty = Math.max(0, purchased - actualDamagedBatch);
-      const originalReq = targetItem.requestedQty || targetItem.orderedQty || 0;
-      newRemainingQty = Math.max(0, originalReq - newPurchasedQty);
-      newPurchaseStatus = (newPurchasedQty >= originalReq && originalReq > 0)
-        ? 'Purchased'
-        : (newPurchasedQty > 0 ? 'Partial Purchased' : 'Pending');
-    }
-
-    const backorderQty = Math.max(0, newPurchasedQty - newTotalPassed);
-
-    let qcStatus: 'Passed' | 'Partial Damaged' | 'Rejected' | 'Pending QC' = 'Passed';
-    if (newTotalDamaged > 0) {
-      qcStatus = newTotalPassed > 0 ? 'Partial Damaged' : 'Rejected';
-    }
-
-    const shortageQty = Math.max(0, newPurchasedQty - newTotalReceived);
-
-    // Trigger Telegram Discrepancy Alert if Damaged Goods > 0 or Shortage exists
-    if (actualDamagedBatch > 0 || shortageQty > 0) {
-      notifyDiscrepancyAlert({
-        poNumber: targetItem.poNumber || 'N/A',
-        itemName: targetItem.itemName || 'Item',
-        purchaserName: targetItem.purchaserName || targetItem.holdBy || 'Purchaser Team',
-        orderedQty: targetItem.requestedQty || targetItem.orderedQty || 0,
-        purchasedQty: newPurchasedQty,
-        receivedQty: actualReceivedBatch,
-        passedQty: actualPassedBatch,
-        damagedQty: actualDamagedBatch,
-        shortageQty,
-        unit: targetItem.unit || 'Pcs',
-        qcNotes: qcNotes || (actualDamagedBatch > 0 ? `Damaged ${actualDamagedBatch} ${targetItem.unit}` : `Shortage of ${shortageQty} ${targetItem.unit}`),
-        receiverName: currentUser.name
-      });
-    } else {
-      notifyWarehouseReceived(
-        targetItem.poNumber,
-        targetItem.itemName,
-        actualReceivedBatch,
-        targetItem.unit || 'Pcs',
-        currentUser.name
-      );
-    }
-
-    const batchLog: ReceiveBatchLog = {
-      id: 'rec-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-      timestamp: new Date().toISOString(),
-      receivedQty: actualReceivedBatch,
-      passedQty: actualPassedBatch,
-      damagedQty: actualDamagedBatch,
-      qcNotes: qcNotes || '',
-      receivedBy: currentUser.name
-    };
-
-    const updatePOsLocal = (poList: PurchaseOrder[]) => poList.map(po => {
-      const updatedItems = (po.items || []).map(item => {
-        if (String(item.id).trim() === String(itemId).trim()) {
-          const updatedLogs = [...(item.receiveLogs || []), batchLog];
-          return {
-            ...item,
-            purchasedQty: newPurchasedQty,
-            remainingQty: newRemainingQty,
-            purchaseStatus: newPurchaseStatus as any,
-            warehouseQty: newTotalPassed,
-            passedQty: newTotalPassed,
-            damagedQty: newTotalDamaged,
-            backorderQty,
-            qcStatus,
-            qcNotes: qcNotes ? (item.qcNotes ? item.qcNotes + ' | ' + qcNotes : qcNotes) : item.qcNotes,
-            warehouseVerifiedBy: currentUser.name,
-            warehouseVerifiedAt: new Date().toISOString(),
-            receiveLogs: updatedLogs
-          };
-        }
-        return item;
-      });
-
-      if (po.items?.some(i => String(i.id).trim() === String(itemId).trim())) {
-        const activeItems = updatedItems.filter(i => (i.purchasedQty || 0) > 0);
-        let poRecStatus: MasterStatus = 'Pending';
-        if (activeItems.length > 0) {
-          const allComplete = activeItems.every(i => (i.warehouseQty || 0) >= (i.purchasedQty || 0));
-          const anyRec = activeItems.some(i => (i.warehouseQty || 0) > 0);
-          poRecStatus = allComplete ? 'Completed' : (anyRec ? 'Partial' : 'Pending');
-        }
-        return {
-          ...po,
-          receiveStatus: poRecStatus,
-          items: updatedItems
-        };
-      }
-
-      return po;
-    });
-
-    setIsSyncing(true);
-    try {
-      await apiReceiveItem(itemId, currentUser, {
-        receivedQty: actualReceivedBatch,
-        passedQty: actualPassedBatch,
-        damagedQty: actualDamagedBatch,
-        qcNotes
-      });
-    } catch {
-      // ignore server errors and proceed with local update
-    } finally {
-      setIsSyncing(false);
-    }
-
-    const updatedPOs = updatePOsLocal(pos);
-    setPOs(updatedPOs);
-    saveLocalPOs(updatedPOs);
-    addAuditLog('Warehouse QC Receive', `Item ${targetItem.itemName} (${targetItem.poNumber}) received: Passed ${actualPassedBatch}, Damaged ${actualDamagedBatch}`);
-
-    const feedbackMsg = actualDamagedBatch > 0 || shortageQty > 0
-      ? `QC Receive logged! Discrepancy Telegram alert sent to ${targetItem.purchaserName || 'Purchaser'}.`
-      : `Goods received successfully (${actualPassedBatch} ${targetItem.unit} Passed QC).`;
-    
-    showToast(feedbackMsg, true);
-    return { success: true, message: feedbackMsg };
-  };
-
   // Admin Actions
   const handleImportPOs = async (newPOs: PurchaseOrder[]) => {
     if (!currentUser) return;
@@ -1015,20 +847,6 @@ export default function App() {
     } else {
       showToast('Users updated in Local Database', true);
     }
-  };
-
-  // Dispatch Action
-  const handleDispatchPO = (poId: string, notes: string) => {
-    const targetPo = pos.find(p => p.id === poId || p.poNumber === poId);
-    if (targetPo) {
-      notifyPODispatched(
-        targetPo.poNumber,
-        targetPo.customerName || 'N/A',
-        currentUser?.name || 'Dispatch Officer',
-        notes
-      );
-    }
-    showToast(`Dispatch completed and notification sent for PO ${targetPo?.poNumber || poId}`, true);
   };
 
   const handleDeletePO = async (poNumber: string) => {
@@ -1266,7 +1084,7 @@ export default function App() {
     setPOs(updatedPOs);
     saveLocalPOs(updatedPOs);
 
-    // Sync to Google Sheets backend
+    // Sync to Supabase backend
     setIsSyncing(true);
     try {
       await apiImportPOs(updatedPOs, currentUser);
@@ -1297,17 +1115,6 @@ export default function App() {
     }
     showToast('Profile photo updated successfully', true);
   };
-
-  // Derive normalized PO list for WarehouseView so items show completed receive when warehouseQty >= purchasedQty
-  const warehousePos = useMemo(() => {
-    return pos.map(po => ({
-      ...po,
-      items: (po.items || []).map(item => ({
-        ...item,
-        requestedQty: (item.purchasedQty && item.purchasedQty > 0) ? item.purchasedQty : (item.requestedQty || item.orderedQty || 0)
-      }))
-    }));
-  }, [pos]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased flex flex-col">
@@ -1425,7 +1232,7 @@ export default function App() {
         {isLoading ? (
           <div className="max-w-md mx-auto my-24 p-8 text-center space-y-4">
             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-            <h3 className="text-sm font-bold text-slate-800">Connecting to Google Sheets Database...</h3>
+            <h3 className="text-sm font-bold text-slate-800">Connecting to Supabase Database...</h3>
             <p className="text-xs text-slate-500">Fetching live Purchase Orders, Items, and User Permissions</p>
           </div>
         ) : !currentUser ? (
@@ -1439,7 +1246,7 @@ export default function App() {
             </div>
             <h2 className="text-xl font-bold text-slate-900">RL Food Operations Portal</h2>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Google Sheets Master Database is live and operational. Please sign in to access your designated role interface.
+              Supabase Master Database is live and operational. Please sign in to access your designated role interface.
             </p>
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -1494,22 +1301,6 @@ export default function App() {
                       onReleaseHold={handleReleaseHold}
                       onRecordPurchase={handleRecordPurchase}
                       onReturnItem={handleReturnItem}
-                    />
-                  )}
-
-                  {currentUser.role === 'warehouse' && (
-                    <WarehouseView
-                      pos={warehousePos}
-                      currentUser={currentUser}
-                      onReceiveComplete={handleReceiveComplete}
-                    />
-                  )}
-
-                  {currentUser.role === 'dispatch' && (
-                    <DispatchView
-                      pos={pos}
-                      currentUser={currentUser}
-                      onDispatchPO={handleDispatchPO}
                     />
                   )}
                 </motion.div>

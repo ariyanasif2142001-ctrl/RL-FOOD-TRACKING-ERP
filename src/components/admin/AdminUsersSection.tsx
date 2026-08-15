@@ -220,9 +220,7 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                     <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${
                       u.role === 'super_admin' ? 'bg-gradient-to-r from-amber-600 to-purple-800 text-amber-100 border border-amber-500/80 shadow-xs' :
                       u.role === 'admin' ? 'bg-purple-100 text-purple-900 border border-purple-200' :
-                      u.role === 'purchaser' ? 'bg-amber-100 text-amber-900 border border-amber-200' :
-                      u.role === 'warehouse' ? 'bg-blue-100 text-blue-900 border border-blue-200' :
-                      'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                      'bg-blue-100 text-blue-900 border border-blue-200'
                     }`}>
                       {u.role === 'super_admin' ? 'SUPER ADMIN' : u.role}
                     </span>
@@ -366,8 +364,6 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                     className="w-full p-2 border border-slate-300 rounded-lg mt-1 bg-white outline-none focus:border-amber-500 font-bold"
                   >
                     <option value="purchaser">Purchaser</option>
-                    <option value="warehouse">Warehouse Manager</option>
-                    <option value="dispatch">Dispatch / Delivery</option>
                     <option value="admin">Administrator</option>
                     <option value="super_admin">Super Admin</option>
                   </select>
@@ -456,8 +452,6 @@ export const AdminUsersSection: React.FC<AdminUsersSectionProps> = ({
                     className="w-full p-2 border border-slate-300 rounded-lg mt-1 bg-white outline-none focus:border-amber-500 font-bold"
                   >
                     <option value="purchaser">Purchaser</option>
-                    <option value="warehouse">Warehouse Manager</option>
-                    <option value="dispatch">Dispatch / Delivery</option>
                     <option value="admin">Administrator</option>
                     <option value="super_admin">Super Admin</option>
                   </select>

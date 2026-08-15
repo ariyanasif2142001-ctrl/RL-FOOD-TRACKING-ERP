@@ -180,7 +180,7 @@ export const AdminPoSlider: React.FC<AdminPoSliderProps> = ({ pos }) => {
       all: 'Total Items',
       purchased: 'Complete Purchase',
       partial: 'Partial Items',
-      balance: 'Pending Receive',
+      balance: 'Pending / Balance Items',
       hold: 'Hold Items'
     };
 
