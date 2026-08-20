@@ -14,6 +14,7 @@ interface RunningPoListProps {
   className?: string;
   allowDelete?: boolean;
   allowStatusChange?: boolean;
+  allowDeptChart?: boolean;
   onDeletePO?: (poNumber: string) => void;
   onDeletePo?: (poNumber: string) => void;
   onClearAllPOs?: () => void;
@@ -194,6 +195,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
   className = "",
   allowDelete = false,
   allowStatusChange = false,
+  allowDeptChart = true,
   onDeletePO,
   onDeletePo,
   onClearAllPOs,
@@ -801,20 +803,22 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowDeptChart(!showDeptChart)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all duration-150 flex items-center gap-1.5 cursor-pointer border ${
-                showDeptChart
-                  ? 'bg-gradient-to-b from-emerald-500 via-teal-600 to-emerald-700 text-white shadow-[0_4px_12px_rgba(16,185,129,0.35),0_2px_0_rgba(5,150,105,1)] border-emerald-300/40'
-                  : 'bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border-emerald-500/40'
-              }`}
-              title="Toggle Department Breakdown Pie Chart"
-            >
-              <PieChart className="w-3.5 h-3.5" />
-              <span>Dept Chart</span>
-              {showDeptChart ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
+            {allowDeptChart && (
+              <button
+                type="button"
+                onClick={() => setShowDeptChart(!showDeptChart)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all duration-150 flex items-center gap-1.5 cursor-pointer border ${
+                  showDeptChart
+                    ? 'bg-gradient-to-b from-emerald-500 via-teal-600 to-emerald-700 text-white shadow-[0_4px_12px_rgba(16,185,129,0.35),0_2px_0_rgba(5,150,105,1)] border-emerald-300/40'
+                    : 'bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border-emerald-500/40'
+                }`}
+                title="Toggle Department Breakdown Pie Chart"
+              >
+                <PieChart className="w-3.5 h-3.5" />
+                <span>Dept Chart</span>
+                {showDeptChart ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            )}
 
             <button
               type="button"
@@ -853,7 +857,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
         </div>
 
         {/* Department Breakdown Pie Chart Banner */}
-        {showDeptChart && (
+        {allowDeptChart && showDeptChart && (
           <div className="pt-3">
             <DepartmentPieChart
               departmentBreakdown={departmentBreakdown}

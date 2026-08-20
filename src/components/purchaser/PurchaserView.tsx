@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { PurchaseOrder, POItem, User, getNormalizedItemStatus } from '../../types';
-import { RunningPoList } from '../RunningPoList';
 import { 
   ShoppingBag, Search, Clock, CheckCircle2, Filter, 
   ChevronDown, ChevronUp, Lock, RefreshCw, X, History, Sparkles, AlertTriangle, RotateCcw, Printer, FileText
@@ -803,9 +802,6 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
         </div>
       </div>
 
-      {/* RUNNING PO LIST (ACTIVE ORDERS) */}
-      <RunningPoList pos={pos} allowDelete={false} allowStatusChange={false} />
-
       {/* COMPACT EXPANDABLE FILTER PANEL - Default Collapsed */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
         <button
@@ -916,125 +912,50 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
         )}
       </div>
 
-      {/* STATUS TABS */}
-      {!showHistory && (
-        <div className="space-y-2">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-200/90 p-1.5 rounded-2xl text-xs font-bold border border-slate-300/60 shadow-inner">
+      {/* Scope selector when viewing Hold items */}
+      {!showHistory && statusFilter === 'hold' && (
+        <div className="bg-purple-50 border border-purple-200 p-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 font-bold text-purple-950">
+            <Lock className="w-4 h-4 text-purple-600 shrink-0" />
+            <div>
+              <span className="block text-xs font-bold text-purple-950">
+                {holdViewScope === 'my' 
+                  ? `Showing ${myHoldItems.length} item(s) on hold by ${currentUser.name}` 
+                  : `Showing all ${systemHeldItemsCount} item(s) on hold across system`}
+              </span>
+              <span className="text-[10px] text-purple-700 font-normal">
+                {holdViewScope === 'my'
+                  ? `(System total holds: ${systemHeldItemsCount})`
+                  : `(Your personal holds: ${myHoldItems.length})`}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-purple-200 shadow-2xs self-start sm:self-auto">
             <button
-              onClick={() => setStatusFilter('pending')}
-              className={`min-h-[44px] py-2 px-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
-                statusFilter === 'pending'
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25 border border-amber-300/50 font-black'
-                  : 'text-slate-700 hover:bg-slate-300/60 hover:text-slate-900 font-bold'
+              type="button"
+              onClick={() => setHoldViewScope('my')}
+              className={`px-2.5 py-1 rounded-md font-bold text-xs transition flex items-center gap-1.5 cursor-pointer ${
+                holdViewScope === 'my' 
+                  ? 'bg-purple-700 text-white shadow-2xs' 
+                  : 'text-purple-700 hover:bg-purple-100'
               }`}
             >
-              <Clock className={`w-4 h-4 shrink-0 ${statusFilter === 'pending' ? 'text-white' : 'text-amber-600'}`} />
-              <span className="truncate">Pending</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-black shrink-0 shadow-2xs ${
-                statusFilter === 'pending' ? 'bg-white text-amber-900' : 'bg-amber-100 text-amber-900'
-              }`}>
-                {myPendingItems.length}
-              </span>
+              <span>My Holds</span>
+              <span className="bg-purple-200 text-purple-900 text-[10px] px-1.5 py-0.2 rounded-full font-black">{myHoldItems.length}</span>
             </button>
-
             <button
-              onClick={() => setStatusFilter('hold')}
-              className={`min-h-[44px] py-2 px-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
-                statusFilter === 'hold'
-                  ? 'bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 text-white shadow-md shadow-purple-500/25 border border-purple-300/50 font-black'
-                  : 'text-slate-700 hover:bg-slate-300/60 hover:text-slate-900 font-bold'
+              type="button"
+              onClick={() => setHoldViewScope('all')}
+              className={`px-2.5 py-1 rounded-md font-bold text-xs transition flex items-center gap-1.5 cursor-pointer ${
+                holdViewScope === 'all' 
+                  ? 'bg-purple-700 text-white shadow-2xs' 
+                  : 'text-purple-700 hover:bg-purple-100'
               }`}
             >
-              <Lock className={`w-4 h-4 shrink-0 ${statusFilter === 'hold' ? 'text-white' : 'text-purple-600'}`} />
-              <span className="truncate">Hold</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-black shrink-0 shadow-2xs ${
-                statusFilter === 'hold' ? 'bg-white text-purple-950' : 'bg-purple-100 text-purple-900'
-              }`} title={`My Holds: ${myHoldItems.length} | System Total: ${systemHeldItemsCount}`}>
-                {myHoldItems.length}/{systemHeldItemsCount}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setStatusFilter('partial')}
-              className={`min-h-[44px] py-2 px-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
-                statusFilter === 'partial'
-                  ? 'bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 border border-cyan-300/50 font-black'
-                  : 'text-slate-700 hover:bg-slate-300/60 hover:text-slate-900 font-bold'
-              }`}
-            >
-              <Sparkles className={`w-4 h-4 shrink-0 ${statusFilter === 'partial' ? 'text-white' : 'text-blue-600'}`} />
-              <span className="truncate">Partial</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-black shrink-0 shadow-2xs ${
-                statusFilter === 'partial' ? 'bg-white text-blue-950' : 'bg-blue-100 text-blue-900'
-              }`}>
-                {systemPartialItemsCount}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setStatusFilter('today')}
-              className={`min-h-[44px] py-2 px-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
-                statusFilter === 'today'
-                  ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-md shadow-emerald-500/25 border border-emerald-300/50 font-black'
-                  : 'text-slate-700 hover:bg-slate-300/60 hover:text-slate-900 font-bold'
-              }`}
-            >
-              <ShoppingBag className={`w-4 h-4 shrink-0 ${statusFilter === 'today' ? 'text-white' : 'text-emerald-600'}`} />
-              <span className="truncate">Today Purchase</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-black shrink-0 shadow-2xs ${
-                statusFilter === 'today' ? 'bg-white text-emerald-950' : 'bg-emerald-100 text-emerald-900'
-              }`}>
-                {myTodayPurchases.length}
-              </span>
+              <span>All System Holds</span>
+              <span className="bg-purple-200 text-purple-900 text-[10px] px-1.5 py-0.2 rounded-full font-black">{systemHeldItemsCount}</span>
             </button>
           </div>
-
-          {/* Scope selector when viewing Hold items */}
-          {statusFilter === 'hold' && (
-            <div className="bg-purple-50 border border-purple-200 p-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-2 font-bold text-purple-950">
-                <Lock className="w-4 h-4 text-purple-600 shrink-0" />
-                <div>
-                  <span className="block text-xs font-bold text-purple-950">
-                    {holdViewScope === 'my' 
-                      ? `Showing ${myHoldItems.length} item(s) on hold by ${currentUser.name}` 
-                      : `Showing all ${systemHeldItemsCount} item(s) on hold across system`}
-                  </span>
-                  <span className="text-[10px] text-purple-700 font-normal">
-                    {holdViewScope === 'my'
-                      ? `(System total holds: ${systemHeldItemsCount})`
-                      : `(Your personal holds: ${myHoldItems.length})`}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-purple-200 shadow-2xs self-start sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setHoldViewScope('my')}
-                  className={`px-2.5 py-1 rounded-md font-bold text-xs transition flex items-center gap-1.5 ${
-                    holdViewScope === 'my' 
-                      ? 'bg-purple-700 text-white shadow-2xs' 
-                      : 'text-purple-700 hover:bg-purple-100'
-                  }`}
-                >
-                  <span>My Holds</span>
-                  <span className="bg-purple-200 text-purple-900 text-[10px] px-1.5 py-0.2 rounded-full font-black">{myHoldItems.length}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHoldViewScope('all')}
-                  className={`px-2.5 py-1 rounded-md font-bold text-xs transition flex items-center gap-1.5 ${
-                    holdViewScope === 'all' 
-                      ? 'bg-purple-700 text-white shadow-2xs' 
-                      : 'text-purple-700 hover:bg-purple-100'
-                  }`}
-                >
-                  <span>All System Holds</span>
-                  <span className="bg-purple-200 text-purple-900 text-[10px] px-1.5 py-0.2 rounded-full font-black">{systemHeldItemsCount}</span>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
