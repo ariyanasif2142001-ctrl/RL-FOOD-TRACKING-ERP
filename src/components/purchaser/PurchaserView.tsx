@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PurchaseOrder, POItem, User, getNormalizedItemStatus } from '../../types';
+import { RunningPoList } from '../RunningPoList';
 import { 
   ShoppingBag, Search, Clock, CheckCircle2, Filter, 
   ChevronDown, ChevronUp, Lock, RefreshCw, X, History, Sparkles, AlertTriangle, RotateCcw, Printer, FileText
@@ -801,6 +802,19 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* RUNNING PO LIST TABLE */}
+      <RunningPoList 
+        pos={pos} 
+        allowDelete={false} 
+        allowStatusChange={false} 
+        allowDeptChart={false}
+        onSelectPo={(selectedPo) => {
+          if (selectedPo?.poNumber) {
+            setFilterPoNumber(selectedPo.poNumber);
+          }
+        }}
+      />
 
       {/* COMPACT EXPANDABLE FILTER PANEL - Default Collapsed */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
