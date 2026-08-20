@@ -1301,6 +1301,10 @@ export default function App() {
                       onReleaseHold={handleReleaseHold}
                       onRecordPurchase={handleRecordPurchase}
                       onReturnItem={handleReturnItem}
+                      onHoldPO={handleHoldPO}
+                      onReleasePO={handleReleasePO}
+                      onSync={() => loadMasterData(true)}
+                      isSyncing={isSyncing}
                     />
                   )}
                 </motion.div>
