@@ -809,6 +809,7 @@ export const PurchaserView: React.FC<PurchaserViewProps> = ({
         allowDelete={false} 
         allowStatusChange={false} 
         allowDeptChart={false}
+        showHeader={false}
         onSelectPo={(selectedPo) => {
           if (selectedPo?.poNumber) {
             setFilterPoNumber(selectedPo.poNumber);

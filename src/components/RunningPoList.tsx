@@ -15,6 +15,7 @@ interface RunningPoListProps {
   allowDelete?: boolean;
   allowStatusChange?: boolean;
   allowDeptChart?: boolean;
+  showHeader?: boolean;
   onDeletePO?: (poNumber: string) => void;
   onDeletePo?: (poNumber: string) => void;
   onClearAllPOs?: () => void;
@@ -196,6 +197,7 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
   allowDelete = false,
   allowStatusChange = false,
   allowDeptChart = true,
+  showHeader = true,
   onDeletePO,
   onDeletePo,
   onClearAllPOs,
@@ -753,108 +755,110 @@ export const RunningPoList: React.FC<RunningPoListProps> = ({
     <div className={`bg-white rounded-xl border border-slate-200 p-3 sm:p-4 space-y-3 flex flex-col justify-between ${className}`}>
       <div>
         {/* Header & Export Buttons */}
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-700/80 shadow-xl shadow-slate-950/20 mb-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 text-white rounded-xl shadow-[0_4px_12px_rgba(37,99,235,0.4),0_2px_0_rgba(29,78,216,1)] border border-blue-300/30 shrink-0">
-              <Layers className="w-5 h-5" />
+        {showHeader && (
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-700/80 shadow-xl shadow-slate-950/20 mb-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 text-white rounded-xl shadow-[0_4px_12px_rgba(37,99,235,0.4),0_2px_0_rgba(29,78,216,1)] border border-blue-300/30 shrink-0">
+                <Layers className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-black text-white text-sm sm:text-base flex items-center gap-2.5 flex-wrap">
+                  <span>{title}</span>
+                  <span className="px-3 py-0.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-xs font-mono font-black rounded-full shadow-[0_2px_8px_rgba(37,99,235,0.4)] border border-blue-300/40">
+                    {filteredRunningPOs.length} Active
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-300 font-medium hidden sm:block mt-0.5">
+                  Live PO tracking with instant status filters, search, and Telegram dispatching
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-black text-white text-sm sm:text-base flex items-center gap-2.5 flex-wrap">
-                <span>{title}</span>
-                <span className="px-3 py-0.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-xs font-mono font-black rounded-full shadow-[0_2px_8px_rgba(37,99,235,0.4)] border border-blue-300/40">
-                  {filteredRunningPOs.length} Active
-                </span>
-              </h3>
-              <p className="text-xs text-slate-300 font-medium hidden sm:block mt-0.5">
-                Live PO tracking with instant status filters, search, and Telegram dispatching
-              </p>
+
+            {/* Export, Actions & View Mode Toggle */}
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              {/* View Mode Switcher */}
+              <div className="flex items-center bg-slate-800/90 p-1 rounded-xl border border-slate-700/80 shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-all duration-150 flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'table'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-blue-300/40'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                  title="Table View"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span>Table</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('cards')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-all duration-150 flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'cards'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-blue-300/40'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                  title="Cards Grid View"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Cards</span>
+                </button>
+              </div>
+
+              {allowDeptChart && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeptChart(!showDeptChart)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all duration-150 flex items-center gap-1.5 cursor-pointer border ${
+                    showDeptChart
+                      ? 'bg-gradient-to-b from-emerald-500 via-teal-600 to-emerald-700 text-white shadow-[0_4px_12px_rgba(16,185,129,0.35),0_2px_0_rgba(5,150,105,1)] border-emerald-300/40'
+                      : 'bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border-emerald-500/40'
+                  }`}
+                  title="Toggle Department Breakdown Pie Chart"
+                >
+                  <PieChart className="w-3.5 h-3.5" />
+                  <span>Dept Chart</span>
+                  {showDeptChart ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => exportRunningPOsToCSV()}
+                disabled={filteredRunningPOs.length === 0}
+                className="px-3 py-1.5 bg-gradient-to-b from-teal-500 via-emerald-600 to-teal-700 hover:from-teal-600 hover:to-teal-800 disabled:opacity-40 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[0_4px_12px_rgba(20,184,166,0.35),0_2px_0_rgba(15,118,110,1)] active:translate-y-0.5 active:shadow-none border border-teal-300/40 transition-all cursor-pointer"
+                title="Export Running POs report to Excel (CSV)"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Excel</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => exportRunningPOsToPDF()}
+                disabled={filteredRunningPOs.length === 0}
+                className="px-3 py-1.5 bg-gradient-to-b from-blue-500 via-indigo-600 to-blue-700 hover:from-blue-600 hover:to-blue-800 disabled:opacity-40 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[0_4px_12px_rgba(37,99,235,0.35),0_2px_0_rgba(29,78,216,1)] active:translate-y-0.5 active:shadow-none border border-blue-300/40 transition-all cursor-pointer"
+                title="Export Running POs report as PDF / Print"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>PDF Report</span>
+              </button>
+
+              {allowDelete && onClearAllPOs && pos.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowClearAllModal(true)}
+                  className="px-3 py-1.5 bg-gradient-to-b from-rose-500 via-red-600 to-rose-700 hover:from-rose-600 hover:to-rose-800 text-white border border-rose-300/40 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[0_4px_12px_rgba(225,29,72,0.35),0_2px_0_rgba(190,18,60,1)] active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+                  title="Delete all purchase orders"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Clear All</span>
+                </button>
+              )}
             </div>
           </div>
-
-          {/* Export, Actions & View Mode Toggle */}
-          <div className="flex items-center gap-2 flex-wrap shrink-0">
-            {/* View Mode Switcher */}
-            <div className="flex items-center bg-slate-800/90 p-1 rounded-xl border border-slate-700/80 shadow-inner">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-all duration-150 flex items-center gap-1.5 cursor-pointer ${
-                  viewMode === 'table'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-blue-300/40'
-                    : 'text-slate-300 hover:text-white'
-                }`}
-                title="Table View"
-              >
-                <List className="w-3.5 h-3.5" />
-                <span>Table</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('cards')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-all duration-150 flex items-center gap-1.5 cursor-pointer ${
-                  viewMode === 'cards'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-blue-300/40'
-                    : 'text-slate-300 hover:text-white'
-                }`}
-                title="Cards Grid View"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Cards</span>
-              </button>
-            </div>
-
-            {allowDeptChart && (
-              <button
-                type="button"
-                onClick={() => setShowDeptChart(!showDeptChart)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all duration-150 flex items-center gap-1.5 cursor-pointer border ${
-                  showDeptChart
-                    ? 'bg-gradient-to-b from-emerald-500 via-teal-600 to-emerald-700 text-white shadow-[0_4px_12px_rgba(16,185,129,0.35),0_2px_0_rgba(5,150,105,1)] border-emerald-300/40'
-                    : 'bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border-emerald-500/40'
-                }`}
-                title="Toggle Department Breakdown Pie Chart"
-              >
-                <PieChart className="w-3.5 h-3.5" />
-                <span>Dept Chart</span>
-                {showDeptChart ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => exportRunningPOsToCSV()}
-              disabled={filteredRunningPOs.length === 0}
-              className="px-3 py-1.5 bg-gradient-to-b from-teal-500 via-emerald-600 to-teal-700 hover:from-teal-600 hover:to-teal-800 disabled:opacity-40 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[0_4px_12px_rgba(20,184,166,0.35),0_2px_0_rgba(15,118,110,1)] active:translate-y-0.5 active:shadow-none border border-teal-300/40 transition-all cursor-pointer"
-              title="Export Running POs report to Excel (CSV)"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Excel</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => exportRunningPOsToPDF()}
-              disabled={filteredRunningPOs.length === 0}
-              className="px-3 py-1.5 bg-gradient-to-b from-blue-500 via-indigo-600 to-blue-700 hover:from-blue-600 hover:to-blue-800 disabled:opacity-40 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[0_4px_12px_rgba(37,99,235,0.35),0_2px_0_rgba(29,78,216,1)] active:translate-y-0.5 active:shadow-none border border-blue-300/40 transition-all cursor-pointer"
-              title="Export Running POs report as PDF / Print"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>PDF Report</span>
-            </button>
-
-            {allowDelete && onClearAllPOs && pos.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowClearAllModal(true)}
-                className="px-3 py-1.5 bg-gradient-to-b from-rose-500 via-red-600 to-rose-700 hover:from-rose-600 hover:to-rose-800 text-white border border-rose-300/40 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[0_4px_12px_rgba(225,29,72,0.35),0_2px_0_rgba(190,18,60,1)] active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
-                title="Delete all purchase orders"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear All</span>
-              </button>
-            )}
-          </div>
-        </div>
+        )}
 
         {/* Department Breakdown Pie Chart Banner */}
         {allowDeptChart && showDeptChart && (
